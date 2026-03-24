@@ -4,15 +4,124 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Профиль — +aura</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css" />
+  <style>
+    .profile-avatar-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .profile-avatar {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #1a1a22;
+      border: 2px solid #2a2a35;
+      display: block;
+      cursor: pointer;
+      transition: border-color 0.2s, opacity 0.2s;
+    }
+    .profile-avatar:hover { border-color: #ff2b2b; opacity: 0.85; }
+    .profile-avatar-placeholder {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: #1a1a22;
+      border: 2px dashed #2a2a35;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .profile-avatar-placeholder:hover { border-color: #ff2b2b; background: #1f1218; }
+    .profile-avatar-placeholder svg { opacity: 0.4; }
+    .avatar-hint { font-size: 12px; color: #7a7a85; text-align: center; }
+    .profile-save-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      margin-top: 4px;
+    }
+    .notice.success {
+      background: rgba(29, 185, 84, 0.10);
+      border: 1px solid rgba(29, 185, 84, 0.3);
+      color: #6ee89e;
+    }
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #7a7a85;
+      margin-bottom: 20px;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: #fff; }
+    #avatarInput { display: none; }
+  </style>
 </head>
 <body class="red-mode">
   <main class="app-shell">
     <section class="card">
-      <h1>Профиль</h1>
-      <p>Этот экран потом расширим.</p>
-      <a class="secondary-btn text-center" href="/home">Назад</a>
+      <a class="back-link" href="/home">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Назад
+      </a>
+
+      <div class="small-label">Мой профиль</div>
+      <h1 style="margin-bottom: 24px;">Редактировать</h1>
+
+      <div class="profile-avatar-wrap">
+        <div id="avatarPlaceholder" class="profile-avatar-placeholder" onclick="document.getElementById('avatarInput').click()">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+          </svg>
+        </div>
+        <img id="avatarPreview" class="profile-avatar hidden" src="" alt="Аватар" onclick="document.getElementById('avatarInput').click()" />
+        <input type="file" id="avatarInput" accept="image/*" />
+        <span class="avatar-hint">Нажми, чтобы загрузить фото</span>
+      </div>
+
+      <form id="profileForm" class="auth-form">
+        <div class="field">
+          <span>Имя</span>
+          <input type="text" name="name" id="fieldName" placeholder="Как тебя зовут?" maxlength="40" />
+        </div>
+        <div class="field">
+          <span>Возраст</span>
+          <input type="number" name="age" id="fieldAge" placeholder="Сколько тебе лет?" min="13" max="99" />
+        </div>
+        <div class="field">
+          <span>Город</span>
+          <input type="text" name="city" id="fieldCity" placeholder="Где ты находишься?" maxlength="60" />
+        </div>
+        <div class="field">
+          <span>О себе</span>
+          <textarea name="bio" id="fieldBio" placeholder="Расскажи немного о себе..." maxlength="300"></textarea>
+        </div>
+
+        <div id="profileNotice" class="notice hidden"></div>
+
+        <div class="profile-save-row">
+          <button type="submit" class="primary-btn">Сохранить</button>
+          <button type="button" id="removeAvatarBtn" class="ghost-btn hidden">Удалить фото</button>
+        </div>
+      </form>
     </section>
   </main>
+
+  <script src="/js/utils.js"></script>
+  <script src="/js/profile.js"></script>
 </body>
 </html>
