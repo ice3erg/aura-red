@@ -2,21 +2,33 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Подключить музыку</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Подключение Spotify — +aura</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css" />
 </head>
-<body>
-  <div class="container">
-    <h1>Подключить музыку</h1>
-    <p>Подключи Spotify, чтобы активировать live radar.</p>
+<body class="red-mode auth-page">
+  <main class="auth-shell">
+    <section class="auth-card">
+      <div class="logo">+aura</div>
+      <h1>Подключение музыки</h1>
+      <p class="auth-subtitle">
+        Подключи Spotify, чтобы приложение могло показывать твой музыкальный сигнал.
+      </p>
 
-    <a href="/spotify/login">
-      <button type="button">Подключить Spotify</button>
-    </a>
+      <div id="musicStatus" class="demo-box"></div>
+      <div id="errorBox" class="notice error hidden"></div>
 
-    <a href="/home.html">
-      <button type="button">Пропустить</button>
-    </a>
-  </div>
+      <div class="stack">
+        <a class="primary-btn text-center" href="/spotify/login">Подключить Spotify</a>
+        <a class="secondary-btn text-center" href="/home">Пропустить пока</a>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/utils.js"></script>
+  <script src="/js/music.js"></script>
 </body>
 </html>
