@@ -71,12 +71,6 @@
 <body class="red-mode">
   <main class="app-shell">
     <section class="card">
-      <a class="back-link" href="/home">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="15 18 9 12 15 6"/>
-        </svg>
-        Назад
-      </a>
 
       <div class="small-label">Мой профиль</div>
       <h1 style="margin-bottom: 24px;">Редактировать</h1>
@@ -123,5 +117,13 @@
 
   <script src="/js/utils.js"></script>
   <script src="/js/profile.js"></script>
+
+
+<nav class="bottom-nav">
+    <a class="nav-link" href="/home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49"/><path d="M7.76 16.24a6 6 0 0 1 0-8.49"/><path d="M20.07 3.93a10 10 0 0 1 0 16.14"/><path d="M3.93 20.07a10 10 0 0 1 0-16.14"/></svg><span>Radar</span></a>
+    <a class="nav-link" href="/map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span>Signals</span></a>
+    <a class="nav-link" href="/chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></a>
+    <a class="nav-link active" href="/profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Profile</span></a>
+</nav>
 </body>
 </html>
