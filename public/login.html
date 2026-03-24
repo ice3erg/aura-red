@@ -1,42 +1,62 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Log in — +aura</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
-  <script src="/js/utils.js"></script>
-  <script src="/js/auth.js"></script>
+  <link rel="stylesheet" href="/styles.css" />
 </head>
-<body>
-  <main class="center-shell">
-    <section class="card auth-card stack-lg">
-      <div class="logo"><span class="logo-dot"></span> +aura</div>
-      <div class="stack">
-        <div class="eyebrow">Welcome back</div>
-        <h2>Return to your radar.</h2>
-        <p class="lead">Demo account: <strong>max@aura.app</strong> / <strong>123456</strong></p>
+<body class="red-mode auth-page">
+  <main class="auth-shell">
+    <section class="auth-card">
+      <div class="brand-mark">+aura</div>
+
+      <h1>Welcome back</h1>
+      <p class="auth-subtitle">Return to your radar.</p>
+
+      <div class="demo-box">
+        Demo account: <strong>max@aura.app</strong> / <strong>123456</strong>
       </div>
-      <div class="notice error hidden" data-form-notice></div>
-      <form class="stack" data-login-form>
-        <div class="input-group">
-          <label class="label" for="email">Email</label>
-          <input class="input" id="email" name="email" type="email" placeholder="you@example.com" required>
-        </div>
-        <div class="input-group">
-          <label class="label" for="password">Password</label>
-          <input class="input" id="password" name="password" type="password" placeholder="Your password" required>
-        </div>
-        <button class="btn btn-primary btn-full" type="submit">Log in</button>
+
+      <form data-login-form class="auth-form">
+        <label class="field">
+          <span>Email</span>
+          <input
+            type="email"
+            name="email"
+            placeholder="you@example.com"
+            autocomplete="email"
+            required
+          />
+        </label>
+
+        <label class="field">
+          <span>Password</span>
+          <input
+            type="password"
+            name="password"
+            placeholder="••••••••"
+            autocomplete="current-password"
+            required
+          />
+        </label>
+
+        <div data-form-notice class="notice hidden"></div>
+
+        <button type="submit" class="primary-btn">Log in</button>
       </form>
-      <div class="auth-links">
-        <span>No account yet?</span>
+
+      <p class="auth-footer">
+        No account yet?
         <a href="/signup">Create one</a>
-      </div>
+      </p>
     </section>
   </main>
+
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth.js"></script>
 </body>
 </html>
