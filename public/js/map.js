@@ -197,15 +197,23 @@ map.on('click', closeSheet);
 
 async function loadNowPlaying() {
   try {
-    const res  = await fetch('/api/spotify/current-track');
+    // Берём токен из localStorage (хранится в объекте пользователя)
+    const session = JSON.parse(localStorage.getItem('aura_session') || 'null');
+    const users   = JSON.parse(localStorage.getItem('aura_users')   || '[]');
+    const user    = users.find(u => u.id === session?.userId);
+    const token   = user?.accessToken;
+
+    if (!token) return;
+
+    const res  = await fetch(`/api/spotify/current-track?accessToken=${encodeURIComponent(token)}`);
     const data = await res.json();
+
     if (data?.track?.name) {
       document.getElementById('topbarTrack').textContent  = data.track.name;
-      document.getElementById('topbarArtist').textContent =
-        (data.track.artists || []).map(a => a.name).join(', ') || '—';
+      document.getElementById('topbarArtist').textContent = data.track.artists || '—';
     }
   } catch (e) {
-    // Не залогинен или нет трека — просто оставляем «—»
+    // Не залогинен или нет трека — оставляем «—»
   }
 }
 
