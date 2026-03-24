@@ -230,51 +230,9 @@ h2 {
   gap: 16px;
 }
 
-.track-card {
-  display: grid;
-  grid-template-columns: 110px 1fr;
-  gap: 16px;
-  align-items: center;
-  margin-top: 8px;
-}
-
-.track-image {
-  width: 110px;
-  height: 110px;
-  border-radius: 18px;
-  object-fit: cover;
-  border: 1px solid #2a2a35;
-  background: #0f0f15;
-}
-
-.track-info {
-  display: grid;
-  gap: 8px;
-}
-
-.track-status {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #ff2b2b;
-}
-
 @media (min-width: 640px) {
   .landing-actions {
     grid-template-columns: 1fr 1fr;
-  }
-}
-
-@media (max-width: 560px) {
-  .track-card {
-    grid-template-columns: 1fr;
-  }
-
-  .track-image {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 1 / 1;
   }
 }
 /* ── Track Card ─────────────────────────────────────── */
