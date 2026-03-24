@@ -23,12 +23,29 @@
     </section>
 
     <section class="card">
-      <div class="small-label">Музыка</div>
-      <h2 id="spotifyBlockTitle">Spotify не подключён</h2>
-      <p id="spotifyBlockText" class="muted-text">
-        Подключи Spotify, чтобы активировать музыкальный сигнал.
-      </p>
-      <a id="spotifyAction" class="primary-btn text-center" href="/connect-music">Подключить Spotify</a>
+      <div class="small-label">Сейчас играет</div>
+
+      <div id="trackEmptyState">
+        <h2 id="spotifyBlockTitle">Spotify не подключён</h2>
+        <p id="spotifyBlockText" class="muted-text">
+          Подключи Spotify, чтобы активировать музыкальный сигнал.
+        </p>
+        <a id="spotifyAction" class="primary-btn text-center" href="/connect-music">Подключить Spotify</a>
+      </div>
+
+      <div id="trackCard" class="track-card hidden">
+        <img id="trackImage" class="track-image" src="" alt="Обложка трека" />
+        <div class="track-info">
+          <div class="track-status">Сейчас играет</div>
+          <h2 id="trackName">Название трека</h2>
+          <p id="trackArtists" class="muted-text">Исполнитель</p>
+          <a id="trackLink" class="secondary-btn text-center" href="#" target="_blank" rel="noopener noreferrer">
+            Открыть в Spotify
+          </a>
+        </div>
+      </div>
+
+      <div id="trackNotice" class="notice error hidden"></div>
     </section>
 
     <section class="card">
