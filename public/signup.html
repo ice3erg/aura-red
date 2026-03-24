@@ -1,46 +1,69 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sign up — +aura</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
-  <script src="/js/utils.js"></script>
-  <script src="/js/auth.js"></script>
+  <link rel="stylesheet" href="/styles.css" />
 </head>
-<body>
-  <main class="center-shell">
-    <section class="card auth-card stack-lg">
-      <div class="logo"><span class="logo-dot"></span> +aura</div>
-      <div class="stack">
-        <div class="eyebrow">Create account</div>
-        <h2>Enter the city with your own signal.</h2>
-        <p class="lead">Start with email and password. Profile setup comes next.</p>
-      </div>
-      <div class="notice error hidden" data-form-notice></div>
-      <form class="stack" data-signup-form>
-        <div class="input-group">
-          <label class="label" for="email">Email</label>
-          <input class="input" id="email" name="email" type="email" placeholder="you@example.com" required>
-        </div>
-        <div class="input-group">
-          <label class="label" for="password">Password</label>
-          <input class="input" id="password" name="password" type="password" placeholder="Minimum 6 characters" required>
-        </div>
-        <div class="input-group">
-          <label class="label" for="confirmPassword">Confirm password</label>
-          <input class="input" id="confirmPassword" name="confirmPassword" type="password" placeholder="Repeat password" required>
-        </div>
-        <button class="btn btn-primary btn-full" type="submit">Continue</button>
+<body class="red-mode auth-page">
+  <main class="auth-shell">
+    <section class="auth-card">
+      <div class="brand-mark">+aura</div>
+
+      <h1>Create account</h1>
+      <p class="auth-subtitle">Enter the city with your own signal.</p>
+
+      <form data-signup-form class="auth-form">
+        <label class="field">
+          <span>Email</span>
+          <input
+            type="email"
+            name="email"
+            placeholder="you@example.com"
+            autocomplete="email"
+            required
+          />
+        </label>
+
+        <label class="field">
+          <span>Password</span>
+          <input
+            type="password"
+            name="password"
+            placeholder="Minimum 6 characters"
+            autocomplete="new-password"
+            required
+          />
+        </label>
+
+        <label class="field">
+          <span>Confirm password</span>
+          <input
+            type="password"
+            name="confirmPassword"
+            placeholder="Repeat password"
+            autocomplete="new-password"
+            required
+          />
+        </label>
+
+        <div data-form-notice class="notice hidden"></div>
+
+        <button type="submit" class="primary-btn">Continue</button>
       </form>
-      <div class="auth-links">
-        <span>Already have an account?</span>
+
+      <p class="auth-footer">
+        Already have an account?
         <a href="/login">Log in</a>
-      </div>
+      </p>
     </section>
   </main>
+
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth.js"></script>
 </body>
 </html>
