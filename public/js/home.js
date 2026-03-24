@@ -28,9 +28,64 @@
   const trackLink = document.getElementById("trackLink");
   const trackNotice = document.getElementById("trackNotice");
 
+  const trackProgress = document.getElementById("trackProgress");
+  const trackCurrentTime = document.getElementById("trackCurrentTime");
+  const trackDuration = document.getElementById("trackDuration");
+
+  let progressInterval = null;
+  let currentProgressMs = 0;
+  let currentDurationMs = 0;
+  let isCurrentlyPlaying = false;
+
   if (homeName) homeName.textContent = user.name || "Пользователь";
   if (homeCity) homeCity.textContent = user.city || "Город не указан";
   if (homeBio) homeBio.textContent = user.bio || "О себе пока ничего не указано.";
+
+  function formatTime(ms) {
+    if (!ms || ms < 0) return "0:00";
+
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  function stopProgressTimer() {
+    if (progressInterval) {
+      clearInterval(progressInterval);
+      progressInterval = null;
+    }
+  }
+
+  function renderProgress() {
+    if (!trackProgress || !trackCurrentTime || !trackDuration) return;
+
+    const duration = currentDurationMs > 0 ? currentDurationMs : 0;
+    const progress = Math.max(0, Math.min(currentProgressMs, duration));
+    const percent = duration > 0 ? (progress / duration) * 100 : 0;
+
+    trackProgress.value = String(percent);
+    trackCurrentTime.textContent = formatTime(progress);
+    trackDuration.textContent = formatTime(duration);
+  }
+
+  function startProgressTimer() {
+    stopProgressTimer();
+
+    if (!isCurrentlyPlaying || !currentDurationMs) return;
+
+    progressInterval = setInterval(() => {
+      currentProgressMs += 1000;
+
+      if (currentProgressMs >= currentDurationMs) {
+        currentProgressMs = currentDurationMs;
+        stopProgressTimer();
+      }
+
+      renderProgress();
+    }, 1000);
+  }
 
   function showNotice(text) {
     if (!trackNotice) return;
@@ -45,6 +100,8 @@
   }
 
   function showEmpty(title, text, actionText = "Подключить Spotify") {
+    stopProgressTimer();
+
     if (trackEmptyState) trackEmptyState.classList.remove("hidden");
     if (trackCard) trackCard.classList.add("hidden");
 
@@ -53,7 +110,7 @@
     if (spotifyAction) spotifyAction.textContent = actionText;
   }
 
-  function showTrack(track) {
+  function showTrack(track, isPlaying) {
     if (!track) return;
 
     if (trackEmptyState) trackEmptyState.classList.add("hidden");
@@ -75,6 +132,13 @@
         trackLink.classList.add("hidden");
       }
     }
+
+    currentProgressMs = Number(track.progressMs || 0);
+    currentDurationMs = Number(track.durationMs || 0);
+    isCurrentlyPlaying = !!isPlaying;
+
+    renderProgress();
+    startProgressTimer();
   }
 
   async function loadCurrentTrack() {
@@ -134,7 +198,7 @@
         return;
       }
 
-      if (!data.isPlaying || !data.track) {
+      if (!data.track) {
         showEmpty(
           "Сейчас ничего не играет",
           "Включи музыку в Spotify, и трек появится здесь.",
@@ -143,7 +207,7 @@
         return;
       }
 
-      showTrack(data.track);
+      showTrack(data.track, data.isPlaying);
     } catch (error) {
       showEmpty(
         "Ошибка загрузки",
@@ -157,6 +221,7 @@
 
   if (logoutBtn) {
     logoutBtn.addEventListener("click", () => {
+      stopProgressTimer();
       clearSession();
       go("/login");
     });
