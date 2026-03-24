@@ -409,3 +409,80 @@ h2 {
   color: #1DB954;
   background: rgba(29, 185, 84, 0.06);
 }
+
+/* ── Bottom Navigation ───────────────────────────────── */
+body {
+  padding-bottom: 72px;
+}
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: rgba(11, 11, 15, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid #1e1e28;
+  display: flex;
+  align-items: stretch;
+  z-index: 100;
+  padding: 0 4px;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-link {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-decoration: none;
+  color: #4a4a5a;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: color 0.2s;
+  position: relative;
+  border-radius: 12px;
+  margin: 6px 2px;
+}
+
+.nav-link:hover {
+  color: #7a7a8a;
+}
+
+.nav-link.active {
+  color: #ff2b2b;
+}
+
+.nav-link svg {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.nav-link.active svg {
+  filter: drop-shadow(0 0 6px rgba(255, 43, 43, 0.5));
+}
+
+.nav-badge {
+  position: absolute;
+  top: 2px;
+  right: calc(50% - 18px);
+  background: #ff2b2b;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid #0b0b0f;
+}
