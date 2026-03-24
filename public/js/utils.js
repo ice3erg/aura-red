@@ -1,85 +1,8 @@
-window.AuraUtils = (() => {
-  const KEYS = {
-    users: 'aura_users',
-    session: 'aura_session',
-    signals: 'aura_signals',
-    chats: 'aura_chats'
-  };
+(function () {
+  const USERS_KEY = "aura_users";
+  const SESSION_KEY = "aura_session";
 
-  const seedUsers = [
-    {
-      id: 'u_demo_1',
-      email: 'max@aura.app',
-      password: '123456',
-      name: 'Max',
-      age: '21',
-      city: 'Saint Petersburg',
-      avatar: '',
-      bio: 'Night drives, heavy bass, real scenes.',
-      spotifyConnected: true,
-      spotifyProfile: { provider: 'Spotify', username: 'max.redmode' },
-      nowPlaying: { title: 'After Hours', artist: 'The Weeknd', progress: 48 },
-      vibeTags: ['Dark pop', 'Night ride', 'Synth'],
-      lastSeen: 'now',
-      distanceKm: 0
-    },
-    {
-      id: 'u_demo_2',
-      email: 'mila@aura.app',
-      password: '123456',
-      name: 'Mila',
-      age: '22',
-      city: 'Saint Petersburg',
-      avatar: '',
-      bio: 'Techno, afterparty, underground spots.',
-      spotifyConnected: true,
-      spotifyProfile: { provider: 'Spotify', username: 'mila.noise' },
-      nowPlaying: { title: 'Breathe', artist: 'The Prodigy', progress: 62 },
-      vibeTags: ['Techno', 'Clubs'],
-      lastSeen: '2 min ago',
-      distanceKm: 1.2
-    },
-    {
-      id: 'u_demo_3',
-      email: 'kai@aura.app',
-      password: '123456',
-      name: 'Kai',
-      age: '24',
-      city: 'Saint Petersburg',
-      avatar: '',
-      bio: 'Alt rap, visuals, hidden bars.',
-      spotifyConnected: true,
-      spotifyProfile: { provider: 'Spotify', username: 'kai.signal' },
-      nowPlaying: { title: 'FE!N', artist: 'Travis Scott', progress: 33 },
-      vibeTags: ['Rap', 'Visuals'],
-      lastSeen: 'online',
-      distanceKm: 2.4
-    }
-  ];
-
-  function bootstrap() {
-    if (!localStorage.getItem(KEYS.users)) {
-      localStorage.setItem(KEYS.users, JSON.stringify(seedUsers));
-    }
-    if (!localStorage.getItem(KEYS.signals)) {
-      localStorage.setItem(KEYS.signals, JSON.stringify([
-        { id: uid('sig'), fromId: 'u_demo_2', toId: 'u_demo_1', type: 'Same vibe', time: '3m ago', mutual: true },
-        { id: uid('sig'), fromId: 'u_demo_3', toId: 'u_demo_1', type: 'Hello', time: '12m ago', mutual: false }
-      ]));
-    }
-    if (!localStorage.getItem(KEYS.chats)) {
-      localStorage.setItem(KEYS.chats, JSON.stringify([
-        { id: uid('chat'), userIds: ['u_demo_1', 'u_demo_2'], title: 'Mila', lastMessage: 'There is a techno set tonight near Sennaya.', unread: 1 },
-        { id: uid('chat'), userIds: ['u_demo_1', 'u_demo_3'], title: 'Kai', lastMessage: 'Same track energy.', unread: 0 }
-      ]));
-    }
-  }
-
-  function uid(prefix = 'id') {
-    return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
-  }
-
-  function read(key, fallback) {
+  function readJSON(key, fallback) {
     try {
       const raw = localStorage.getItem(key);
       return raw ? JSON.parse(raw) : fallback;
@@ -88,105 +11,101 @@ window.AuraUtils = (() => {
     }
   }
 
-  function write(key, value) {
+  function writeJSON(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
   }
 
+  function ensureDemoUser() {
+    const users = readJSON(USERS_KEY, []);
+    const exists = users.some((u) => u.email === "max@aura.app");
+
+    if (!exists) {
+      users.push({
+        id: "u_demo_1",
+        email: "max@aura.app",
+        password: "123456",
+        name: "Максим",
+        age: "20",
+        city: "Санкт-Петербург",
+        bio: "Люблю музыку и ночной город.",
+        spotifyConnected: false,
+        spotifyName: "",
+        spotifyId: ""
+      });
+      writeJSON(USERS_KEY, users);
+    }
+  }
+
   function getUsers() {
-    bootstrap();
-    return read(KEYS.users, []);
+    ensureDemoUser();
+    return readJSON(USERS_KEY, []);
   }
 
   function saveUsers(users) {
-    write(KEYS.users, users);
+    writeJSON(USERS_KEY, users);
   }
 
   function getSession() {
-    return read(KEYS.session, null);
+    return readJSON(SESSION_KEY, null);
   }
 
   function setSession(session) {
-    write(KEYS.session, session);
+    writeJSON(SESSION_KEY, session);
   }
 
   function clearSession() {
-    localStorage.removeItem(KEYS.session);
+    localStorage.removeItem(SESSION_KEY);
   }
 
   function getCurrentUser() {
     const session = getSession();
     if (!session?.userId) return null;
-    return getUsers().find(user => user.id === session.userId) || null;
+    return getUsers().find((u) => u.id === session.userId) || null;
   }
 
-  function updateUser(nextUser) {
+  function updateCurrentUser(patch) {
+    const session = getSession();
+    if (!session?.userId) return null;
+
     const users = getUsers();
-    const index = users.findIndex(item => item.id === nextUser.id);
-    if (index === -1) return;
-    users[index] = { ...users[index], ...nextUser };
+    const index = users.findIndex((u) => u.id === session.userId);
+    if (index === -1) return null;
+
+    users[index] = { ...users[index], ...patch };
     saveUsers(users);
+    return users[index];
   }
 
-  function redirect(path) {
-    window.location.href = path;
+  function showNotice(node, text, type = "error") {
+    if (!node) return;
+    node.textContent = text;
+    node.classList.remove("hidden");
+    node.classList.remove("error");
+    if (type === "error") node.classList.add("error");
   }
 
-  function requireAuth() {
-    const user = getCurrentUser();
-    if (!user) redirect('/login');
-    return user;
+  function hideNotice(node) {
+    if (!node) return;
+    node.textContent = "";
+    node.classList.add("hidden");
   }
 
-  function showToast(message) {
-    const old = document.querySelector('.toast');
-    if (old) old.remove();
-    const el = document.createElement('div');
-    el.className = 'toast';
-    el.textContent = message;
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 2200);
+  function go(url) {
+    window.location.href = url;
   }
 
-  function initials(name = 'A') {
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .filter(Boolean)
-      .slice(0, 2)
-      .join('')
-      .toUpperCase();
-  }
-
-  function avatarMarkup(user, size = '') {
-    const cls = ['avatar', size].filter(Boolean).join(' ');
-    if (user?.avatar) return `<img class="${cls}" src="${user.avatar}" alt="${user.name || 'avatar'}">`;
-    return `<div class="${cls}" aria-hidden="true">${initials(user?.name || 'A')}</div>`;
-  }
-
-  function getSignals() { return read(KEYS.signals, []); }
-  function getChats() { return read(KEYS.chats, []); }
-
-  return {
-    KEYS,
-    bootstrap,
-    uid,
-    read,
-    write,
+  window.AuraUtils = {
     getUsers,
     saveUsers,
     getSession,
     setSession,
     clearSession,
     getCurrentUser,
-    updateUser,
-    redirect,
-    requireAuth,
-    showToast,
-    initials,
-    avatarMarkup,
-    getSignals,
-    getChats
+    updateCurrentUser,
+    showNotice,
+    hideNotice,
+    go
   };
-})();
 
-window.AuraUtils.bootstrap();
+  ensureDemoUser();
+})();
