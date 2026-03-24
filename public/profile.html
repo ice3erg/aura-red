@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile — +aura</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/profile.js"></script>
+</head>
+<body>
+  <main class="shell stack-lg" data-profile-root>
+    <section class="card panel stack-lg">
+      <div class="row gap-16">
+        <div data-profile-avatar></div>
+        <div class="stack" style="gap:8px;">
+          <h2 data-profile-name></h2>
+          <p class="muted" data-profile-meta></p>
+          <p class="lead" data-profile-bio></p>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat"><strong data-profile-spotify></strong><span>Spotify</span></div>
+        <div class="stat"><strong>Visible</strong><span>Presence</span></div>
+        <div class="stat"><strong>Live</strong><span>Radar mode</span></div>
+      </div>
+    </section>
+
+    <section class="card panel stack">
+      <div class="eyebrow">Account</div>
+      <div class="row-between"><span class="muted">Email</span><strong data-profile-email></strong></div>
+      <div class="row-between"><span class="muted">Music connection</span><a href="/connect-music" class="btn btn-secondary btn-small">Manage</a></div>
+      <div class="stack">
+        <span class="muted">Vibe tags</span>
+        <div class="row gap-8 wrap" data-profile-vibes></div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav">
+    <a class="nav-link" href="/home">Radar</a>
+    <a class="nav-link" href="/map">Signals</a>
+    <a class="nav-link" href="/chat">Chat</a>
+    <a class="nav-link active" href="/profile">Profile</a>
+  </nav>
+</body>
+</html>

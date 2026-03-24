@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Spotify подключен</title>
+</head>
+<body>
+  <h1>Spotify подключен ✅</h1>
+  <p id="name"></p>
+  <button id="continueBtn">Продолжить</button>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+
+    const spotifyConnected = params.get("spotifyConnected");
+    const spotifyName = params.get("spotifyName");
+    const spotifyId = params.get("spotifyId");
+    const accessToken = params.get("accessToken");
+    const refreshToken = params.get("refreshToken");
+
+    if (spotifyConnected === "true") {
+      localStorage.setItem("spotifyConnected", "true");
+      localStorage.setItem("spotifyName", spotifyName || "");
+      localStorage.setItem("spotifyId", spotifyId || "");
+      localStorage.setItem("spotifyAccessToken", accessToken || "");
+      localStorage.setItem("spotifyRefreshToken", refreshToken || "");
+    }
+
+    document.getElementById("name").textContent =
+      spotifyName ? `Аккаунт: ${spotifyName}` : "Аккаунт подключен";
+
+    document.getElementById("continueBtn").addEventListener("click", () => {
+      window.location.href = "/home.html";
+    });
+  </script>
+</body>
+</html>

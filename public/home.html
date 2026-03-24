@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Home — +aura</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/home.js"></script>
+</head>
+<body>
+  <main class="shell stack-lg" data-home-root>
+    <section class="row-between">
+      <div class="user-line">
+        <div data-home-avatar></div>
+        <div>
+          <strong data-home-name></strong>
+          <div class="row gap-8 muted"><span class="online-dot"></span><span data-home-city></span></div>
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-small" data-logout>Log out</button>
+    </section>
+
+    <section class="card hero-card stack-lg">
+      <div class="stack">
+        <div class="kicker"><span class="bullet"></span> Live signal</div>
+        <h1>You + the scene around you.</h1>
+        <p class="lead">This home screen makes the product clear in one glance: who you are, what you play, who is nearby, and how to jump into live discovery.</p>
+      </div>
+
+      <div class="hero-grid split">
+        <div class="now-card" data-now-playing></div>
+
+        <div class="stack">
+          <div class="stat-grid">
+            <div class="stat"><strong data-nearby-count>0</strong><span>listeners nearby</span></div>
+            <div class="stat"><strong>4</strong><span>live hotspots</span></div>
+            <div class="stat"><strong>2</strong><span>strong matches</span></div>
+          </div>
+          <a class="btn btn-primary btn-full" href="/map">Open live radar</a>
+          <div class="row gap-8 wrap">
+            <span class="tag active">Same track</span>
+            <span class="tag">Same artist</span>
+            <span class="tag">High match</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card panel stack">
+      <div class="row-between">
+        <div>
+          <div class="eyebrow">Live now</div>
+          <h3>Nearby listeners</h3>
+        </div>
+        <a href="/map" class="btn btn-secondary btn-small">See radar</a>
+      </div>
+      <div class="stack" data-live-listeners></div>
+    </section>
+  </main>
+
+<div id="spotifyStatus"></div>
+
+<script>
+  if (localStorage.getItem("spotifyConnected")) {
+    document.getElementById("spotifyStatus").innerText =
+      "Spotify подключен: " +
+      localStorage.getItem("spotifyName");
+  } else {
+    document.getElementById("spotifyStatus").innerText =
+      "Spotify не подключен";
+  }
+</script>
+
+  <nav class="bottom-nav">
+    <a class="nav-link active" href="/home">Radar</a>
+    <a class="nav-link" href="/map">Signals</a>
+    <a class="nav-link" href="/chat">Chat</a>
+    <a class="nav-link" href="/profile">Profile</a>
+  </nav>
+</body>
+</html>

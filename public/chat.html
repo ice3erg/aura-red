@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signals & Chat — +aura</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/js/utils.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/chat.js"></script>
+</head>
+<body>
+  <main class="shell stack-lg">
+    <section class="card panel stack">
+      <div class="eyebrow">Signals</div>
+      <h2>People reaching out</h2>
+      <div class="stack" data-signals-list></div>
+    </section>
+
+    <section class="card panel stack">
+      <div class="eyebrow">Chat</div>
+      <h2>Conversations</h2>
+      <div class="stack" data-chat-list></div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav">
+    <a class="nav-link" href="/home">Radar</a>
+    <a class="nav-link" href="/map">Signals</a>
+    <a class="nav-link active" href="/chat">Chat</a>
+    <a class="nav-link" href="/profile">Profile</a>
+  </nav>
+</body>
+</html>
