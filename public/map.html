@@ -1,67 +1,488 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Radar — +aura</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
-</head>
-<body>
-  <main class="shell stack-lg">
-    <section class="row-between">
-      <div>
-        <div class="kicker"><span class="bullet"></span> Radar mode</div>
-        <h2>Live social surface</h2>
-      </div>
-      <a class="btn btn-secondary btn-small" href="/home">Back</a>
-    </section>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>+aura — Radar</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&display=swap" rel="stylesheet" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    <section class="live-radar">
-      <div class="radar-grid"></div>
-      <div class="radar-rings">
-        <div class="ring r1"></div>
-        <div class="ring r2"></div>
-        <div class="ring r3"></div>
-        <div class="sweep"></div>
-      </div>
-      <div class="radar-points">
-        <div class="point me" style="left:calc(50% - 30px); top:calc(50% - 30px);">You</div>
-        <div class="point" style="left:22%; top:22%;">M</div>
-        <div class="point" style="left:67%; top:30%;">K</div>
-        <div class="point" style="left:60%; top:64%;">N</div>
-      </div>
-      <div class="radar-overlay">
-        <div class="row-between">
-          <div>
-            <strong>17 people active around you</strong>
-            <p class="muted">2 strong music matches • 4 hotspots live</p>
-          </div>
-          <span class="tag active">Scanning</span>
+      :root {
+        --red: #ff2b2b;
+        --red-glow: rgba(255,43,43,0.22);
+        --glass-bg: rgba(8, 8, 10, 0.82);
+        --glass-border: rgba(255,255,255,0.07);
+        --muted: rgba(255,255,255,0.55);
+        --nav-h: 68px;
+      }
+
+      html, body {
+        height: 100%;
+        background: #050505;
+        font-family: 'Syne', system-ui, sans-serif;
+        overflow: hidden;
+        color: #fff;
+      }
+
+      /* ── MAP ── */
+      #map {
+        position: fixed;
+        inset: 0;
+        bottom: var(--nav-h);
+        filter: saturate(0.6) contrast(1.1) brightness(0.75);
+        z-index: 0;
+      }
+
+      /* leaflet attribution */
+      .leaflet-control-attribution { display: none !important; }
+      .leaflet-control-zoom {
+        border: none !important;
+        margin: 0 !important;
+        position: absolute;
+        right: 16px;
+        bottom: calc(var(--nav-h) + 96px);
+      }
+      .leaflet-control-zoom a {
+        background: var(--glass-bg) !important;
+        color: #fff !important;
+        border: 1px solid var(--glass-border) !important;
+        backdrop-filter: blur(16px);
+        font-size: 18px !important;
+        width: 38px !important;
+        height: 38px !important;
+        line-height: 36px !important;
+      }
+      .leaflet-top, .leaflet-bottom { z-index: 10 !important; }
+
+      /* ── TOPBAR ── */
+      .topbar {
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        z-index: 100;
+        padding: 14px 16px 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: linear-gradient(180deg, rgba(5,5,5,0.96) 60%, transparent);
+        pointer-events: none;
+      }
+
+      .topbar-brand {
+        font-size: 26px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        flex-shrink: 0;
+        pointer-events: auto;
+      }
+
+      .topbar-now {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 13px;
+        border-radius: 14px;
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        backdrop-filter: blur(20px);
+        pointer-events: auto;
+        overflow: hidden;
+      }
+
+      .topbar-now .pulse-dot {
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        background: var(--red);
+        flex-shrink: 0;
+        box-shadow: 0 0 8px var(--red);
+        animation: blink 1.6s ease-in-out infinite;
+      }
+
+      @keyframes blink {
+        0%,100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
+
+      .topbar-now .now-text {
+        min-width: 0;
+        overflow: hidden;
+      }
+
+      .topbar-now .now-label {
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        color: var(--muted);
+        line-height: 1;
+      }
+
+      .topbar-now .now-track {
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 2px;
+      }
+
+      .topbar-now .now-artist {
+        font-size: 11px;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* ── STATS PILL ── */
+      .stats-pill {
+        position: fixed;
+        top: 80px;
+        left: 16px;
+        z-index: 100;
+        display: flex;
+        gap: 8px;
+      }
+
+      .stat-chip {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        backdrop-filter: blur(16px);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .stat-chip .dot {
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+
+      .stat-chip .dot.red { background: var(--red); box-shadow: 0 0 8px var(--red); }
+      .stat-chip .dot.white { background: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.7); }
+      .stat-chip .dot.gray { background: #888; }
+
+      /* ── MARKERS ── */
+      .radar-marker {
+        border-radius: 50%;
+        position: relative;
+        cursor: pointer;
+        transform: translate(-50%, -50%);
+      }
+
+      .radar-marker::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        animation: pulse 2s ease-out infinite;
+      }
+
+      .radar-marker.same-track {
+        width: 18px; height: 18px;
+        background: var(--red);
+        box-shadow: 0 0 20px rgba(255,43,43,0.9);
+      }
+      .radar-marker.same-track::after { background: var(--red); }
+
+      .radar-marker.same-artist {
+        width: 16px; height: 16px;
+        background: #fff;
+        box-shadow: 0 0 16px rgba(255,255,255,0.75);
+      }
+      .radar-marker.same-artist::after { background: #fff; }
+
+      .radar-marker.same-vibe {
+        width: 13px; height: 13px;
+        background: #888;
+        box-shadow: 0 0 10px rgba(150,150,150,0.4);
+      }
+      .radar-marker.same-vibe::after { background: #888; }
+
+      .radar-marker.you {
+        width: 22px; height: 22px;
+        background: #fff;
+        box-shadow: 0 0 30px rgba(255,255,255,0.9), 0 0 50px var(--red-glow);
+      }
+      .radar-marker.you::after { background: var(--red); opacity: 0.4; }
+
+      @keyframes pulse {
+        0%   { transform: scale(1); opacity: 0.55; }
+        100% { transform: scale(2.8); opacity: 0; }
+      }
+
+      /* ── PROFILE SHEET ── */
+      .sheet-backdrop {
+        position: fixed;
+        inset: 0;
+        bottom: var(--nav-h);
+        z-index: 200;
+        display: none;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 16px;
+        background: rgba(0,0,0,0.35);
+        backdrop-filter: blur(4px);
+      }
+
+      .sheet-backdrop.open { display: flex; }
+
+      .profile-sheet {
+        width: 100%;
+        max-width: 440px;
+        border-radius: 24px;
+        background: rgba(10, 10, 12, 0.95);
+        border: 1px solid var(--glass-border);
+        box-shadow: 0 0 60px rgba(255,43,43,0.12), 0 40px 80px rgba(0,0,0,0.6);
+        padding: 20px;
+        animation: slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1);
+      }
+
+      @keyframes slideUp {
+        from { transform: translateY(24px); opacity: 0; }
+        to   { transform: translateY(0); opacity: 1; }
+      }
+
+      .sheet-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .sheet-avatar {
+        width: 52px; height: 52px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+        border: 1px solid var(--glass-border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        flex-shrink: 0;
+      }
+
+      .sheet-info { flex: 1; min-width: 0; }
+
+      .sheet-name {
+        font-size: 22px;
+        font-weight: 800;
+        line-height: 1.1;
+      }
+
+      .sheet-meta {
+        margin-top: 4px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .match-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        margin-top: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .match-badge.same-track { background: rgba(255,43,43,0.18); color: #ff6b6b; border: 1px solid rgba(255,43,43,0.3); }
+      .match-badge.same-artist { background: rgba(255,255,255,0.08); color: #fff; border: 1px solid rgba(255,255,255,0.15); }
+      .match-badge.same-vibe { background: rgba(136,136,136,0.12); color: #aaa; border: 1px solid rgba(136,136,136,0.2); }
+
+      .sheet-track-block {
+        margin-top: 16px;
+        padding: 14px;
+        border-radius: 16px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--glass-border);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .sheet-cover {
+        width: 44px; height: 44px;
+        border-radius: 8px;
+        background: #1a1a1a;
+        flex-shrink: 0;
+        object-fit: cover;
+      }
+
+      .sheet-track-info .track-name {
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .sheet-track-info .track-artist {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+
+      .sheet-actions {
+        margin-top: 16px;
+        display: flex;
+        gap: 10px;
+      }
+
+      .sheet-btn {
+        flex: 1;
+        border: none;
+        border-radius: 14px;
+        padding: 13px 16px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        font-family: inherit;
+        transition: opacity 0.15s;
+      }
+      .sheet-btn:active { opacity: 0.75; }
+
+      .sheet-btn.primary { background: #fff; color: #111; }
+      .sheet-btn.secondary {
+        background: rgba(255,255,255,0.06);
+        color: #fff;
+        border: 1px solid var(--glass-border);
+      }
+
+      /* ── BOTTOM NAV ── */
+      .bottom-nav {
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        height: var(--nav-h);
+        z-index: 300;
+        display: flex;
+        background: rgba(6,6,8,0.94);
+        border-top: 1px solid var(--glass-border);
+        backdrop-filter: blur(24px);
+        padding-bottom: env(safe-area-inset-bottom, 0);
+      }
+
+      .nav-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        text-decoration: none;
+        color: rgba(255,255,255,0.38);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        transition: color 0.2s;
+        cursor: pointer;
+        background: none;
+        border: none;
+        font-family: inherit;
+        padding: 0;
+      }
+
+      .nav-item svg { width: 22px; height: 22px; transition: filter 0.2s; }
+
+      .nav-item.active {
+        color: var(--red);
+      }
+
+      .nav-item.active svg {
+        filter: drop-shadow(0 0 6px var(--red));
+      }
+    </style>
+  </head>
+  <body>
+
+    <!-- MAP -->
+    <div id="map"></div>
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="topbar-brand">+aura</div>
+      <div class="topbar-now">
+        <div class="pulse-dot"></div>
+        <div class="now-text">
+          <div class="now-label">сейчас играет</div>
+          <div class="now-track" id="topbarTrack">—</div>
+          <div class="now-artist" id="topbarArtist">—</div>
         </div>
       </div>
-    </section>
+    </div>
 
-    <section class="sheet card panel stack">
-      <div class="eyebrow">Explore mode</div>
-      <div class="map-canvas" data-map-canvas></div>
-      <div class="stack" data-map-list></div>
-    </section>
-  </main>
+    <!-- STATS PILLS -->
+    <div class="stats-pill">
+      <div class="stat-chip"><span class="dot red"></span><span id="countSameTrack">0</span> трек</div>
+      <div class="stat-chip"><span class="dot white"></span><span id="countSameArtist">0</span> артист</div>
+      <div class="stat-chip"><span class="dot gray"></span><span id="countSameVibe">0</span> вайб</div>
+    </div>
 
-  
+    <!-- PROFILE SHEET -->
+    <div class="sheet-backdrop" id="sheetBackdrop">
+      <div class="profile-sheet">
+        <div class="sheet-header">
+          <div class="sheet-avatar" id="sheetAvatar">👤</div>
+          <div class="sheet-info">
+            <div class="sheet-name" id="sheetName">—</div>
+            <div class="sheet-meta" id="sheetMeta">—</div>
+            <div class="match-badge" id="sheetBadge">—</div>
+          </div>
+        </div>
+        <div class="sheet-track-block">
+          <img class="sheet-cover" id="sheetCover" src="" alt="" onerror="this.style.display='none'" />
+          <div class="sheet-track-info">
+            <div class="track-name" id="sheetTrackName">—</div>
+            <div class="track-artist" id="sheetTrackArtist">—</div>
+          </div>
+        </div>
+        <div class="sheet-actions">
+          <button class="sheet-btn primary">Написать</button>
+          <button class="sheet-btn secondary" id="sheetClose">Закрыть</button>
+        </div>
+      </div>
+    </div>
 
+    <!-- BOTTOM NAV -->
+    <nav class="bottom-nav">
+      <a class="nav-item active" href="/map">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="2"/><path d="M12 2a10 10 0 0 1 0 20 10 10 0 0 1 0-20"/><path d="M12 6a6 6 0 0 1 0 12 6 6 0 0 1 0-12"/>
+        </svg>
+        Radar
+      </a>
+      <a class="nav-item" href="/map">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+        Signals
+      </a>
+      <a class="nav-item" href="/chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Chat
+      </a>
+      <a class="nav-item" href="/profile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+        Profile
+      </a>
+    </nav>
 
-<nav class="bottom-nav">
-    <a class="nav-link" href="/home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49"/><path d="M7.76 16.24a6 6 0 0 1 0-8.49"/><path d="M20.07 3.93a10 10 0 0 1 0 16.14"/><path d="M3.93 20.07a10 10 0 0 1 0-16.14"/></svg><span>Radar</span></a>
-    <a class="nav-link active" href="/map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span>Signals</span></a>
-    <a class="nav-link" href="/chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></a>
-    <a class="nav-link" href="/profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Profile</span></a>
-</nav>
-  <script src="/js/utils.js"></script>
-  <script src="/js/auth.js"></script>
-  <script src="/js/map.js"></script>
-</body>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="/js/map.js"></script>
+  </body>
 </html>
