@@ -66,6 +66,7 @@
     const percent = duration > 0 ? (progress / duration) * 100 : 0;
 
     trackProgress.value = String(percent);
+    trackProgress.closest('.player-progress-track').style.setProperty('--progress-pct', percent.toFixed(1) + '%');
     trackCurrentTime.textContent = formatTime(progress);
     trackDuration.textContent = formatTime(duration);
   }
