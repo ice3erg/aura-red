@@ -1,86 +1,52 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Home — +aura</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Главная — +aura</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
-  <script src="/js/utils.js"></script>
-  <script src="/js/auth.js"></script>
-  <script src="/js/home.js"></script>
+  <link rel="stylesheet" href="/styles.css" />
 </head>
-<body>
-  <main class="shell stack-lg" data-home-root>
-    <section class="row-between">
-      <div class="user-line">
-        <div data-home-avatar></div>
+<body class="red-mode">
+  <main class="app-shell">
+    <section class="top-card">
+      <div class="top-row">
         <div>
-          <strong data-home-name></strong>
-          <div class="row gap-8 muted"><span class="online-dot"></span><span data-home-city></span></div>
+          <div class="small-label">+aura</div>
+          <h1 id="homeName">Пользователь</h1>
+          <p id="homeCity" class="muted-text">Город не указан</p>
         </div>
-      </div>
-      <button class="btn btn-secondary btn-small" data-logout>Log out</button>
-    </section>
-
-    <section class="card hero-card stack-lg">
-      <div class="stack">
-        <div class="kicker"><span class="bullet"></span> Live signal</div>
-        <h1>You + the scene around you.</h1>
-        <p class="lead">This home screen makes the product clear in one glance: who you are, what you play, who is nearby, and how to jump into live discovery.</p>
-      </div>
-
-      <div class="hero-grid split">
-        <div class="now-card" data-now-playing></div>
-
-        <div class="stack">
-          <div class="stat-grid">
-            <div class="stat"><strong data-nearby-count>0</strong><span>listeners nearby</span></div>
-            <div class="stat"><strong>4</strong><span>live hotspots</span></div>
-            <div class="stat"><strong>2</strong><span>strong matches</span></div>
-          </div>
-          <a class="btn btn-primary btn-full" href="/map">Open live radar</a>
-          <div class="row gap-8 wrap">
-            <span class="tag active">Same track</span>
-            <span class="tag">Same artist</span>
-            <span class="tag">High match</span>
-          </div>
-        </div>
+        <button id="logoutBtn" class="ghost-btn">Выйти</button>
       </div>
     </section>
 
-    <section class="card panel stack">
-      <div class="row-between">
-        <div>
-          <div class="eyebrow">Live now</div>
-          <h3>Nearby listeners</h3>
-        </div>
-        <a href="/map" class="btn btn-secondary btn-small">See radar</a>
-      </div>
-      <div class="stack" data-live-listeners></div>
+    <section class="card">
+      <div class="small-label">Музыка</div>
+      <h2 id="spotifyBlockTitle">Spotify не подключён</h2>
+      <p id="spotifyBlockText" class="muted-text">
+        Подключи Spotify, чтобы активировать музыкальный сигнал.
+      </p>
+      <a id="spotifyAction" class="primary-btn text-center" href="/connect-music">Подключить Spotify</a>
+    </section>
+
+    <section class="card">
+      <div class="small-label">Радар</div>
+      <h2>Поиск людей рядом</h2>
+      <p class="muted-text">
+        Здесь позже будет live radar с людьми, совпадениями по музыке и точками притяжения.
+      </p>
+      <a class="secondary-btn text-center" href="/map">Открыть радар</a>
+    </section>
+
+    <section class="card">
+      <div class="small-label">Профиль</div>
+      <p id="homeBio" class="muted-text">О себе пока ничего не указано.</p>
     </section>
   </main>
 
-<div id="spotifyStatus"></div>
-
-<script>
-  if (localStorage.getItem("spotifyConnected")) {
-    document.getElementById("spotifyStatus").innerText =
-      "Spotify подключен: " +
-      localStorage.getItem("spotifyName");
-  } else {
-    document.getElementById("spotifyStatus").innerText =
-      "Spotify не подключен";
-  }
-</script>
-
-  <nav class="bottom-nav">
-    <a class="nav-link active" href="/home">Radar</a>
-    <a class="nav-link" href="/map">Signals</a>
-    <a class="nav-link" href="/chat">Chat</a>
-    <a class="nav-link" href="/profile">Profile</a>
-  </nav>
+  <script src="/js/utils.js"></script>
+  <script src="/js/home.js"></script>
 </body>
 </html>
