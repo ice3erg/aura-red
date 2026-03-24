@@ -7,8 +7,8 @@
     .setView(DEFAULT_CENTER, DEFAULT_ZOOM);
 
   L.tileLayer(
-    'https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png',
-    { maxZoom: 20 }
+    'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    { maxZoom: 20, subdomains: 'abcd' }
   ).addTo(map);
 
   // ── YOU ──────────────────────────────────────────────────────────────────
@@ -85,10 +85,7 @@
   // ── SPOTIFY TOPBAR ────────────────────────────────────────────────────────
   async function loadNowPlaying() {
     try {
-      const session = JSON.parse(localStorage.getItem('aura_session') || 'null');
-      const users   = JSON.parse(localStorage.getItem('aura_users')   || '[]');
-      const user    = users.find(u => u.id === session?.userId);
-      const token   = user?.accessToken;
+      const token = localStorage.getItem('spotifyAccessToken');
       if (!token) return;
 
       const res  = await fetch('/api/spotify/current-track?accessToken=' + encodeURIComponent(token));
