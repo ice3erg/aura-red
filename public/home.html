@@ -34,16 +34,33 @@
       </div>
 
       <div id="trackCard" class="track-card hidden">
-        <img id="trackImage" class="track-image" src="" alt="Обложка трека" />
-        <div class="track-info">
-          <div class="track-status">Сейчас играет</div>
-          <h2 id="trackName">Название трека</h2>
-          <p id="trackArtists" class="muted-text">Исполнитель</p>
-          <a id="trackLink" class="secondary-btn text-center" href="#" target="_blank" rel="noopener noreferrer">
-            Открыть в Spotify
-          </a>
-        </div>
+  <img id="trackImage" class="track-image" src="" alt="Обложка трека" />
+  <div class="track-info">
+    <div class="track-status">Сейчас играет</div>
+    <h2 id="trackName">Название трека</h2>
+    <p id="trackArtists" class="muted-text">Исполнитель</p>
+
+    <div class="player-progress-wrap">
+      <input
+        id="trackProgress"
+        class="player-progress"
+        type="range"
+        min="0"
+        max="100"
+        value="0"
+        disabled
+      />
+      <div class="player-times">
+        <span id="trackCurrentTime">0:00</span>
+        <span id="trackDuration">0:00</span>
       </div>
+    </div>
+
+    <a id="trackLink" class="secondary-btn text-center" href="#" target="_blank" rel="noopener noreferrer">
+      Открыть в Spotify
+    </a>
+  </div>
+</div>
 
       <div id="trackNotice" class="notice error hidden"></div>
     </section>
