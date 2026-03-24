@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Log in — +aura</title>
+  <title>Вход — +aura</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -12,46 +12,33 @@
 <body class="red-mode auth-page">
   <main class="auth-shell">
     <section class="auth-card">
-      <div class="brand-mark">+aura</div>
-
-      <h1>Welcome back</h1>
-      <p class="auth-subtitle">Return to your radar.</p>
+      <div class="logo">+aura</div>
+      <h1>Вход</h1>
+      <p class="auth-subtitle">Вернись в свой радар.</p>
 
       <div class="demo-box">
-        Demo account: <strong>max@aura.app</strong> / <strong>123456</strong>
+        Тестовый вход: <strong>max@aura.app</strong> / <strong>123456</strong>
       </div>
 
       <form data-login-form class="auth-form">
         <label class="field">
-          <span>Email</span>
-          <input
-            type="email"
-            name="email"
-            placeholder="you@example.com"
-            autocomplete="email"
-            required
-          />
+          <span>Почта</span>
+          <input type="email" name="email" placeholder="Введите почту" required />
         </label>
 
         <label class="field">
-          <span>Password</span>
-          <input
-            type="password"
-            name="password"
-            placeholder="••••••••"
-            autocomplete="current-password"
-            required
-          />
+          <span>Пароль</span>
+          <input type="password" name="password" placeholder="Введите пароль" required />
         </label>
 
         <div data-form-notice class="notice hidden"></div>
 
-        <button type="submit" class="primary-btn">Log in</button>
+        <button type="submit" class="primary-btn">Войти</button>
       </form>
 
       <p class="auth-footer">
-        No account yet?
-        <a href="/signup">Create one</a>
+        Нет аккаунта?
+        <a href="/signup">Зарегистрироваться</a>
       </p>
     </section>
   </main>
