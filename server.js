@@ -19,13 +19,12 @@ const routes = {
   "/login": "login.html",
   "/signup": "signup.html",
   "/onboarding": "onboarding.html",
+  "/connect-music": "connect-music.html",
+  "/connect-success": "connect-success.html",
   "/home": "home.html",
   "/profile": "profile.html",
-  "/connect-music": "connect-music.html",
   "/map": "map.html",
-  "/chat": "chat.html",
-  "/demo": "demo.html",
-  "/connect-success": "connect-success.html",
+  "/chat": "chat.html"
 };
 
 Object.entries(routes).forEach(([route, file]) => {
@@ -38,20 +37,20 @@ app.get("/debug/env", (_req, res) => {
   res.json({
     hasClientId: !!CLIENT_ID,
     hasClientSecret: !!CLIENT_SECRET,
-    redirectUri: REDIRECT_URI || null,
+    redirectUri: REDIRECT_URI || null
   });
 });
 
 app.get("/spotify/login", (_req, res) => {
   if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
-    return res.status(500).send("Spotify env vars are missing");
+    return res.status(500).send("Не заданы переменные Spotify в .env");
   }
 
   const scope = [
     "user-read-email",
     "user-read-private",
     "user-read-currently-playing",
-    "user-read-playback-state",
+    "user-read-playback-state"
   ].join(" ");
 
   const authURL =
@@ -60,12 +59,11 @@ app.get("/spotify/login", (_req, res) => {
       response_type: "code",
       client_id: CLIENT_ID,
       scope,
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: REDIRECT_URI
     }).toString();
 
   console.log("SPOTIFY LOGIN HIT");
   console.log("REDIRECT_URI:", REDIRECT_URI);
-  console.log("AUTH URL:", authURL);
 
   res.redirect(authURL);
 });
@@ -75,7 +73,7 @@ app.get("/callback", async (req, res) => {
   const spotifyError = req.query.error;
 
   if (spotifyError) {
-    console.error("Spotify returned error:", spotifyError);
+    console.error("Spotify error:", spotifyError);
     return res.redirect(`/connect-music?error=${encodeURIComponent(spotifyError)}`);
   }
 
@@ -84,23 +82,21 @@ app.get("/callback", async (req, res) => {
   }
 
   try {
-    console.log("TOKEN EXCHANGE REDIRECT_URI:", REDIRECT_URI);
-
     const tokenRes = await axios.post(
       "https://accounts.spotify.com/api/token",
       new URLSearchParams({
         code,
         redirect_uri: REDIRECT_URI,
-        grant_type: "authorization_code",
+        grant_type: "authorization_code"
       }).toString(),
       {
         headers: {
           Authorization:
             "Basic " +
             Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64"),
-          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Type": "application/x-www-form-urlencoded"
         },
-        timeout: 15000,
+        timeout: 15000
       }
     );
 
@@ -109,9 +105,9 @@ app.get("/callback", async (req, res) => {
 
     const profileRes = await axios.get("https://api.spotify.com/v1/me", {
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${accessToken}`
       },
-      timeout: 15000,
+      timeout: 15000
     });
 
     const profile = profileRes.data;
@@ -123,7 +119,7 @@ app.get("/callback", async (req, res) => {
         spotifyName: profile.display_name || "",
         spotifyId: profile.id || "",
         accessToken,
-        refreshToken,
+        refreshToken
       }).toString();
 
     res.redirect(redirectUrl);
@@ -141,6 +137,90 @@ app.get("/spotify/callback", (req, res) => {
   res.redirect(`/callback${query}`);
 });
 
+app.get("/api/spotify/current-track", async (req, res) => {
+  const accessToken = req.query.accessToken;
+
+  if (!accessToken) {
+    return res.status(400).json({
+      ok: false,
+      error: "Нет access token"
+    });
+  }
+
+  try {
+    const trackRes = await axios.get(
+      "https://api.spotify.com/v1/me/player/currently-playing",
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        },
+        validateStatus: () => true,
+        timeout: 15000
+      }
+    );
+
+    if (trackRes.status === 204) {
+      return res.json({
+        ok: true,
+        isPlaying: false,
+        track: null
+      });
+    }
+
+    if (trackRes.status === 401) {
+      return res.status(401).json({
+        ok: false,
+        error: "Токен Spotify недействителен или истёк"
+      });
+    }
+
+    if (trackRes.status >= 400) {
+      return res.status(trackRes.status).json({
+        ok: false,
+        error: "Не удалось получить текущий трек",
+        details: trackRes.data
+      });
+    }
+
+    const data = trackRes.data;
+    const item = data?.item;
+
+    if (!item) {
+      return res.json({
+        ok: true,
+        isPlaying: false,
+        track: null
+      });
+    }
+
+    res.json({
+      ok: true,
+      isPlaying: !!data.is_playing,
+      track: {
+        name: item.name || "",
+        artists: Array.isArray(item.artists)
+          ? item.artists.map((a) => a.name).join(", ")
+          : "",
+        album: item.album?.name || "",
+        image: item.album?.images?.[0]?.url || "",
+        url: item.external_urls?.spotify || "",
+        progressMs: data.progress_ms || 0,
+        durationMs: item.duration_ms || 0
+      }
+    });
+  } catch (error) {
+    console.error(
+      "Spotify current-track error:",
+      error.response?.data || error.code || error.message
+    );
+
+    res.status(500).json({
+      ok: false,
+      error: "Ошибка при получении трека"
+    });
+  }
+});
+
 app.use((req, res) => {
   res.status(404).sendFile(path.join(publicDir, "index.html"));
 });
@@ -148,5 +228,5 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`+aura running on http://127.0.0.1:${PORT}`);
+  console.log(`+aura запущен на http://127.0.0.1:${PORT}`);
 });
