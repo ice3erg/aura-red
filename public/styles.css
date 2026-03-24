@@ -277,3 +277,36 @@ h2 {
     aspect-ratio: 1 / 1;
   }
 }
+.player-progress-wrap {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.player-progress {
+  width: 100%;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: #24242c;
+  outline: none;
+}
+
+.player-progress::-webkit-slider-thumb {
+  appearance: none;
+  width: 0;
+  height: 0;
+}
+
+.player-progress::-moz-range-thumb {
+  width: 0;
+  height: 0;
+  border: none;
+}
+
+.player-times {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #b8b8c0;
+}
