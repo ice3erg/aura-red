@@ -1,40 +1,305 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Signals & Chat — +aura</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>+aura — Chat</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    body { padding-bottom: 80px; }
+
+    .chat-header {
+      padding: 20px 16px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .chat-header h1 { font-size: 28px; font-weight: 800; }
+    .chat-header .sub { font-size: 13px; color: rgba(255,255,255,0.45); margin-top: 2px; }
+
+    /* TABS */
+    .chat-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 0 16px 16px;
+    }
+    .chat-tab {
+      flex: 1;
+      padding: 9px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.5);
+      font-size: 13px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .chat-tab.active {
+      background: rgba(255,43,43,0.12);
+      border-color: rgba(255,43,43,0.3);
+      color: #ff6b6b;
+    }
+
+    /* SECTIONS */
+    .chat-section { display: none; padding: 0 16px; }
+    .chat-section.active { display: block; }
+
+    /* EMPTY STATE */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: rgba(255,255,255,0.35);
+    }
+    .empty-state .empty-icon {
+      font-size: 40px;
+      margin-bottom: 12px;
+    }
+    .empty-state p { font-size: 14px; line-height: 1.5; }
+
+    /* SIGNAL CARD */
+    .signal-card {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .signal-card:hover { background: rgba(255,255,255,0.07); }
+
+    .signal-ava {
+      width: 46px; height: 46px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2a1a1a, #1a1a2a);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+
+    .signal-body { flex: 1; min-width: 0; }
+    .signal-name { font-size: 15px; font-weight: 700; }
+    .signal-track {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .signal-badge {
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .signal-badge.red   { background:rgba(255,43,43,0.15);  color:#ff6b6b; }
+    .signal-badge.white { background:rgba(255,255,255,0.07); color:#ccc; }
+    .signal-badge.gray  { background:rgba(130,130,130,0.1);  color:#888; }
+
+    /* CHAT LIST */
+    .chat-item {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 13px 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.07);
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: background 0.15s;
+      text-decoration: none;
+      color: inherit;
+    }
+    .chat-item:hover { background: rgba(255,255,255,0.07); }
+
+    .chat-item-ava {
+      width: 46px; height: 46px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #1a2a1a, #1a1a2a);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+      position: relative;
+    }
+    .chat-item-ava .online-dot {
+      position: absolute;
+      bottom: 1px; right: 1px;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #22c55e;
+      border: 2px solid #050505;
+    }
+
+    .chat-item-body { flex: 1; min-width: 0; }
+    .chat-item-name { font-size: 15px; font-weight: 700; }
+    .chat-item-last {
+      font-size: 12px;
+      color: rgba(255,255,255,0.45);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .chat-item-last.unread { color: rgba(255,255,255,0.75); font-weight: 600; }
+
+    .chat-item-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+    .chat-item-time { font-size: 11px; color: rgba(255,255,255,0.3); }
+    .unread-badge {
+      background: #ff2b2b;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      min-width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0 5px;
+    }
+
+    /* SECTION LABEL */
+    .section-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.3);
+      font-weight: 700;
+      padding: 0 2px 10px;
+    }
+  </style>
 </head>
-<body>
-  <main class="shell stack-lg">
-    <section class="card panel stack">
-      <div class="eyebrow">Signals</div>
-      <h2>People reaching out</h2>
-      <div class="stack" data-signals-list></div>
-    </section>
+<body class="red-mode">
 
-    <section class="card panel stack">
-      <div class="eyebrow">Chat</div>
-      <h2>Conversations</h2>
-      <div class="stack" data-chat-list></div>
-    </section>
-  </main>
+  <div class="chat-header">
+    <div>
+      <h1>Сообщения</h1>
+      <div class="sub" id="chatSub">Загрузка...</div>
+    </div>
+  </div>
 
-  
+  <div class="chat-tabs">
+    <button class="chat-tab active" onclick="switchTab('chats')">Чаты</button>
+    <button class="chat-tab" onclick="switchTab('signals')">Сигналы <span id="signalCount"></span></button>
+  </div>
 
+  <!-- CHATS TAB -->
+  <div class="chat-section active" id="tab-chats">
+    <div class="section-label">Недавние</div>
+    <div id="chatList"></div>
+  </div>
 
-<nav class="bottom-nav">
-    <a class="nav-link" href="/home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49"/><path d="M7.76 16.24a6 6 0 0 1 0-8.49"/><path d="M20.07 3.93a10 10 0 0 1 0 16.14"/><path d="M3.93 20.07a10 10 0 0 1 0-16.14"/></svg><span>Radar</span></a>
-    <a class="nav-link" href="/map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span>Signals</span></a>
+  <!-- SIGNALS TAB -->
+  <div class="chat-section" id="tab-signals">
+    <div class="section-label">Входящие сигналы</div>
+    <div id="signalList"></div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a class="nav-link " href="/map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49"/><path d="M7.76 16.24a6 6 0 0 1 0-8.49"/><path d="M20.07 3.93a10 10 0 0 1 0 16.14"/><path d="M3.93 20.07a10 10 0 0 1 0-16.14"/></svg><span>Radar</span></a>
+    <a class="nav-link " href="/home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Home</span></a>
     <a class="nav-link active" href="/chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></a>
-    <a class="nav-link" href="/profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Profile</span></a>
+    <a class="nav-link " href="/profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Profile</span></a>
 </nav>
+
   <script src="/js/utils.js"></script>
   <script src="/js/auth.js"></script>
-  <script src="/js/chat.js"></script>
+  <script>
+    const U = window.AuraUtils;
+    const user = U.requireAuth();
+    if (!user) throw new Error('not auth');
+
+    // Моковые чаты — потом заменить на реальные
+    const MOCK_CHATS = [
+      { id:'c1', name:'Алина',  ava:'👩', last:'слушаю то же самое щас 😮',    time:'только что', unread:2, online:true  },
+      { id:'c2', name:'Макс',   ava:'👨', last:'кто такой Mnogoznaal вообще?', time:'5 мин',      unread:0, online:true  },
+      { id:'c3', name:'Соня',   ava:'🧑', last:'Минус 40 топ трек',            time:'22 мин',     unread:0, online:false },
+    ];
+
+    const MOCK_SIGNALS = [
+      { id:'s1', name:'Лера, 20',   ava:'👩', track:'Кислород — Boulevard Depo', type:'same-artist', badgeClass:'white', badgeText:'артист' },
+      { id:'s2', name:'Артём, 25',  ava:'👨', track:'САМОЛЁТ — Guf',             type:'same-vibe',   badgeClass:'gray',  badgeText:'вайб'   },
+    ];
+
+    function renderChats() {
+      const root = document.getElementById('chatList');
+      if (!MOCK_CHATS.length) {
+        root.innerHTML = `<div class="empty-state"><div class="empty-icon">💬</div><p>Чатов пока нет.<br>Найди людей на карте и напиши им!</p></div>`;
+        return;
+      }
+      root.innerHTML = MOCK_CHATS.map(c => `
+        <div class="chat-item">
+          <div class="chat-item-ava">
+            ${c.ava}
+            ${c.online ? '<div class="online-dot"></div>' : ''}
+          </div>
+          <div class="chat-item-body">
+            <div class="chat-item-name">${c.name}</div>
+            <div class="chat-item-last ${c.unread ? 'unread' : ''}">${c.last}</div>
+          </div>
+          <div class="chat-item-meta">
+            <div class="chat-item-time">${c.time}</div>
+            ${c.unread ? `<div class="unread-badge">${c.unread}</div>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderSignals() {
+      const root = document.getElementById('signalList');
+      const count = document.getElementById('signalCount');
+
+      if (!MOCK_SIGNALS.length) {
+        root.innerHTML = `<div class="empty-state"><div class="empty-icon">📡</div><p>Сигналов пока нет.<br>Когда кто-то слушает то же что ты — появится здесь.</p></div>`;
+        return;
+      }
+
+      count.textContent = MOCK_SIGNALS.length ? ` · ${MOCK_SIGNALS.length}` : '';
+      root.innerHTML = MOCK_SIGNALS.map(s => `
+        <div class="signal-card">
+          <div class="signal-ava">${s.ava}</div>
+          <div class="signal-body">
+            <div class="signal-name">${s.name}</div>
+            <div class="signal-track">🎵 ${s.track}</div>
+          </div>
+          <div class="signal-badge ${s.badgeClass}">${s.badgeText}</div>
+        </div>
+      `).join('');
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.chat-tab').forEach((t, i) => {
+        t.classList.toggle('active', (i === 0 && tab === 'chats') || (i === 1 && tab === 'signals'));
+      });
+      document.querySelectorAll('.chat-section').forEach(s => s.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+    }
+
+    // sub
+    const totalUnread = MOCK_CHATS.reduce((s, c) => s + (c.unread || 0), 0);
+    document.getElementById('chatSub').textContent = totalUnread
+      ? `${totalUnread} новых сообщения`
+      : 'Нет новых сообщений';
+
+    renderChats();
+    renderSignals();
+  </script>
 </body>
 </html>
