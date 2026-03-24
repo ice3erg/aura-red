@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sign up — +aura</title>
+  <title>Регистрация — +aura</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -12,53 +12,34 @@
 <body class="red-mode auth-page">
   <main class="auth-shell">
     <section class="auth-card">
-      <div class="brand-mark">+aura</div>
-
-      <h1>Create account</h1>
-      <p class="auth-subtitle">Enter the city with your own signal.</p>
+      <div class="logo">+aura</div>
+      <h1>Регистрация</h1>
+      <p class="auth-subtitle">Создай свой аккаунт в +aura.</p>
 
       <form data-signup-form class="auth-form">
         <label class="field">
-          <span>Email</span>
-          <input
-            type="email"
-            name="email"
-            placeholder="you@example.com"
-            autocomplete="email"
-            required
-          />
+          <span>Почта</span>
+          <input type="email" name="email" placeholder="Введите почту" required />
         </label>
 
         <label class="field">
-          <span>Password</span>
-          <input
-            type="password"
-            name="password"
-            placeholder="Minimum 6 characters"
-            autocomplete="new-password"
-            required
-          />
+          <span>Пароль</span>
+          <input type="password" name="password" placeholder="Минимум 6 символов" required />
         </label>
 
         <label class="field">
-          <span>Confirm password</span>
-          <input
-            type="password"
-            name="confirmPassword"
-            placeholder="Repeat password"
-            autocomplete="new-password"
-            required
-          />
+          <span>Повторите пароль</span>
+          <input type="password" name="confirmPassword" placeholder="Повторите пароль" required />
         </label>
 
         <div data-form-notice class="notice hidden"></div>
 
-        <button type="submit" class="primary-btn">Continue</button>
+        <button type="submit" class="primary-btn">Продолжить</button>
       </form>
 
       <p class="auth-footer">
-        Already have an account?
-        <a href="/login">Log in</a>
+        Уже есть аккаунт?
+        <a href="/login">Войти</a>
       </p>
     </section>
   </main>
