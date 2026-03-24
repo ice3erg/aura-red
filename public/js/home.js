@@ -41,6 +41,15 @@
   if (homeCity) homeCity.textContent = user.city || "Город не указан";
   if (homeBio) homeBio.textContent = user.bio || "О себе пока ничего не указано.";
 
+  // Аватар на главной
+  const homeAvatar = document.getElementById("homeAvatar");
+  const homeAvatarPlaceholder = document.getElementById("homeAvatarPlaceholder");
+  if (user.avatar && homeAvatar) {
+    homeAvatar.src = user.avatar;
+    homeAvatar.style.display = "block";
+    if (homeAvatarPlaceholder) homeAvatarPlaceholder.style.display = "none";
+  }
+
   function formatTime(ms) {
     if (!ms || ms < 0) return "0:00";
 
