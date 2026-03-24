@@ -1,36 +1,50 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Onboarding — +aura</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Профиль — +aura</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
-  <script src="/js/utils.js"></script>
-  <script src="/js/auth.js"></script>
-  <script src="/js/profile.js"></script>
+  <link rel="stylesheet" href="/styles.css" />
 </head>
-<body>
-  <main class="center-shell">
-    <section class="card auth-card stack-lg">
-      <div class="logo"><span class="logo-dot"></span> +aura</div>
-      <div class="stack">
-        <div class="eyebrow">Profile setup</div>
-        <h2>Build the identity people see first.</h2>
-        <p class="lead">This is your +aura profile, not your Spotify profile.</p>
-      </div>
-      <div class="notice error hidden" data-form-notice></div>
-      <form class="stack" data-onboarding-form>
-        <div class="input-group"><label class="label">Name</label><input class="input" name="name" placeholder="Max"></div>
-        <div class="input-group"><label class="label">Age</label><input class="input" name="age" placeholder="21"></div>
-        <div class="input-group"><label class="label">City</label><input class="input" name="city" placeholder="Saint Petersburg"></div>
-        <div class="input-group"><label class="label">Avatar URL</label><input class="input" name="avatar" placeholder="https://..."></div>
-        <div class="input-group"><label class="label">Bio</label><textarea class="textarea" name="bio" placeholder="Night city, low lights, good sound."></textarea></div>
-        <button class="btn btn-primary btn-full" type="submit">Continue to music connect</button>
+<body class="red-mode auth-page">
+  <main class="auth-shell">
+    <section class="auth-card">
+      <div class="logo">+aura</div>
+      <h1>Создание профиля</h1>
+      <p class="auth-subtitle">Заполни базовую информацию о себе.</p>
+
+      <form data-onboarding-form class="auth-form">
+        <label class="field">
+          <span>Имя</span>
+          <input type="text" name="name" placeholder="Как тебя зовут" required />
+        </label>
+
+        <label class="field">
+          <span>Возраст</span>
+          <input type="number" name="age" placeholder="Сколько тебе лет" required />
+        </label>
+
+        <label class="field">
+          <span>Город</span>
+          <input type="text" name="city" placeholder="Твой город" required />
+        </label>
+
+        <label class="field">
+          <span>О себе</span>
+          <textarea name="bio" placeholder="Пару слов о себе"></textarea>
+        </label>
+
+        <div data-form-notice class="notice hidden"></div>
+
+        <button type="submit" class="primary-btn">Сохранить профиль</button>
       </form>
     </section>
   </main>
+
+  <script src="/js/utils.js"></script>
+  <script src="/js/profile.js"></script>
 </body>
 </html>
