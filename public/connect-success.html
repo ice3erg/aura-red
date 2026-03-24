@@ -2,36 +2,28 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <title>Spotify подключен</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spotify подключён — +aura</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css" />
 </head>
-<body>
-  <h1>Spotify подключен ✅</h1>
-  <p id="name"></p>
-  <button id="continueBtn">Продолжить</button>
+<body class="red-mode auth-page">
+  <main class="auth-shell">
+    <section class="auth-card">
+      <div class="logo">+aura</div>
+      <h1>Spotify подключён</h1>
+      <p id="spotifyNameText" class="auth-subtitle"></p>
 
+      <button id="continueBtn" class="primary-btn">Перейти в приложение</button>
+    </section>
+  </main>
+
+  <script src="/js/utils.js"></script>
+  <script src="/js/music.js"></script>
   <script>
-    const params = new URLSearchParams(window.location.search);
-
-    const spotifyConnected = params.get("spotifyConnected");
-    const spotifyName = params.get("spotifyName");
-    const spotifyId = params.get("spotifyId");
-    const accessToken = params.get("accessToken");
-    const refreshToken = params.get("refreshToken");
-
-    if (spotifyConnected === "true") {
-      localStorage.setItem("spotifyConnected", "true");
-      localStorage.setItem("spotifyName", spotifyName || "");
-      localStorage.setItem("spotifyId", spotifyId || "");
-      localStorage.setItem("spotifyAccessToken", accessToken || "");
-      localStorage.setItem("spotifyRefreshToken", refreshToken || "");
-    }
-
-    document.getElementById("name").textContent =
-      spotifyName ? `Аккаунт: ${spotifyName}` : "Аккаунт подключен";
-
-    document.getElementById("continueBtn").addEventListener("click", () => {
-      window.location.href = "/home.html";
-    });
+    window.AuraMusic.finishConnectPage();
   </script>
 </body>
 </html>
