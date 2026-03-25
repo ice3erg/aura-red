@@ -8,10 +8,35 @@
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
     { maxZoom:20, subdomains:'abcd' }).addTo(map);
 
-  const youMarker = L.marker(DEFAULT_CENTER, {
-    icon: L.divIcon({ className:'', html:'<div class="radar-marker you"></div>', iconSize:[22,22], iconAnchor:[11,11] }),
-    zIndexOffset:1000
-  }).addTo(map);
+  // youMarker — создаём позже когда знаем аватарку
+  let youMarker = null;
+
+  function makeYouIcon(user) {
+    const size = 44;
+    let inner = '';
+    if (user?.avatar) {
+      inner = `<img src="${user.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
+    } else {
+      const init = (user?.name || 'Я')[0].toUpperCase();
+      inner = `<div class="ava-init" style="font-size:17px;">${init}</div>`;
+    }
+    return L.divIcon({
+      className: '',
+      html: `<div class="ava-marker you" style="width:${size}px;height:${size}px;position:relative;border-color:#fff;box-shadow:0 0 20px rgba(255,255,255,.9),0 0 40px rgba(255,43,43,.3);">
+        ${inner}
+      </div>`,
+      iconSize: [size, size], iconAnchor: [size/2, size/2],
+    });
+  }
+
+  async function initYouMarker() {
+    let user = window._auraCurrentUser;
+    if (!user) {
+      try { const r = await fetch('/api/auth/me'); const d = await r.json(); if (d.ok) user = d.user; } catch(_) {}
+    }
+    youMarker = L.marker(DEFAULT_CENTER, { icon: makeYouIcon(user), zIndexOffset: 1000 }).addTo(map);
+    return user;
+  }
 
   // ── Mock data (fallback) ──────────────────────────────────
   const MOCK_USERS = [
@@ -150,10 +175,21 @@
   });
 
   // ── Now Playing (topbar) ──────────────────────────────────
-  async function loadNowPlaying() {
+  async function loadNowPlaying(user) {
     try {
-      const res  = await fetch('/api/spotify/current-track');
-      const data = await res.json();
+      let data = null;
+      // Last.fm приоритет
+      if (user?.lastfmConnected && user?.lastfmUsername) {
+        const r = await fetch(`/api/lastfm/current-track?username=${encodeURIComponent(user.lastfmUsername)}`);
+        const d = await r.json();
+        if (d.ok && d.track && d.isPlaying) data = d;
+      }
+      // Spotify fallback
+      if (!data && user?.spotifyConnected) {
+        const r = await fetch('/api/spotify/current-track');
+        const d = await r.json();
+        if (d.ok && d.track) data = d;
+      }
       if (data?.track?.name) {
         document.getElementById('topbarTrack').textContent  = data.track.name;
         document.getElementById('topbarArtist').textContent = data.track.artists || '—';
@@ -176,17 +212,21 @@
     renderUsers(MOCK_USERS);
   }
 
-  function initGeo() {
+  function initGeo(user) {
     if (!navigator.geolocation) { renderUsers(MOCK_USERS); return; }
     navigator.geolocation.getCurrentPosition(pos => {
       const { latitude:lat, longitude:lng } = pos.coords;
       map.setView([lat, lng], DEFAULT_ZOOM);
-      youMarker.setLatLng([lat, lng]);
+      if (youMarker) youMarker.setLatLng([lat, lng]);
       loadRadar(lat, lng);
     }, () => { renderUsers(MOCK_USERS); });
   }
 
   // ── Init ──────────────────────────────────────────────────
-  loadNowPlaying();
-  initGeo();
+  async function init() {
+    const user = await initYouMarker();
+    loadNowPlaying(user);
+    initGeo(user);
+  }
+  init();
 })();
