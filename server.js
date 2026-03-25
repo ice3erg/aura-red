@@ -290,6 +290,14 @@ app.post("/api/signals", requireAuth, async (req, res) => {
 });
 
 app.get("/api/signals", requireAuth, async (req, res) => {
+  const direction = req.query.direction;
+  if (direction === "sent") {
+    const rawSigs = db.getSentSignalsForUser(req.user.id);
+    const signals = await Promise.all(rawSigs.map(async s => ({
+      ...s, to: s.toId ? db.publicProfile(await db.findById(s.toId)) : null
+    })));
+    return res.json({ ok:true, sentSignals: signals });
+  }
   const rawSigs = db.getSignalsForUser(req.user.id);
   const signals = await Promise.all(rawSigs.map(async s => ({
     ...s, from: s.fromId ? db.publicProfile(await db.findById(s.fromId)) : null

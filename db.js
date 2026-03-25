@@ -250,6 +250,10 @@ function getSignalsForUser(userId) {
   return [..._signals.values()].filter(s => s.toId===userId).sort((a,b) => b.createdAt-a.createdAt);
 }
 
+function getSentSignalsForUser(userId) {
+  return [..._signals.values()].filter(s => s.fromId===userId).sort((a,b) => b.createdAt-a.createdAt);
+}
+
 function getSignalById(id) { return _signals.get(id)||null; }
 
 function acceptSignal(id) {
@@ -299,6 +303,6 @@ function sendMessage(chatId, fromId, text) {
 module.exports = {
   findById, findByEmail, createUser, updateUser, publicProfile,
   setNowPlaying, getNearbyUsers,
-  createSignal, getSignalsForUser, getSignalById, acceptSignal, ignoreSignal,
+  createSignal, getSignalsForUser, getSentSignalsForUser, getSignalById, acceptSignal, ignoreSignal,
   createOrGetChat, getChatsForUser, getChatById, sendMessage
 };
