@@ -1,27 +1,19 @@
 (function () {
-  const {
-    getCurrentUser,
-    updateCurrentUser,
-    go
-  } = window.AuraUtils;
+  const U = window.AuraUtils;
 
-  const currentUser = getCurrentUser();
-
-  function applyConnectStatus() {
+  async function applyConnectStatus() {
     const statusNode = document.getElementById("musicStatus");
-    const errorBox = document.getElementById("errorBox");
-    const params = new URLSearchParams(window.location.search);
-    const error = params.get("error");
+    const errorBox   = document.getElementById("errorBox");
+    const params     = new URLSearchParams(window.location.search);
+    const error      = params.get("error");
 
     if (!statusNode) return;
 
-    if (!currentUser) {
-      statusNode.textContent = "Сначала нужно войти в аккаунт.";
-      return;
-    }
+    const user = await U.fetchMe();
+    if (!user) { U.go("/login"); return; }
 
-    if (currentUser.spotifyConnected) {
-      statusNode.textContent = `Spotify уже подключён: ${currentUser.spotifyName || "аккаунт найден"}`;
+    if (user.spotifyConnected) {
+      statusNode.textContent = `Spotify подключён: ${user.spotifyName || "аккаунт найден"}`;
     } else {
       statusNode.textContent = "Spotify пока не подключён.";
     }
@@ -32,49 +24,47 @@
     }
   }
 
-  function finishConnectPage() {
-    if (!currentUser) {
-      go("/login");
-      return;
-    }
+  async function finishConnectPage() {
+    const user = await U.fetchMe();
+    if (!user) { U.go("/login"); return; }
 
     const params = new URLSearchParams(window.location.search);
-    const spotifyConnected = params.get("spotifyConnected");
-    const spotifyName = params.get("spotifyName");
-    const spotifyId = params.get("spotifyId");
-    const accessToken = params.get("accessToken");
-    const refreshToken = params.get("refreshToken");
 
-    if (spotifyConnected === "true") {
-      updateCurrentUser({
-        spotifyConnected: true,
-        spotifyName: spotifyName || "",
-        spotifyId: spotifyId || ""
-      });
+    // Если пришли токены через URL (пользователь не был залогинен при OAuth)
+    // сохраняем spotifyConnected флаг через profile API
+    if (params.get("spotifyConnected") === "true") {
+      const accessToken  = params.get("accessToken");
+      const refreshToken = params.get("refreshToken");
+      const spotifyName  = params.get("spotifyName") || "";
 
-      localStorage.setItem("spotifyAccessToken", accessToken || "");
-      localStorage.setItem("spotifyRefreshToken", refreshToken || "");
+      // Если токены переданы через URL — шлём их на сервер
+      if (accessToken) {
+        await fetch("/api/profile", {
+          method:  "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({
+            spotifyConnected:    true,
+            spotifyName,
+            spotifyAccessToken:  accessToken,
+            spotifyRefreshToken: refreshToken || ""
+          })
+        });
+      }
     }
 
     const nameText = document.getElementById("spotifyNameText");
+    const spotName = params.get("spotifyName");
     if (nameText) {
-      nameText.textContent = spotifyName
-        ? `Подключён аккаунт: ${spotifyName}`
+      nameText.textContent = spotName
+        ? `Подключён аккаунт: ${spotName}`
         : "Подключение прошло успешно.";
     }
 
     const btn = document.getElementById("continueBtn");
-    if (btn) {
-      btn.addEventListener("click", () => {
-        go("/home");
-      });
-    }
+    if (btn) btn.addEventListener("click", () => U.go("/home"));
   }
 
-  window.AuraMusic = {
-    applyConnectStatus,
-    finishConnectPage
-  };
+  window.AuraMusic = { applyConnectStatus, finishConnectPage };
 
   applyConnectStatus();
 })();

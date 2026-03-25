@@ -1,102 +1,116 @@
 (function () {
-  const {
-    getUsers,
-    saveUsers,
-    setSession,
-    getCurrentUser,
-    showNotice,
-    hideNotice,
-    go
-  } = window.AuraUtils;
+  const { go } = window.AuraUtils;
 
-  const loginForm = document.querySelector("[data-login-form]");
-  const signupForm = document.querySelector("[data-signup-form]");
-  const currentUser = getCurrentUser();
-
-  if (currentUser && (location.pathname === "/login" || location.pathname === "/signup")) {
-    go("/home");
+  // Если уже залогинен через сессию — редиректим
+  async function checkSession() {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok) {
+          const path = location.pathname;
+          if (path === "/login" || path === "/signup") {
+            go(data.user.name && data.user.city ? "/home" : "/onboarding");
+          }
+        }
+      }
+    } catch (_) {}
   }
 
+  // ── Login form ──────────────────────────────────────────
+  const loginForm = document.querySelector("[data-login-form]");
   if (loginForm) {
+    checkSession();
     const notice = loginForm.querySelector("[data-form-notice]");
 
-    loginForm.addEventListener("submit", (e) => {
+    loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      hideNotice(notice);
+      window.AuraUtils.hideNotice(notice);
 
-      const formData = new FormData(loginForm);
-      const email = String(formData.get("email") || "").trim().toLowerCase();
-      const password = String(formData.get("password") || "").trim();
+      const fd       = new FormData(loginForm);
+      const email    = String(fd.get("email")    || "").trim();
+      const password = String(fd.get("password") || "").trim();
 
-      const user = getUsers().find((u) => u.email === email && u.password === password);
-
-      if (!user) {
-        showNotice(notice, "Неверная почта или пароль.");
+      if (!email || !password) {
+        window.AuraUtils.showNotice(notice, "Заполни все поля.");
         return;
       }
 
-      setSession({ userId: user.id });
+      const btn = loginForm.querySelector("[type=submit]");
+      btn.disabled = true;
 
-      if (!user.name || !user.city) {
-        go("/onboarding");
-      } else {
-        go("/home");
+      try {
+        const res  = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          window.AuraUtils.showNotice(notice, data.error || "Ошибка входа.");
+          return;
+        }
+
+        go(data.needsOnboarding ? "/onboarding" : "/home");
+      } catch (_) {
+        window.AuraUtils.showNotice(notice, "Ошибка сети. Попробуй ещё раз.");
+      } finally {
+        btn.disabled = false;
       }
     });
   }
 
+  // ── Signup form ─────────────────────────────────────────
+  const signupForm = document.querySelector("[data-signup-form]");
   if (signupForm) {
+    checkSession();
     const notice = signupForm.querySelector("[data-form-notice]");
 
-    signupForm.addEventListener("submit", (e) => {
+    signupForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      hideNotice(notice);
+      window.AuraUtils.hideNotice(notice);
 
-      const formData = new FormData(signupForm);
-      const email = String(formData.get("email") || "").trim().toLowerCase();
-      const password = String(formData.get("password") || "").trim();
-      const confirmPassword = String(formData.get("confirmPassword") || "").trim();
+      const fd              = new FormData(signupForm);
+      const email           = String(fd.get("email")           || "").trim();
+      const password        = String(fd.get("password")        || "").trim();
+      const confirmPassword = String(fd.get("confirmPassword") || "").trim();
 
       if (!email || !password) {
-        showNotice(notice, "Заполни все поля.");
+        window.AuraUtils.showNotice(notice, "Заполни все поля.");
         return;
       }
-
       if (password.length < 6) {
-        showNotice(notice, "Пароль должен быть не короче 6 символов.");
+        window.AuraUtils.showNotice(notice, "Пароль не короче 6 символов.");
         return;
       }
-
       if (password !== confirmPassword) {
-        showNotice(notice, "Пароли не совпадают.");
+        window.AuraUtils.showNotice(notice, "Пароли не совпадают.");
         return;
       }
 
-      const users = getUsers();
+      const btn = signupForm.querySelector("[type=submit]");
+      btn.disabled = true;
 
-      if (users.some((u) => u.email === email)) {
-        showNotice(notice, "Пользователь с такой почтой уже существует.");
-        return;
+      try {
+        const res  = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok || !data.ok) {
+          window.AuraUtils.showNotice(notice, data.error || "Ошибка регистрации.");
+          return;
+        }
+
+        go("/onboarding");
+      } catch (_) {
+        window.AuraUtils.showNotice(notice, "Ошибка сети. Попробуй ещё раз.");
+      } finally {
+        btn.disabled = false;
       }
-
-      const user = {
-        id: "u_" + Date.now(),
-        email,
-        password,
-        name: "",
-        age: "",
-        city: "",
-        bio: "",
-        spotifyConnected: false,
-        spotifyName: "",
-        spotifyId: ""
-      };
-
-      users.push(user);
-      saveUsers(users);
-      setSession({ userId: user.id });
-
-      go("/onboarding");
     });
   }
 })();
