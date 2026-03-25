@@ -57,6 +57,8 @@ function createUser({ email, passwordHash, name = "", age = "", city = "", bio =
     spotifyId:           "",
     spotifyAccessToken:  "",
     spotifyRefreshToken: "",
+    lastfmConnected:     false,
+    lastfmUsername:      "",
     createdAt:           new Date().toISOString()
   };
   _users.push(user);

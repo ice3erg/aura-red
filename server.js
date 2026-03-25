@@ -125,6 +125,8 @@ app.patch("/api/profile", requireAuth, (req, res) => {
     ...(spotifyId           !== undefined && { spotifyId }),
     ...(spotifyAccessToken  !== undefined && { spotifyAccessToken }),
     ...(spotifyRefreshToken !== undefined && { spotifyRefreshToken }),
+    ...(req.body.lastfmUsername !== undefined && { lastfmUsername: String(req.body.lastfmUsername).trim().toLowerCase() }),
+    ...(req.body.lastfmConnected !== undefined && { lastfmConnected: !!req.body.lastfmConnected }),
   });
 
   res.json({ ok: true, user: db.publicProfile(updated) });
@@ -314,6 +316,66 @@ app.get("/api/spotify/current-track", requireAuth, async (req, res) => {
   } catch (e) {
     console.error("[current-track]", e.message);
     res.status(500).json({ ok: false, error: "Ошибка при получении трека" });
+  }
+});
+
+
+// ── GET /api/lastfm/current-track ──────────────────────────
+// Публичный — не требует auth, только lastfmUsername
+// Используем один серверный API ключ для всех запросов
+app.get("/api/lastfm/current-track", async (req, res) => {
+  const username = req.query.username;
+  if (!username) return res.status(400).json({ ok: false, error: "Нет username" });
+
+  const apiKey = process.env.LASTFM_API_KEY;
+  if (!apiKey) return res.status(500).json({ ok: false, error: "Last.fm API ключ не настроен" });
+
+  try {
+    const r = await axios.get("https://ws.audioscrobbler.com/2.0/", {
+      params: {
+        method:  "user.getRecentTracks",
+        user:    username,
+        api_key: apiKey,
+        format:  "json",
+        limit:   1,
+        extended: 1
+      },
+      timeout: 10000
+    });
+
+    const tracks = r.data?.recenttracks?.track;
+    if (!tracks || tracks.length === 0) {
+      return res.json({ ok: true, isPlaying: false, track: null });
+    }
+
+    // Last.fm возвращает массив или объект если один трек
+    const latest = Array.isArray(tracks) ? tracks[0] : tracks;
+    const isNowPlaying = latest["@attr"]?.nowplaying === "true";
+
+    // Берём обложку максимального размера
+    const images = latest.image || [];
+    const image  = images.find(i => i.size === "extralarge")?.["#text"]
+                || images.find(i => i.size === "large")?.["#text"]
+                || "";
+
+    res.json({
+      ok:        true,
+      isPlaying: isNowPlaying,
+      track: {
+        name:    latest.name    || "",
+        artists: latest.artist?.name || latest.artist?.["#text"] || "",
+        album:   latest.album?.["#text"] || "",
+        image:   image.startsWith("https://") ? image : "",
+        url:     latest.url || "",
+        source:  "lastfm"
+      }
+    });
+  } catch (e) {
+    if (e.response?.status === 404) {
+      return res.status(404).json({ ok: false, error: "Пользователь Last.fm не найден" });
+    }
+    console.error("[lastfm/current-track]", e.message);
+    res.status(500).json({ ok: false, error: "Ошибка Last.fm API" });
   }
 });
 
