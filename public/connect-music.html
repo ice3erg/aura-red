@@ -3,33 +3,143 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Подключение Spotify — +aura</title>
+  <title>Подключение музыки — +aura</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css" />
+  <style>
+    .music-source-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid #2a2a35;
+      background: #0f0f15;
+      color: #7a7a85;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tab-btn.active {
+      background: #1a1a22;
+      border-color: #ff2b2b;
+      color: #fff;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .lastfm-hint {
+      font-size: 12px;
+      color: #6e6e80;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+    .lastfm-hint a { color: #ff2b2b; text-decoration: none; }
+
+    .service-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #b8b8c0;
+      margin-bottom: 14px;
+    }
+    .lastfm-dot {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: #d51007;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 900; color: #fff;
+    }
+    .spotify-dot {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: #1DB954;
+      display: flex; align-items: center; justify-content: center;
+    }
+  </style>
 </head>
 <body class="red-mode auth-page">
   <main class="auth-shell">
     <section class="auth-card">
       <div class="logo">+aura</div>
-      <h1>Подключение музыки</h1>
+      <h1>Подключи музыку</h1>
       <p class="auth-subtitle">
-        Подключи Spotify, чтобы приложение могло показывать твой музыкальный сигнал.
+        Выбери сервис — +aura будет показывать что ты слушаешь прямо сейчас.
       </p>
 
-      <div id="musicStatus" class="demo-box"></div>
       <div id="errorBox" class="notice error hidden"></div>
 
-      <div class="stack">
-        <!-- Прямой href на /spotify/login — сервер проверит сессию -->
-        <a class="primary-btn text-center" href="/spotify/login">Подключить Spotify</a>
-        <a class="secondary-btn text-center" href="/home">Пропустить пока</a>
+      <div class="music-source-tabs">
+        <button class="tab-btn active" data-tab="lastfm">Last.fm</button>
+        <button class="tab-btn" data-tab="spotify">Spotify</button>
       </div>
+
+      <!-- Last.fm tab -->
+      <div class="tab-panel active" id="tab-lastfm">
+        <div class="service-logo">
+          <div class="lastfm-dot">lfm</div>
+          Last.fm — работает для всех
+        </div>
+
+        <div class="field" style="margin-bottom: 14px;">
+          <span>Твой Last.fm username</span>
+          <input type="text" id="lastfmUsername" placeholder="например: johndoe" autocomplete="off" autocapitalize="none" spellcheck="false" />
+        </div>
+
+        <p class="lastfm-hint">
+          Нет аккаунта? <a href="https://www.last.fm/join" target="_blank" rel="noopener">Зарегистрируйся на Last.fm</a> — бесплатно.<br>
+          Затем подключи Spotify к Last.fm в <a href="https://www.last.fm/settings/applications" target="_blank" rel="noopener">настройках</a> — треки будут скробблироваться автоматически.
+        </p>
+
+        <div class="stack" style="margin-top: 18px;">
+          <button id="lastfmConnectBtn" class="primary-btn">Подключить Last.fm</button>
+          <a class="secondary-btn text-center" href="/home">Пропустить пока</a>
+        </div>
+      </div>
+
+      <!-- Spotify tab -->
+      <div class="tab-panel" id="tab-spotify">
+        <div class="service-logo">
+          <div class="spotify-dot">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.435-5.305-1.76-8.786-.963-.335.077-.67-.133-.746-.469-.077-.336.132-.67.469-.746 3.809-.87 7.077-.496 9.713 1.115.293.18.386.563.207.856zm1.223-2.722c-.226.367-.706.482-1.072.257-2.687-1.652-6.785-2.131-9.965-1.166-.413.127-.848-.105-.975-.517-.127-.413.104-.848.517-.975 3.632-1.102 8.147-.568 11.238 1.329.366.226.48.707.257 1.072zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71c-.493.15-1.016-.129-1.165-.623-.148-.495.13-1.016.624-1.165 3.552-1.077 9.457-.869 13.19 1.37.448.267.595.847.328 1.294-.266.448-.846.595-1.293.328z"/></svg>
+          </div>
+          Spotify (ограничено)
+        </div>
+
+        <p class="lastfm-hint" style="margin-bottom: 16px;">
+          Spotify API ограничивает сторонние приложения до 25 пользователей в режиме разработки. Если хочешь использовать Spotify — напиши нам, мы добавим тебя в список.
+        </p>
+
+        <div class="stack">
+          <a class="primary-btn text-center" href="/spotify/login">Подключить Spotify</a>
+          <a class="secondary-btn text-center" href="/home">Пропустить пока</a>
+        </div>
+      </div>
+
     </section>
   </main>
 
   <script src="/js/utils.js"></script>
   <script src="/js/music.js"></script>
+  <script>
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+  </script>
 </body>
 </html>
