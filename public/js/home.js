@@ -1,170 +1,241 @@
 (function () {
-  const U = window.AuraUtils;
+  const {
+    getCurrentUser,
+    clearSession,
+    go
+  } = window.AuraUtils;
 
-  let progressInterval  = null;
+  const user = getCurrentUser();
+
+  if (!user) {
+    go("/login");
+    return;
+  }
+
+  const homeName = document.getElementById("homeName");
+  const homeCity = document.getElementById("homeCity");
+  const homeBio = document.getElementById("homeBio");
+  const spotifyBlockTitle = document.getElementById("spotifyBlockTitle");
+  const spotifyBlockText = document.getElementById("spotifyBlockText");
+  const spotifyAction = document.getElementById("spotifyAction");
+  const logoutBtn = document.getElementById("logoutBtn");
+
+  const trackEmptyState = document.getElementById("trackEmptyState");
+  const trackCard = document.getElementById("trackCard");
+  const trackImage = document.getElementById("trackImage");
+  const trackName = document.getElementById("trackName");
+  const trackArtists = document.getElementById("trackArtists");
+  const trackLink = document.getElementById("trackLink");
+  const trackNotice = document.getElementById("trackNotice");
+
+  const trackProgress = document.getElementById("trackProgress");
+  const trackCurrentTime = document.getElementById("trackCurrentTime");
+  const trackDuration = document.getElementById("trackDuration");
+
+  let progressInterval = null;
   let currentProgressMs = 0;
   let currentDurationMs = 0;
   let isCurrentlyPlaying = false;
 
+  if (homeName) homeName.textContent = user.name || "Пользователь";
+  if (homeCity) homeCity.textContent = user.city || "Город не указан";
+  if (homeBio) homeBio.textContent = user.bio || "О себе пока ничего не указано.";
+
+  // Аватар на главной
+  const homeAvatar = document.getElementById("homeAvatar");
+  const homeAvatarPlaceholder = document.getElementById("homeAvatarPlaceholder");
+  if (user.avatar && homeAvatar) {
+    homeAvatar.src = user.avatar;
+    homeAvatar.style.display = "block";
+    if (homeAvatarPlaceholder) homeAvatarPlaceholder.style.display = "none";
+  }
+
   function formatTime(ms) {
     if (!ms || ms < 0) return "0:00";
-    const s = Math.floor(ms / 1000);
-    return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
   }
 
   function stopProgressTimer() {
-    if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
+    if (progressInterval) {
+      clearInterval(progressInterval);
+      progressInterval = null;
+    }
   }
 
   function renderProgress() {
-    const trackProgress    = document.getElementById("trackProgress");
-    const trackCurrentTime = document.getElementById("trackCurrentTime");
-    const trackDuration    = document.getElementById("trackDuration");
     if (!trackProgress || !trackCurrentTime || !trackDuration) return;
 
     const duration = currentDurationMs > 0 ? currentDurationMs : 0;
     const progress = Math.max(0, Math.min(currentProgressMs, duration));
-    const percent  = duration > 0 ? (progress / duration) * 100 : 0;
+    const percent = duration > 0 ? (progress / duration) * 100 : 0;
 
     trackProgress.value = String(percent);
-    const track = trackProgress.closest(".player-progress-track");
-    if (track) track.style.setProperty("--progress-pct", percent.toFixed(1) + "%");
+    trackProgress.closest('.player-progress-track').style.setProperty('--progress-pct', percent.toFixed(1) + '%');
     trackCurrentTime.textContent = formatTime(progress);
-    trackDuration.textContent    = formatTime(duration);
+    trackDuration.textContent = formatTime(duration);
   }
 
   function startProgressTimer() {
     stopProgressTimer();
+
     if (!isCurrentlyPlaying || !currentDurationMs) return;
+
     progressInterval = setInterval(() => {
       currentProgressMs += 1000;
-      if (currentProgressMs >= currentDurationMs) { currentProgressMs = currentDurationMs; stopProgressTimer(); }
+
+      if (currentProgressMs >= currentDurationMs) {
+        currentProgressMs = currentDurationMs;
+        stopProgressTimer();
+      }
+
       renderProgress();
     }, 1000);
   }
 
   function showNotice(text) {
-    const el = document.getElementById("trackNotice");
-    if (!el) return;
-    el.textContent = text;
-    el.classList.remove("hidden");
+    if (!trackNotice) return;
+    trackNotice.textContent = text;
+    trackNotice.classList.remove("hidden");
   }
 
   function hideNotice() {
-    const el = document.getElementById("trackNotice");
-    if (!el) return;
-    el.textContent = "";
-    el.classList.add("hidden");
+    if (!trackNotice) return;
+    trackNotice.textContent = "";
+    trackNotice.classList.add("hidden");
   }
 
   function showEmpty(title, text, actionText = "Подключить Spotify") {
     stopProgressTimer();
-    const es = document.getElementById("trackEmptyState");
-    const tc = document.getElementById("trackCard");
-    if (es) es.classList.remove("hidden");
-    if (tc) tc.classList.add("hidden");
-    const t  = document.getElementById("spotifyBlockTitle");
-    const tx = document.getElementById("spotifyBlockText");
-    const a  = document.getElementById("spotifyAction");
-    if (t)  t.textContent  = title;
-    if (tx) tx.textContent = text;
-    if (a)  a.textContent  = actionText;
+
+    if (trackEmptyState) trackEmptyState.classList.remove("hidden");
+    if (trackCard) trackCard.classList.add("hidden");
+
+    if (spotifyBlockTitle) spotifyBlockTitle.textContent = title;
+    if (spotifyBlockText) spotifyBlockText.textContent = text;
+    if (spotifyAction) spotifyAction.textContent = actionText;
   }
 
   function showTrack(track, isPlaying) {
     if (!track) return;
-    const es = document.getElementById("trackEmptyState");
-    const tc = document.getElementById("trackCard");
-    if (es) es.classList.add("hidden");
-    if (tc) tc.classList.remove("hidden");
 
-    const img = document.getElementById("trackImage");
-    const nm  = document.getElementById("trackName");
-    const ar  = document.getElementById("trackArtists");
-    const lk  = document.getElementById("trackLink");
-    if (img) { img.src = track.image || ""; img.alt = track.name || ""; }
-    if (nm)  nm.textContent  = track.name    || "Без названия";
-    if (ar)  ar.textContent  = track.artists || "Неизвестный исполнитель";
-    if (lk) {
-      if (track.url) { lk.href = track.url; lk.classList.remove("hidden"); }
-      else             lk.classList.add("hidden");
+    if (trackEmptyState) trackEmptyState.classList.add("hidden");
+    if (trackCard) trackCard.classList.remove("hidden");
+
+    if (trackImage) {
+      trackImage.src = track.image || "";
+      trackImage.alt = track.name || "Обложка трека";
     }
 
-    currentProgressMs  = Number(track.progressMs  || 0);
-    currentDurationMs  = Number(track.durationMs  || 0);
+    if (trackName) trackName.textContent = track.name || "Без названия";
+    if (trackArtists) trackArtists.textContent = track.artists || "Неизвестный исполнитель";
+
+    if (trackLink) {
+      if (track.url) {
+        trackLink.href = track.url;
+        trackLink.classList.remove("hidden");
+      } else {
+        trackLink.classList.add("hidden");
+      }
+    }
+
+    currentProgressMs = Number(track.progressMs || 0);
+    currentDurationMs = Number(track.durationMs || 0);
     isCurrentlyPlaying = !!isPlaying;
+
     renderProgress();
     startProgressTimer();
   }
 
-  async function loadCurrentTrack(user) {
+  async function loadCurrentTrack() {
     hideNotice();
+
     if (!user.spotifyConnected) {
-      showEmpty("Spotify не подключён", "Подключи Spotify, чтобы активировать музыкальный сигнал.");
+      showEmpty(
+        "Spotify не подключён",
+        "Подключи Spotify, чтобы активировать музыкальный сигнал."
+      );
       return;
     }
 
-    showEmpty("Загрузка трека...", "Получаем текущий трек из Spotify.", "Переподключить Spotify");
+    const accessToken = localStorage.getItem("spotifyAccessToken");
+
+    if (!accessToken) {
+      showEmpty(
+        "Spotify подключён не полностью",
+        "Нужно переподключить Spotify, чтобы получить доступ к трекам.",
+        "Переподключить Spotify"
+      );
+      return;
+    }
 
     try {
-      // Токены теперь на сервере — просто делаем запрос
-      const res  = await fetch("/api/spotify/current-track");
+      showEmpty(
+        "Загрузка трека...",
+        "Пробуем получить текущий трек из Spotify.",
+        "Переподключить Spotify"
+      );
+
+      const res = await fetch(
+        `/api/spotify/current-track?accessToken=${encodeURIComponent(accessToken)}`
+      );
+
       const data = await res.json();
 
       if (!res.ok || !data.ok) {
         if (res.status === 401) {
-          showEmpty("Сессия Spotify истекла", "Нужно заново подключить Spotify.", "Переподключить Spotify");
+          showEmpty(
+            "Сессия Spotify истекла",
+            "Нужно заново подключить Spotify.",
+            "Переподключить Spotify"
+          );
           return;
         }
-        showEmpty("Не удалось получить трек", "Spotify подключён, но трек сейчас недоступен.", "Переподключить Spotify");
-        if (data.error) showNotice(data.error);
+
+        showEmpty(
+          "Не удалось получить трек",
+          "Spotify подключён, но текущий трек сейчас недоступен.",
+          "Переподключить Spotify"
+        );
+
+        if (data.error) {
+          showNotice(data.error);
+        }
         return;
       }
 
       if (!data.track) {
-        showEmpty("Сейчас ничего не играет", "Включи музыку в Spotify — трек появится здесь.", "Переподключить Spotify");
+        showEmpty(
+          "Сейчас ничего не играет",
+          "Включи музыку в Spotify, и трек появится здесь.",
+          "Переподключить Spotify"
+        );
         return;
       }
 
       showTrack(data.track, data.isPlaying);
-    } catch (err) {
-      showEmpty("Ошибка загрузки", "Не удалось связаться со Spotify.", "Переподключить Spotify");
+    } catch (error) {
+      showEmpty(
+        "Ошибка загрузки",
+        "Не удалось связаться со Spotify.",
+        "Переподключить Spotify"
+      );
       showNotice("Ошибка при загрузке текущего трека.");
-      console.error(err);
+      console.error(error);
     }
   }
 
-  async function init() {
-    const user = await U.requireAuth();
-    if (!user) return;
-
-    // Заполняем UI
-    const nm = document.getElementById("homeName");
-    const ct = document.getElementById("homeCity");
-    const bi = document.getElementById("homeBio");
-    if (nm) nm.textContent = user.name || "Пользователь";
-    if (ct) ct.textContent = user.city || "Город не указан";
-    if (bi) bi.textContent = user.bio  || "О себе пока ничего не указано.";
-
-    const homeAvatar      = document.getElementById("homeAvatar");
-    const homeAvatarPlaceholder = document.getElementById("homeAvatarPlaceholder");
-    if (user.avatar && homeAvatar) {
-      homeAvatar.src = user.avatar;
-      homeAvatar.style.display = "block";
-      if (homeAvatarPlaceholder) homeAvatarPlaceholder.style.display = "none";
-    }
-
-    const logoutBtn = document.getElementById("logoutBtn");
-    if (logoutBtn) {
-      logoutBtn.addEventListener("click", async () => {
-        stopProgressTimer();
-        await U.clearSession();
-        U.go("/login");
-      });
-    }
-
-    loadCurrentTrack(user);
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", () => {
+      stopProgressTimer();
+      clearSession();
+      go("/login");
+    });
   }
 
-  init();
+  loadCurrentTrack();
 })();

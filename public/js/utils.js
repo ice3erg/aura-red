@@ -1,77 +1,119 @@
 (function () {
-  // ── Кэш текущего пользователя (заполняется через /api/auth/me) ──
-  let _currentUser = null;
+  const USERS_KEY    = "aura_users";
+  const SESSION_KEY  = "aura_session";
+  const SIGNALS_KEY  = "aura_signals";
+  const CHATS_KEY    = "aura_chats";
 
-  async function fetchMe() {
+  function readJSON(key, fallback) {
     try {
-      const res  = await fetch("/api/auth/me");
-      const data = await res.json();
-      if (res.ok && data.ok) { _currentUser = data.user; return data.user; }
-    } catch (_) {}
-    return null;
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch { return fallback; }
   }
 
-  // Синхронный геттер — возвращает кэш (null если ещё не загружен)
-  function getCurrentUser() { return _currentUser; }
+  function writeJSON(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+  }
 
-  async function requireAuth() {
-    const user = await fetchMe();
+  function ensureDemoUser() {
+    const users = readJSON(USERS_KEY, []);
+    if (users.some((u) => u.email === "max@aura.app")) return;
+    users.push({
+      id: "u_demo_1",
+      email: "max@aura.app",
+      password: "123456",
+      name: "Максим",
+      age: "20",
+      city: "Санкт-Петербург",
+      bio: "Люблю музыку и ночной город.",
+      avatar: null,
+      spotifyConnected: false,
+      spotifyName: "",
+      spotifyId: ""
+    });
+    writeJSON(USERS_KEY, users);
+  }
+
+  function getUsers()        { ensureDemoUser(); return readJSON(USERS_KEY, []); }
+  function saveUsers(users)  { writeJSON(USERS_KEY, users); }
+  function getSession()      { return readJSON(SESSION_KEY, null); }
+  function setSession(s)     { writeJSON(SESSION_KEY, s); }
+  function clearSession()    { localStorage.removeItem(SESSION_KEY); }
+
+  function getCurrentUser() {
+    const session = getSession();
+    if (!session?.userId) return null;
+    return getUsers().find((u) => u.id === session.userId) || null;
+  }
+
+  function requireAuth() {
+    const user = getCurrentUser();
     if (!user) { go("/login"); return null; }
     return user;
   }
 
-  async function updateCurrentUser(patch) {
-    try {
-      const res  = await fetch("/api/profile", {
-        method:  "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(patch)
-      });
-      const data = await res.json();
-      if (res.ok && data.ok) { _currentUser = data.user; return data.user; }
-    } catch (_) {}
-    return null;
+  function updateCurrentUser(patch) {
+    const session = getSession();
+    if (!session?.userId) return null;
+    const users = getUsers();
+    const idx = users.findIndex((u) => u.id === session.userId);
+    if (idx === -1) return null;
+    users[idx] = { ...users[idx], ...patch };
+    saveUsers(users);
+    return users[idx];
   }
 
-  async function clearSession() {
-    try { await fetch("/api/auth/logout", { method: "POST" }); } catch (_) {}
-    _currentUser = null;
+  // Signals (заглушка — в будущем серверная)
+  function getSignals() {
+    return readJSON(SIGNALS_KEY, []);
   }
 
-  // ── Signals / Chats (заглушки — в следующем этапе) ──────
-  function getSignals() { return []; }
-  function getChats()   { return []; }
+  function addSignal(signal) {
+    const signals = getSignals();
+    signals.unshift({ id: "s_" + Date.now(), time: new Date().toLocaleTimeString(), ...signal });
+    writeJSON(SIGNALS_KEY, signals);
+  }
 
-  // ── Avatar markup ────────────────────────────────────────
+  // Chats (заглушка)
+  function getChats() {
+    return readJSON(CHATS_KEY, []);
+  }
+
+  // Аватар — HTML-строка для вставки
   function avatarMarkup(user, size) {
     const dim = size === "sm" ? 36 : size === "lg" ? 56 : 44;
-    const s   = `width:${dim}px;height:${dim}px;border-radius:50%;object-fit:cover;flex-shrink:0;`;
+    const style = `width:${dim}px;height:${dim}px;border-radius:50%;object-fit:cover;flex-shrink:0;`;
     if (user?.avatar) {
-      return `<img src="${user.avatar}" alt="${user.name || ""}" style="${s}background:#1a1a22;" />`;
+      return `<img src="${user.avatar}" alt="${user.name || ''}" style="${style}background:#1a1a22;" />`;
     }
-    const init = (user?.name || "?").charAt(0).toUpperCase();
-    return `<div style="${s}background:#2a1a1a;border:1px solid #3a2020;display:flex;align-items:center;justify-content:center;font-size:${Math.round(dim * 0.38)}px;font-weight:700;color:#ff2b2b;">${init}</div>`;
+    const initials = (user?.name || "?").charAt(0).toUpperCase();
+    return `<div style="${style}background:#2a1a1a;border:1px solid #3a2020;display:flex;align-items:center;justify-content:center;font-size:${Math.round(dim * 0.38)}px;font-weight:700;color:#ff2b2b;">${initials}</div>`;
   }
 
-  // ── Notice helpers ────────────────────────────────────────
   function showNotice(node, text, type = "error") {
     if (!node) return;
     node.textContent = text;
-    node.className   = "notice " + type;
+    node.className = "notice " + type;
   }
 
   function hideNotice(node) {
     if (!node) return;
     node.textContent = "";
-    node.className   = "notice hidden";
+    node.className = "notice hidden";
   }
 
   function go(url) { window.location.href = url; }
 
   window.AuraUtils = {
-    fetchMe, getCurrentUser, requireAuth,
-    updateCurrentUser, clearSession,
-    getSignals, getChats, avatarMarkup,
-    showNotice, hideNotice, go
+    getUsers, saveUsers,
+    getSession, setSession, clearSession,
+    getCurrentUser, requireAuth, updateCurrentUser,
+    getSignals, addSignal,
+    getChats,
+    avatarMarkup,
+    showNotice, hideNotice,
+    go
   };
+
+  ensureDemoUser();
 })();
