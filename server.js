@@ -36,11 +36,13 @@ const pages = {
 Object.entries(pages).forEach(([r,f]) => app.get(r, (_,res) => res.sendFile(path.join(publicDir,f))));
 
 // ── Auth middleware ────────────────────────────────────────
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   if (!req.session?.userId) return res.status(401).json({ ok:false, error:"Не авторизован" });
-  const user = db.findById(req.session.userId);
-  if (!user) { req.session.destroy(()=>{}); return res.status(401).json({ ok:false, error:"Пользователь не найден" }); }
-  req.user = user; next();
+  try {
+    const user = await db.findById(req.session.userId);
+    if (!user) { req.session.destroy(()=>{}); return res.status(401).json({ ok:false, error:"Пользователь не найден" }); }
+    req.user = user; next();
+  } catch(e) { res.status(500).json({ ok:false, error:"DB error" }); }
 }
 
 // ── Auth API ───────────────────────────────────────────────
@@ -48,9 +50,9 @@ app.post("/api/auth/signup", async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)   return res.status(400).json({ ok:false, error:"Заполни все поля" });
   if (password.length < 6)   return res.status(400).json({ ok:false, error:"Пароль не короче 6 символов" });
-  if (db.findByEmail(email)) return res.status(409).json({ ok:false, error:"Почта уже используется" });
+  if (await db.findByEmail(email)) return res.status(409).json({ ok:false, error:"Почта уже используется" });
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = db.createUser({ email, passwordHash });
+  const user = await db.createUser({ email, passwordHash });
   req.session.userId = user.id;
   req.session.save(err => {
     if (err) console.error("[signup] session save error:", err);
@@ -61,7 +63,7 @@ app.post("/api/auth/signup", async (req, res) => {
 app.post("/api/auth/login", async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ ok:false, error:"Заполни все поля" });
-  const user = db.findByEmail(email);
+  const user = await db.findByEmail(email);
   if (!user || !(await bcrypt.compare(password, user.passwordHash)))
     return res.status(401).json({ ok:false, error:"Неверная почта или пароль" });
   req.session.userId = user.id;
@@ -75,11 +77,11 @@ app.post("/api/auth/logout", (req, res) => { req.session.destroy(() => res.json(
 app.get("/api/auth/me", requireAuth, (req, res) => res.json({ ok:true, user:db.publicProfile(req.user) }));
 
 // ── Profile API ────────────────────────────────────────────
-app.patch("/api/profile", requireAuth, (req, res) => {
+app.patch("/api/profile", requireAuth, async (req, res) => {
   const { name, age, city, bio, avatar, spotifyConnected, spotifyName, spotifyId,
     spotifyAccessToken, spotifyRefreshToken, lastfmUsername, lastfmConnected } = req.body;
   const u = req.user;
-  const updated = db.updateUser(u.id, {
+  const updated = await db.updateUser(u.id, {
     name:   name   !== undefined ? String(name).trim().slice(0,40)  : u.name,
     age:    age    !== undefined ? String(age).trim()                : u.age,
     city:   city   !== undefined ? String(city).trim().slice(0,60)  : u.city,
@@ -99,8 +101,19 @@ app.patch("/api/profile", requireAuth, (req, res) => {
 // ── Debug ──────────────────────────────────────────────────
 app.get("/debug/env", (req, res) => res.json({
   hasClientId:!!CLIENT_ID, hasClientSecret:!!CLIENT_SECRET, redirectUri:REDIRECT_URI||null,
-  isProd, hasSession:!!req.session?.userId
+  isProd, hasSession:!!req.session?.userId, sessionId: req.sessionID
 }));
+
+// Диагностика текущего пользователя
+app.get("/debug/me", requireAuth, (req, res) => {
+  const u = req.user;
+  res.json({
+    id: u.id, name: u.name, email: u.email,
+    spotifyConnected: u.spotifyConnected, spotifyName: u.spotifyName,
+    hasSpotifyToken: !!u.spotifyAccessToken,
+    lastfmConnected: u.lastfmConnected, lastfmUsername: u.lastfmUsername,
+  });
+});
 
 // ── Spotify helpers ────────────────────────────────────────
 const spotifyB64 = () => "Basic " + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64");
@@ -120,8 +133,9 @@ async function fetchTrack(at) {
 app.get("/spotify/login", (req, res) => {
   if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI)
     return res.status(500).send("Не заданы переменные Spotify в .env");
-  if (!req.session?.userId) return res.redirect("/login");
-  const state = req.session.userId;
+  // state содержит userId если залогинен, иначе пустой
+  const state = req.session?.userId || "";
+  console.log("[spotify/login] session userId:", req.session?.userId || "none");
   const scope = "user-read-email user-read-private user-read-currently-playing user-read-playback-state";
   res.redirect("https://accounts.spotify.com/authorize?" +
     new URLSearchParams({ response_type:"code", client_id:CLIENT_ID, scope, redirect_uri:REDIRECT_URI, state }));
@@ -140,7 +154,7 @@ app.get("/callback", async (req, res) => {
       { headers:{ Authorization:`Bearer ${access_token}` }, timeout:15000 })).data;
     const userId = req.session?.userId || state;
     if (userId) {
-      db.updateUser(userId, { spotifyConnected:true, spotifyName:me.display_name||"",
+      await db.updateUser(userId, { spotifyConnected:true, spotifyName:me.display_name||"",
         spotifyId:me.id||"", spotifyAccessToken:access_token, spotifyRefreshToken:refresh_token||"" });
       console.log(`[callback] Spotify linked: ${me.display_name} → ${userId}`);
       if (!req.session.userId) req.session.userId = userId;
@@ -167,7 +181,7 @@ app.post("/api/spotify/refresh", requireAuth, async (req, res) => {
   if (!rt) return res.status(400).json({ ok:false, error:"Нет refreshToken" });
   try {
     const data = await doRefreshToken(rt);
-    db.updateUser(req.user.id, { spotifyAccessToken:data.access_token, spotifyRefreshToken:data.refresh_token||rt });
+    await db.updateUser(req.user.id, { spotifyAccessToken:data.access_token, spotifyRefreshToken:data.refresh_token||rt });
     res.json({ ok:true, accessToken:data.access_token, expiresIn:data.expires_in||3600 });
   } catch (e) {
     res.status(e.response?.status||500).json({ ok:false, error:"Не удалось обновить токен" });
@@ -182,7 +196,7 @@ app.get("/api/spotify/current-track", requireAuth, async (req, res) => {
     if (r.status === 401 && rt) {
       try {
         const d = await doRefreshToken(rt); at = d.access_token;
-        db.updateUser(req.user.id, { spotifyAccessToken:at, spotifyRefreshToken:d.refresh_token||rt });
+        await db.updateUser(req.user.id, { spotifyAccessToken:at, spotifyRefreshToken:d.refresh_token||rt });
         r = await fetchTrack(at);
       } catch { return res.status(401).json({ ok:false, error:"Сессия Spotify истекла." }); }
     } else if (r.status === 401) return res.status(401).json({ ok:false, error:"Токен истёк." });
@@ -227,7 +241,7 @@ app.get("/api/lastfm/current-track", async (req, res) => {
 });
 
 // ── Radar ──────────────────────────────────────────────────
-app.post("/api/now-playing", requireAuth, (req, res) => {
+app.post("/api/now-playing", requireAuth, async (req, res) => {
   const { track, artist, album, image, url, source, lat, lng } = req.body;
   if (!track || !artist) return res.status(400).json({ ok:false, error:"Нужны track и artist" });
   const data = {
@@ -239,17 +253,17 @@ app.post("/api/now-playing", requireAuth, (req, res) => {
   if (data.lat !== null && (isNaN(data.lat)||data.lat<-90 ||data.lat>90))  data.lat=null;
   if (data.lng !== null && (isNaN(data.lng)||data.lng<-180||data.lng>180)) data.lng=null;
   db.setNowPlaying(req.user.id, data);
-  db.updateUser(req.user.id, { currentTrack: data });
+  await db.updateUser(req.user.id, { currentTrack: data });
   res.json({ ok:true });
 });
 
-app.get("/api/radar/nearby", requireAuth, (req, res) => {
+app.get("/api/radar/nearby", requireAuth, async (req, res) => {
   const lat    = parseFloat(req.query.lat);
   const lng    = parseFloat(req.query.lng);
   const radius = Math.min(parseFloat(req.query.radius)||5, 50);
   if (isNaN(lat)||isNaN(lng)) return res.status(400).json({ ok:false, error:"Нужны lat и lng" });
-  const nearby = db.getNearbyUsers(lat, lng, radius, req.user.id);
-  const myTrack  = db.findById(req.user.id)?.currentTrack;
+  const nearby = await db.getNearbyUsers(lat, lng, radius, req.user.id);
+  const myTrack  = (await db.findById(req.user.id))?.currentTrack;
   const myArtist = myTrack?.artist?.toLowerCase()||"";
   const myName   = myTrack?.track?.toLowerCase()||"";
   const users = nearby.map(u => ({
@@ -264,10 +278,10 @@ app.get("/api/radar/nearby", requireAuth, (req, res) => {
 });
 
 // ── Signals ────────────────────────────────────────────────
-app.post("/api/signals", requireAuth, (req, res) => {
+app.post("/api/signals", requireAuth, async (req, res) => {
   const { toId, type, track, artist, matchType } = req.body;
   if (!toId) return res.status(400).json({ ok:false, error:"Нет toId" });
-  if (!db.findById(toId)) return res.status(404).json({ ok:false, error:"Пользователь не найден" });
+  if (!await db.findById(toId)) return res.status(404).json({ ok:false, error:"Пользователь не найден" });
   if (toId === req.user.id) return res.status(400).json({ ok:false, error:"Нельзя отправить себе" });
   const existing = db.getSignalsForUser(toId).find(s => s.fromId===req.user.id && s.status==="pending");
   if (existing) return res.status(409).json({ ok:false, error:"Сигнал уже отправлен", signal:existing });
@@ -275,19 +289,20 @@ app.post("/api/signals", requireAuth, (req, res) => {
   res.json({ ok:true, signal });
 });
 
-app.get("/api/signals", requireAuth, (req, res) => {
-  const signals = db.getSignalsForUser(req.user.id).map(s => ({
-    ...s, from: s.fromId ? db.publicProfile(db.findById(s.fromId)) : null
-  }));
+app.get("/api/signals", requireAuth, async (req, res) => {
+  const rawSigs = db.getSignalsForUser(req.user.id);
+  const signals = await Promise.all(rawSigs.map(async s => ({
+    ...s, from: s.fromId ? db.publicProfile(await db.findById(s.fromId)) : null
+  })));
   res.json({ ok:true, signals });
 });
 
-app.post("/api/signals/:id/accept", requireAuth, (req, res) => {
+app.post("/api/signals/:id/accept", requireAuth, async (req, res) => {
   const signal = db.getSignalById(req.params.id);
   if (!signal) return res.status(404).json({ ok:false, error:"Сигнал не найден" });
   if (signal.toId !== req.user.id) return res.status(403).json({ ok:false, error:"Нет доступа" });
   const updated = db.acceptSignal(req.params.id);
-  const from = db.findById(signal.fromId);
+  const from = await db.findById(signal.fromId);
   const emoji = signal.matchType==="same-track" ? "🔴" : signal.matchType==="same-artist" ? "⚪" : "⚫";
   db.sendMessage(updated.chatId, "system", `${emoji} ${from?.name||"Кто-то"} слушал ${signal.artist} — ${signal.track}`);
   res.json({ ok:true, chatId:updated.chatId });
@@ -302,16 +317,17 @@ app.post("/api/signals/:id/ignore", requireAuth, (req, res) => {
 });
 
 // ── Chats ──────────────────────────────────────────────────
-app.get("/api/chats", requireAuth, (req, res) => {
-  const chats = db.getChatsForUser(req.user.id).map(chat => {
+app.get("/api/chats", requireAuth, async (req, res) => {
+  const rawChats = db.getChatsForUser(req.user.id);
+  const chats = await Promise.all(rawChats.map(async chat => {
     const otherId = chat.userIds.find(id => id !== req.user.id);
-    const other   = otherId ? db.findById(otherId) : null;
+    const other   = otherId ? await db.findById(otherId) : null;
     const lastMsg = chat.messages[chat.messages.length - 1];
     const unread  = chat.messages.filter(m => m.fromId !== req.user.id && m.fromId !== "system").length;
     return { id:chat.id, other:other ? db.publicProfile(other) : null,
       lastMsg:lastMsg ? { text:lastMsg.text, fromId:lastMsg.fromId, createdAt:lastMsg.createdAt } : null,
       unread, createdAt:chat.createdAt };
-  });
+  }));
   res.json({ ok:true, chats });
 });
 
