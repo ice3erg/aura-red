@@ -94,6 +94,55 @@
     if (e.target === document.getElementById('signalsSheet')) window.closeSignalsSheet();
   });
 
+  // ── Sent signals ───────────────────────────────────────
+  let _sentSignals = [];
+
+  async function loadSentSignals() {
+    try {
+      const r = await fetch('/api/signals?direction=sent');
+      const d = await r.json();
+      if (!r.ok || !d.ok) return;
+      // Поддерживаем оба варианта ответа сервера
+      _sentSignals = (d.sentSignals || d.signals || []).filter(s => s.status === 'pending' && (!s.direction || s.direction === 'sent'));
+      const banner = document.getElementById('sentSignalsBanner');
+      const badge  = document.getElementById('sentCount');
+      const sub    = document.getElementById('sentSubText');
+      if (_sentSignals.length > 0) {
+        banner.style.display = 'flex';
+        badge.textContent = _sentSignals.length;
+        const names = _sentSignals.slice(0,2).map(s => s.to?.name || 'Аноним').join(', ');
+        sub.textContent = names + (_sentSignals.length > 2 ? ` и ещё ${_sentSignals.length-2}` : '') + ' — ожидает ответа';
+      } else {
+        banner.style.display = 'none';
+      }
+      renderSentSignalList();
+    } catch {}
+  }
+
+  function renderSentSignalList() {
+    const root = document.getElementById('sentSignalList');
+    if (!root) return;
+    if (!_sentSignals.length) {
+      root.innerHTML = '<div style="text-align:center;padding:32px 20px;color:rgba(255,255,255,.3);font-size:14px;">Нет отправленных сигналов</div>';
+      return;
+    }
+    const vl = { 'same-track':'🔴 тот же трек','same-artist':'⚪ тот же артист','same-vibe':'⚫ похожий вайб' };
+    root.innerHTML = _sentSignals.map(sig => {
+      const mt = sig.matchType || 'same-vibe';
+      return `<div class="sig-card" style="border-color:rgba(255,255,255,0.06);">
+        ${ava(sig.to, 44)}
+        <div class="sig-body">
+          <div class="sig-name">${sig.to?.name||'Аноним'} <span style="font-size:10px;padding:1px 6px;border-radius:99px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);border:1px solid rgba(255,255,255,0.08);">ожидает</span></div>
+          <div class="sig-track">🎵 ${sig.artist||'—'} — ${sig.track||'—'}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px;">${vl[mt]||mt}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  window.openSentSignalsSheet  = () => document.getElementById('sentSignalsSheet').classList.add('open');
+  window.closeSentSignalsSheet = () => document.getElementById('sentSignalsSheet').classList.remove('open');
+
   // ── Chat list ──────────────────────────────────────────
   async function loadChats() {
     const root = document.getElementById('chatList');
@@ -241,12 +290,12 @@
 
     // Open chat from URL param
     const chatId = new URLSearchParams(location.search).get('chatId');
-    await Promise.all([loadChats(), loadSignals()]);
+    await Promise.all([loadChats(), loadSignals(), loadSentSignals()]);
     if (chatId) openChat(chatId);
 
     // Polling every 8 sec
     setInterval(async () => {
-      await loadSignals();
+      await Promise.all([loadSignals(), loadSentSignals()]);
       if (_activeChatId) {
         const r = await fetch(`/api/chats/${_activeChatId}/messages`).then(r=>r.json());
         if (r.ok) renderMessages(r.messages||[]);

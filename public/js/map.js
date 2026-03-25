@@ -38,38 +38,61 @@
     return user;
   }
 
-  // ── Mock data (fallback) ──────────────────────────────────
+  // ── Mock data (fallback) — только track/artist совпадения ──
   const MOCK_USERS = [
     { id:'m1', name:'Алина', city:'', track:'Гостиница Космос', artist:'Mnogoznaal', image:'', matchType:'same-track',  lat:59.9386, lng:30.3141, distKm:0.4 },
     { id:'m2', name:'Макс',  city:'', track:'Гостиница Космос', artist:'Mnogoznaal', image:'', matchType:'same-track',  lat:59.9278, lng:30.3476, distKm:1.2 },
     { id:'m3', name:'Соня',  city:'', track:'Минус 40',         artist:'Mnogoznaal', image:'', matchType:'same-artist', lat:59.9449, lng:30.3831, distKm:2.1 },
-    { id:'m4', name:'Даня',  city:'', track:'Night Drive',      artist:'Phonk Archive', image:'', matchType:'same-vibe', lat:59.9175, lng:30.3014, distKm:3.0 },
   ];
+
+  // Сигналы которые уже отправил я (id получателей)
+  let _sentSignalTo = new Set();
+
+  async function loadSentSignalIds() {
+    try {
+      const r = await fetch('/api/signals?direction=sent');
+      const d = await r.json();
+      if (!d.ok) return;
+      const sigs = d.sentSignals || d.signals || [];
+      _sentSignalTo = new Set(
+        sigs.filter(s => s.status === 'pending')
+            .map(s => String(s.toId || s.to?.id))
+      );
+    } catch {}
+  }
 
   // ── Render ────────────────────────────────────────────────
   function renderUsers(users) {
     if (window._radarMarkers) window._radarMarkers.forEach(m => map.removeLayer(m));
     window._radarMarkers = [];
-    let t = 0, a = 0, v = 0;
+    let t = 0, a = 0;
 
-    users.forEach(u => {
+    // Показываем только track и artist совпадения
+    const filtered = users.filter(u => {
       const mt = u.matchType || u.type || 'same-vibe';
+      return mt === 'same-track' || mt === 'same-artist';
+    });
+
+    filtered.forEach(u => {
+      const mt = u.matchType || u.type || 'same-artist';
       if (mt === 'same-track')  t++;
       if (mt === 'same-artist') a++;
-      if (mt === 'same-vibe')   v++;
 
-      const m = L.marker([u.lat, u.lng], { icon: makeIcon(mt, u) }).addTo(map);
-      m.on('click', e => { L.DomEvent.stopPropagation(e); openSheet({ ...u, matchType:mt }); });
+      const sent = _sentSignalTo.has(String(u.id || u.userId));
+      const m = L.marker([u.lat, u.lng], { icon: makeIcon(mt, u, sent) }).addTo(map);
+      m.on('click', e => { L.DomEvent.stopPropagation(e); openSheet({ ...u, matchType:mt, signalSent:sent }); });
       window._radarMarkers.push(m);
     });
 
     document.getElementById('cntTrack').textContent  = t;
     document.getElementById('cntArtist').textContent = a;
-    document.getElementById('cntVibe').textContent   = v;
+    // убираем vibe чип из топбара если есть
+    const vibeChip = document.getElementById('cntVibe');
+    if (vibeChip) vibeChip.closest('.stat-chip').style.display = 'none';
   }
 
   // ── Icon с аватаркой ──────────────────────────────────────
-  function makeIcon(type, user) {
+  function makeIcon(type, user, sent = false) {
     if (type === 'you') {
       return L.divIcon({ className:'', html:'<div class="radar-marker you"></div>', iconSize:[22,22], iconAnchor:[11,11] });
     }
@@ -82,10 +105,13 @@
       const init = (user?.name || '?')[0].toUpperCase();
       inner = `<div class="ava-init" style="font-size:${fs}px;">${init}</div>`;
     }
+    const sentBadge = sent
+      ? `<div style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:#22c55e;border:2px solid #050505;display:flex;align-items:center;justify-content:center;font-size:8px;z-index:10;">✓</div>`
+      : '';
     return L.divIcon({
       className: '',
       html: `<div class="ava-marker ${type}" style="width:${size}px;height:${size}px;position:relative;">
-        <div class="ava-pulse"></div>${inner}</div>`,
+        <div class="ava-pulse"></div>${inner}${sentBadge}</div>`,
       iconSize: [size,size], iconAnchor: [size/2,size/2],
     });
   }
@@ -139,10 +165,16 @@
     // Кнопка сигнала
     const signalBtn = document.getElementById('sheetSignalBtn');
     if (signalBtn) {
-      signalBtn.textContent = '📡 Отправить сигнал';
-      signalBtn.className   = 'sheet-btn signal';
-      signalBtn.disabled    = false;
-      signalBtn._userId     = u.id || u.userId;
+      if (u.signalSent) {
+        signalBtn.textContent = '✓ Сигнал отправлен';
+        signalBtn.className   = 'sheet-btn sent';
+        signalBtn.disabled    = true;
+      } else {
+        signalBtn.textContent = '📡 Отправить сигнал';
+        signalBtn.className   = 'sheet-btn signal';
+        signalBtn.disabled    = false;
+      }
+      signalBtn._userId = u.id || u.userId;
     }
 
     backdrop.classList.add('open');
@@ -168,7 +200,19 @@
         body: JSON.stringify({ toId, type:'wave', track:u.track||'', artist:u.artist||'', matchType:u.matchType||'same-vibe' })
       });
       const data = await res.json();
-      if (res.ok && data.ok) { btn.textContent = '✓ Сигнал отправлен'; btn.className = 'sheet-btn sent'; }
+      if (res.ok && data.ok) {
+        btn.textContent = '✓ Сигнал отправлен'; btn.className = 'sheet-btn sent';
+        // Обновляем набор отправленных и перерисовываем маркеры
+        _sentSignalTo.add(String(toId));
+        if (window._radarMarkers) {
+          // Перезагружаем радар чтобы обновить маркеры
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+              loadRadar(pos.coords.latitude, pos.coords.longitude);
+            });
+          }
+        }
+      }
       else if (res.status === 409) { btn.textContent = '✓ Уже отправлен'; btn.className = 'sheet-btn sent'; }
       else { btn.textContent = '📡 Отправить сигнал'; btn.disabled = false; }
     } catch { btn.textContent = '📡 Отправить сигнал'; btn.disabled = false; }
@@ -225,6 +269,7 @@
   // ── Init ──────────────────────────────────────────────────
   async function init() {
     const user = await initYouMarker();
+    await loadSentSignalIds();
     loadNowPlaying(user);
     initGeo(user);
   }
