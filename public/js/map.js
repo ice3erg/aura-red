@@ -85,10 +85,7 @@
   // ── SPOTIFY TOPBAR ────────────────────────────────────────────────────────
   async function loadNowPlaying() {
     try {
-      const token = localStorage.getItem('spotifyAccessToken');
-      if (!token) return;
-
-      const res  = await fetch('/api/spotify/current-track?accessToken=' + encodeURIComponent(token));
+      const res  = await fetch('/api/spotify/current-track');
       const data = await res.json();
       if (data?.track?.name) {
         document.getElementById('topbarTrack').textContent  = data.track.name;
