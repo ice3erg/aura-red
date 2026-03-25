@@ -11,7 +11,7 @@ const app       = express();
 const publicDir = path.join(__dirname, "public");
 
 // ── Trust proxy (обязательно для Render/Heroku — иначе сессия не работает) ──
-app.set("trust proxy", 1);
+app.set("trust proxy", true);
 
 app.use(express.static(publicDir));
 app.use(express.json({ limit: "5mb" }));
@@ -24,9 +24,9 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure:   isProd,   // true на Render (HTTPS), false локально
-    sameSite: isProd ? "none" : "lax",  // "none" нужен для cross-site OAuth redirect
-    maxAge:   7 * 24 * 60 * 60 * 1000  // 7 дней
+    secure:   isProd,
+    sameSite: "lax",
+    maxAge:   7 * 24 * 60 * 60 * 1000
   }
 }));
 
@@ -131,12 +131,13 @@ app.patch("/api/profile", requireAuth, (req, res) => {
 });
 
 // ── Debug ──────────────────────────────────────────────────
-app.get("/debug/env", (_, res) => res.json({
+app.get("/debug/env", (req, res) => res.json({
   hasClientId:     !!CLIENT_ID,
   hasClientSecret: !!CLIENT_SECRET,
   redirectUri:     REDIRECT_URI || null,
   isProd,
-  sessionUserId:   null  // не раскрываем
+  hasSession:      !!req.session?.userId,
+  sessionId:       req.sessionID || null
 }));
 
 // ── Spotify helpers ────────────────────────────────────────
@@ -165,8 +166,13 @@ app.get("/spotify/login", (req, res) => {
   if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI)
     return res.status(500).send("Не заданы переменные Spotify в .env");
 
-  // Сохраняем userId в state чтобы связать Spotify с аккаунтом после редиректа
-  const state = req.session?.userId || "";
+  // Если нет сессии — редиректим на логин
+  if (!req.session?.userId) {
+    return res.redirect("/login");
+  }
+
+  // Передаём userId через state — Spotify вернёт его в /callback
+  const state = req.session.userId;
 
   const scope = "user-read-email user-read-private user-read-currently-playing user-read-playback-state";
   res.redirect("https://accounts.spotify.com/authorize?" +
