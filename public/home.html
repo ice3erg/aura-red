@@ -3,237 +3,1032 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Home — +aura</title>
+  <title>+aura</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-  <link rel="stylesheet" href="/styles.css" />
   <style>
-    /* ── Mini map card ─────────────────────── */
-    .mini-map-card {
-      position: relative;
-      border-radius: 20px;
-      overflow: hidden;
-      background: #0a0a10;
-      border: 1px solid #1e1e28;
-      cursor: pointer;
-      height: 148px;
-      transition: transform 0.18s, box-shadow 0.18s;
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red: #ff2b2b;
+      --red-dim: rgba(255,43,43,0.15);
+      --red-glow: rgba(255,43,43,0.4);
+      --bg: #060608;
+      --surface: rgba(255,255,255,0.04);
+      --border: rgba(255,255,255,0.07);
+      --text: #ffffff;
+      --muted: rgba(255,255,255,0.45);
+      --faint: rgba(255,255,255,0.18);
     }
-    .mini-map-card:active { transform: scale(0.98); }
-    .mini-map-card:hover  { box-shadow: 0 0 0 1px rgba(255,43,43,0.3); }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    body {
+      padding-bottom: calc(72px + env(safe-area-inset-bottom));
+    }
+
+    /* ── Ambient background glow ── */
+    .bg-glow {
+      position: fixed;
+      top: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 600px;
+      height: 400px;
+      background: radial-gradient(ellipse, rgba(255,43,43,0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 0 0 24px;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 56px 20px 20px;
+    }
+
+    .header-identity {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+    }
+
+    .header-ava {
+      position: relative;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .header-ava img,
+    .header-ava-placeholder {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .header-ava-placeholder {
+      background: rgba(255,255,255,0.06);
+      border: 1.5px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .header-ava::after {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border);
+      pointer-events: none;
+    }
+
+    .header-text {}
+    .header-greeting {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+    .header-name {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      line-height: 1.15;
+    }
+
+    .header-logout {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 13px;
+      border-radius: 99px;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .header-logout:hover { color: var(--text); border-color: var(--faint); }
+
+    /* ── NOW PLAYING block ── */
+    .now-playing {
+      margin: 4px 20px 0;
+      border-radius: 22px;
+      overflow: hidden;
+      position: relative;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      transition: border-color 0.3s;
+    }
+    .now-playing.has-track {
+      border-color: rgba(255,43,43,0.2);
+      background: rgba(255,43,43,0.04);
+    }
+
+    /* Empty state */
+    .np-empty {
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .np-empty-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+    .np-empty-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+    }
+    .np-empty-sub {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .np-connect-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 4px;
+      padding: 11px 18px;
+      border-radius: 12px;
+      background: var(--red);
+      color: #fff;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      width: fit-content;
+      transition: opacity 0.15s;
+    }
+    .np-connect-btn:active { opacity: 0.8; }
+
+    /* Track state */
+    .np-track {
+      display: none;
+      padding: 18px 20px 16px;
+      gap: 16px;
+      align-items: center;
+    }
+    .np-track.visible { display: flex; }
+
+    .np-cover-wrap {
+      position: relative;
+      flex-shrink: 0;
+    }
+    .np-cover {
+      width: 68px;
+      height: 68px;
+      border-radius: 12px;
+      object-fit: cover;
+      background: rgba(255,255,255,0.06);
+      display: block;
+    }
+    .np-cover-placeholder {
+      width: 68px;
+      height: 68px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .np-playing-dot {
+      position: absolute;
+      bottom: -3px;
+      right: -3px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--red);
+      border: 2px solid var(--bg);
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { box-shadow: 0 0 0 0 var(--red-glow); }
+      50%       { box-shadow: 0 0 0 6px transparent; }
+    }
+
+    .np-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .np-status {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--red);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .np-title {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.2;
+    }
+    .np-artist {
+      font-size: 13px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 3px;
+    }
+
+    .np-progress-row {
+      padding: 0 20px 16px;
+      display: none;
+    }
+    .np-progress-row.visible { display: block; }
+    .np-bar-track {
+      position: relative;
+      height: 3px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .np-bar-track::after {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: var(--progress-pct, 0%);
+      background: var(--red);
+      border-radius: 99px;
+      transition: width 0.9s linear;
+    }
+    .np-bar-input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      opacity: 0;
+      cursor: default;
+    }
+    .np-times {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .np-open-link {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      margin: 0 20px 16px;
+      padding: 8px 13px;
+      border-radius: 9px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      width: fit-content;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .np-open-link.visible { display: inline-flex; }
+    .np-open-link:hover { color: #1DB954; border-color: rgba(29,185,84,0.3); }
+
+    /* ── RADAR mini ── */
+    .radar-section {
+      margin: 14px 20px 0;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      padding: 0 2px;
+    }
+
+    .radar-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+
+    .mini-radar-btn {
+      position: relative;
+      width: 100%;
+      height: 180px;
+      border-radius: 22px;
+      overflow: hidden;
+      background: #080810;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      display: block;
+      transition: border-color 0.2s, transform 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mini-radar-btn:hover  { border-color: rgba(255,43,43,0.25); }
+    .mini-radar-btn:active { transform: scale(0.985); }
 
     #miniMap {
-      width: 100%; height: 100%;
-      filter: saturate(0.5) contrast(1.1) brightness(0.65);
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      filter: saturate(0.4) contrast(1.15) brightness(0.6);
       pointer-events: none;
     }
     .leaflet-control-zoom,
     .leaflet-control-attribution { display: none !important; }
 
-    .mini-map-overlay {
+    /* Overlay gradient */
+    .mini-radar-overlay {
       position: absolute;
       inset: 0;
-      background: linear-gradient(to top, rgba(5,5,5,0.85) 0%, transparent 55%);
+      background: linear-gradient(
+        to top,
+        rgba(8,8,16,0.95) 0%,
+        rgba(8,8,16,0.3) 50%,
+        transparent 100%
+      );
       display: flex;
-      align-items: flex-end;
-      padding: 14px 16px;
-      gap: 10px;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 16px 18px;
     }
-    .mini-map-pulse {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: #ff2b2b;
-      box-shadow: 0 0 10px #ff2b2b;
-      flex-shrink: 0;
-      animation: tc-pulse 1.8s ease-in-out infinite;
+
+    .mini-radar-stats {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
     }
-    .mini-map-text {
-      flex: 1;
-      min-width: 0;
-    }
-    .mini-map-label {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: rgba(255,255,255,0.5);
-      line-height: 1;
-    }
-    .mini-map-count {
-      font-size: 16px;
-      font-weight: 800;
-      color: #fff;
-      margin-top: 2px;
-      line-height: 1.2;
-    }
-    .mini-map-open {
+    .radar-chip {
       display: flex;
       align-items: center;
       gap: 5px;
+      padding: 4px 9px;
+      border-radius: 99px;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(8,8,16,0.7);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+    }
+    .radar-chip .chip-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .chip-dot.red   { background: var(--red); box-shadow: 0 0 5px var(--red); }
+    .chip-dot.white { background: #fff; }
+    .chip-dot.gray  { background: #666; }
+
+    .mini-radar-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .mini-radar-count {
+      font-size: 15px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 99px;
+      background: var(--red-dim);
+      border: 1px solid rgba(255,43,43,0.25);
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--red);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .live-badge-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--red);
+      animation: pulse-dot 1.5s ease-in-out infinite;
+    }
+
+    .mini-radar-open {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
       font-size: 12px;
       font-weight: 700;
-      color: #ff2b2b;
-      background: rgba(255,43,43,0.12);
-      border: 1px solid rgba(255,43,43,0.25);
-      border-radius: 10px;
-      padding: 6px 11px;
-      white-space: nowrap;
+      color: #fff;
+      backdrop-filter: blur(8px);
     }
 
-    /* ── Radar markers on mini map ─────────── */
+    /* mini dots */
     .mini-dot {
-      width: 10px; height: 10px;
       border-radius: 50%;
-      background: #ff2b2b;
-      box-shadow: 0 0 8px rgba(255,43,43,0.8);
-      cursor: default;
+      background: var(--red);
+      box-shadow: 0 0 6px var(--red-glow);
     }
     .mini-dot.you {
-      width: 13px; height: 13px;
       background: #fff;
-      box-shadow: 0 0 12px rgba(255,255,255,0.9);
+      box-shadow: 0 0 10px rgba(255,255,255,0.8);
     }
+    .mini-dot.other { background: var(--red); }
+
+    /* ── ACTIVITY FEED ── */
+    .activity-section {
+      margin: 16px 20px 0;
+      animation: fadeInUp 0.4s 0.24s ease both;
+    }
+
+    .activity-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 10px;
+      padding: 0 2px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .activity-live-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--red);
+      animation: pulse-dot 1.5s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    .activity-feed {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .activity-card {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 13px 16px;
+      border-radius: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      animation: fadeInUp 0.35s ease both;
+      text-decoration: none;
+      color: inherit;
+    }
+    .activity-card:hover {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.12);
+    }
+    .activity-card:active { transform: scale(0.98); }
+
+    .activity-card.match-track {
+      border-color: rgba(255,43,43,0.2);
+      background: rgba(255,43,43,0.05);
+    }
+    .activity-card.match-track:hover {
+      background: rgba(255,43,43,0.08);
+      border-color: rgba(255,43,43,0.3);
+    }
+
+    .activity-ava {
+      position: relative;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .activity-ava img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .activity-ava-ph {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--muted);
+    }
+    .activity-match-dot {
+      position: absolute;
+      bottom: -1px;
+      right: -1px;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      border: 2px solid var(--bg);
+      font-size: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .match-dot-track  { background: var(--red); box-shadow: 0 0 6px var(--red-glow); }
+    .match-dot-artist { background: #888; }
+    .match-dot-vibe   { background: #444; }
+
+    .activity-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .activity-user {
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .activity-match-tag {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 99px;
+      flex-shrink: 0;
+    }
+    .tag-track  { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,43,43,0.2); }
+    .tag-artist { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); border: 1px solid var(--border); }
+    .tag-vibe   { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.35); border: 1px solid rgba(255,255,255,0.06); }
+
+    .activity-track {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .activity-track-name { color: rgba(255,255,255,0.75); font-weight: 600; }
+
+    .activity-cover {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.06);
+    }
+    .activity-cover-ph {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* distance badge */
+    .activity-dist {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* empty feed */
+    .activity-empty {
+      padding: 24px 16px;
+      border-radius: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .activity-empty strong {
+      display: block;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    /* ── Bottom nav ── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      height: calc(64px + env(safe-area-inset-bottom));
+      padding-bottom: env(safe-area-inset-bottom);
+      background: rgba(6,6,8,0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: stretch;
+      z-index: 100;
+    }
+    .nav-link {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      text-decoration: none;
+      color: rgba(255,255,255,0.3);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .nav-link:hover  { color: rgba(255,255,255,0.6); }
+    .nav-link.active { color: var(--red); }
+    .nav-link svg { width: 22px; height: 22px; }
+    .nav-link.active svg { filter: drop-shadow(0 0 5px var(--red-glow)); }
+
+    /* ── Notice ── */
+    .track-notice {
+      margin: 8px 20px 0;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(255,43,43,0.08);
+      border: 1px solid rgba(255,43,43,0.2);
+      color: rgba(255,150,150,0.9);
+      font-size: 13px;
+      display: none;
+    }
+    .track-notice.visible { display: block; }
+
+    /* ── Animations ── */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .header      { animation: fadeInUp 0.4s ease both; }
+    .now-playing { animation: fadeInUp 0.4s 0.08s ease both; }
+    .radar-section { animation: fadeInUp 0.4s 0.16s ease both; }
   </style>
 </head>
-<body class="red-mode">
-  <main class="app-shell">
+<body>
+  <div class="bg-glow"></div>
 
-    <!-- Identity block -->
-    <section class="top-card">
-      <div class="top-row">
-        <div style="display:flex;align-items:center;gap:14px;">
-          <div id="homeAvatarWrap" style="flex-shrink:0;">
-            <img id="homeAvatar" src="" alt="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid #2a2a35;display:none;" />
-            <div id="homeAvatarPlaceholder" style="width:52px;height:52px;border-radius:50%;background:#1a1a22;border:2px solid #2a2a35;display:flex;align-items:center;justify-content:center;">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7a7a85" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-              </svg>
-            </div>
-          </div>
-          <div>
-            <div class="small-label">+aura</div>
-            <h1 id="homeName" style="margin:2px 0 2px;">Пользователь</h1>
-            <p id="homeCity" class="muted-text" style="margin:0;">Город не указан</p>
+  <div class="page">
+
+    <!-- Header / Identity -->
+    <header class="header">
+      <div class="header-identity">
+        <div class="header-ava">
+          <img id="homeAvatar" src="" alt="" style="display:none;width:100%;height:100%;border-radius:50%;object-fit:cover;" />
+          <div class="header-ava-placeholder" id="homeAvatarPh">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
           </div>
         </div>
-        <button id="logoutBtn" class="ghost-btn" style="min-height:40px;padding:0 14px;font-size:13px;">Выйти</button>
+        <div class="header-text">
+          <div class="header-greeting" id="homeCity">+aura</div>
+          <div class="header-name" id="homeName">Привет</div>
+        </div>
       </div>
-    </section>
+      <button class="header-logout" id="logoutBtn">Выйти</button>
+    </header>
 
     <!-- NOW PLAYING -->
-    <section class="card">
-      <div id="trackEmptyState">
-        <h2 id="spotifyBlockTitle">Spotify не подключён</h2>
-        <p id="spotifyBlockText" class="muted-text">Подключи Spotify, чтобы активировать музыкальный сигнал.</p>
-        <a id="spotifyAction" class="primary-btn text-center" href="/connect-music">Подключить Spotify</a>
+    <div class="now-playing" id="nowPlayingBlock">
+
+      <!-- Empty state -->
+      <div class="np-empty" id="trackEmptyState">
+        <div class="np-empty-label">Музыкальный сигнал</div>
+        <div class="np-empty-title" id="spotifyBlockTitle">Подключи музыку</div>
+        <div class="np-empty-sub" id="spotifyBlockText">Подключи Last.fm или Spotify чтобы транслировать что ты слушаешь.</div>
+        <a class="np-connect-btn" id="spotifyAction" href="/connect-music">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          Подключить музыку
+        </a>
       </div>
 
-      <div id="trackCard" class="track-card hidden">
-        <div class="track-card__inner">
-          <div class="track-card__art-wrap">
-            <img id="trackImage" class="track-card__art" src="" alt="Обложка трека" />
-            <div class="track-card__art-glow"></div>
+      <!-- Track -->
+      <div class="np-track" id="trackCard">
+        <div class="np-cover-wrap">
+          <img class="np-cover" id="trackImage" src="" alt="" />
+          <div class="np-playing-dot"></div>
+        </div>
+        <div class="np-info">
+          <div class="np-status">
+            Сейчас играет
           </div>
-          <div class="track-card__body">
-            <div class="track-card__status">
-              <span class="track-card__dot"></span>
-              Сейчас играет
+          <div class="np-title" id="trackName">—</div>
+          <div class="np-artist" id="trackArtists">—</div>
+        </div>
+      </div>
+
+      <div class="np-progress-row" id="progressRow">
+        <div class="np-bar-track" id="progressFill">
+          <input type="range" class="np-bar-input" id="trackProgress" min="0" max="100" value="0" disabled />
+        </div>
+        <div class="np-times">
+          <span id="trackCurrentTime">0:00</span>
+          <span id="trackDuration">0:00</span>
+        </div>
+      </div>
+
+      <a class="np-open-link" id="trackLink" href="#" target="_blank" rel="noopener noreferrer">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.435-5.305-1.76-8.786-.963-.335.077-.67-.133-.746-.469-.077-.336.132-.67.469-.746 3.809-.87 7.077-.496 9.713 1.115.293.18.386.563.207.856zm1.223-2.722c-.226.367-.706.482-1.072.257-2.687-1.652-6.785-2.131-9.965-1.166-.413.127-.848-.105-.975-.517-.127-.413.104-.848.517-.975 3.632-1.102 8.147-.568 11.238 1.329.366.226.48.707.257 1.072zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71c-.493.15-1.016-.129-1.165-.623-.148-.495.13-1.016.624-1.165 3.552-1.077 9.457-.869 13.19 1.37.448.267.595.847.328 1.294-.266.448-.846.595-1.293.328z"/></svg>
+        Открыть в Spotify
+      </a>
+    </div>
+
+    <div class="track-notice" id="trackNotice"></div>
+
+    <!-- MINI RADAR -->
+    <div class="radar-section">
+      <div class="radar-label">Радар</div>
+      <button class="mini-radar-btn" id="miniMapBtn" aria-label="Открыть радар">
+        <div id="miniMap"></div>
+        <div class="mini-radar-overlay">
+          <div class="mini-radar-stats">
+            <div class="radar-chip"><div class="chip-dot red"></div><span id="cntTrack">0</span> трек</div>
+            <div class="radar-chip"><div class="chip-dot white"></div><span id="cntArtist">0</span> артист</div>
+            <div class="radar-chip"><div class="chip-dot gray"></div><span id="cntVibe">0</span> вайб</div>
+          </div>
+          <div class="mini-radar-bottom">
+            <div class="mini-radar-count">
+              <span id="miniMapCount">— людей рядом</span>
+              <div class="live-badge"><div class="live-badge-dot"></div>live</div>
             </div>
-            <div class="track-card__name" id="trackName">Название трека</div>
-            <div class="track-card__artists" id="trackArtists">Исполнитель</div>
-            <div class="player-progress-wrap">
-              <div class="player-progress-track">
-                <input id="trackProgress" class="player-progress" type="range" min="0" max="100" value="0" disabled />
-              </div>
-              <div class="player-times">
-                <span id="trackCurrentTime">0:00</span>
-                <span id="trackDuration">0:00</span>
-              </div>
+            <div class="mini-radar-open">
+              Открыть
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </div>
-            <a id="trackLink" class="track-card__link" href="#" target="_blank" rel="noopener noreferrer">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.435-5.305-1.76-8.786-.963-.335.077-.67-.133-.746-.469-.077-.336.132-.67.469-.746 3.809-.87 7.077-.496 9.713 1.115.293.18.386.563.207.856zm1.223-2.722c-.226.367-.706.482-1.072.257-2.687-1.652-6.785-2.131-9.965-1.166-.413.127-.848-.105-.975-.517-.127-.413.104-.848.517-.975 3.632-1.102 8.147-.568 11.238 1.329.366.226.48.707.257 1.072zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71c-.493.15-1.016-.129-1.165-.623-.148-.495.13-1.016.624-1.165 3.552-1.077 9.457-.869 13.19 1.37.448.267.595.847.328 1.294-.266.448-.846.595-1.293.328z"/></svg>
-              Открыть в Spotify
-            </a>
           </div>
         </div>
+      </button>
+    </div>
+
+    <!-- ACTIVITY FEED -->
+    <div class="activity-section">
+      <div class="activity-label">
+        <div class="activity-live-dot"></div>
+        На волне рядом
       </div>
-
-      <div id="trackNotice" class="notice error hidden"></div>
-    </section>
-
-    <!-- MINI RADAR MAP -->
-    <button id="miniMapBtn" class="mini-map-card" aria-label="Открыть радар">
-      <div id="miniMap"></div>
-      <div class="mini-map-overlay">
-        <div class="mini-map-pulse"></div>
-        <div class="mini-map-text">
-          <div class="mini-map-label">Radar</div>
-          <div class="mini-map-count" id="miniMapCount">6 людей рядом</div>
-        </div>
-        <div class="mini-map-open">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          Открыть
+      <div class="activity-feed" id="activityFeed">
+        <!-- заполняется JS -->
+        <div class="activity-empty">
+          <strong>Никого рядом</strong>
+          Включи музыку — появишься на радаре других
         </div>
       </div>
-    </button>
+    </div>
 
-  </main>
+  </div>
 
+  <!-- Bottom nav -->
   <nav class="bottom-nav">
     <a class="nav-link active" href="/home">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       <span>Home</span>
     </a>
-    <a class="nav-link " href="/chat">
+    <a class="nav-link" href="/chat">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       <span>Chat</span>
     </a>
-    <a class="nav-link " href="/profile">
+    <a class="nav-link" href="/profile">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
       <span>Profile</span>
     </a>
-</nav>
+  </nav>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="/js/utils.js"></script>
   <script src="/js/home.js"></script>
   <script>
-    // Mini map init
-    (function() {
+    // ── Mini map ──────────────────────────────────────────
+    (function () {
       const DEFAULT = [59.9343, 30.3351];
-      const map = L.map('miniMap', {
+      const miniMap = L.map('miniMap', {
         zoomControl: false, attributionControl: false,
         dragging: false, scrollWheelZoom: false,
         doubleClickZoom: false, touchZoom: false, keyboard: false
       }).setView(DEFAULT, 13);
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 20, subdomains: 'abcd'
-      }).addTo(map);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        { maxZoom: 20, subdomains: 'abcd' }).addTo(miniMap);
 
-      const makePin = (type) => L.divIcon({
-        className: '', html: `<div class="mini-dot ${type}"></div>`,
-        iconSize: [type === 'you' ? 13 : 10, type === 'you' ? 13 : 10],
-        iconAnchor: [type === 'you' ? 6.5 : 5, type === 'you' ? 6.5 : 5]
+      const pin = (type, size) => L.divIcon({
+        className: '',
+        html: `<div class="mini-dot ${type}" style="width:${size}px;height:${size}px;"></div>`,
+        iconSize: [size, size], iconAnchor: [size/2, size/2]
       });
 
-      const MOCKS = [
-        { lat: 59.9386, lng: 30.3141 }, { lat: 59.9278, lng: 30.3476 },
-        { lat: 59.9449, lng: 30.3831 }, { lat: 59.9175, lng: 30.3014 },
-        { lat: 59.9542, lng: 30.3334 }, { lat: 59.9200, lng: 30.3650 },
-      ];
+      let youPin = L.marker(DEFAULT, { icon: pin('you', 12), zIndexOffset: 1000 }).addTo(miniMap);
 
-      L.marker(DEFAULT, { icon: makePin('you') }).addTo(map);
-      MOCKS.forEach(p => L.marker([p.lat, p.lng], { icon: makePin('other') }).addTo(map));
+      const MOCKS = [
+        [59.9386, 30.3141], [59.9278, 30.3476],
+        [59.9449, 30.3831], [59.9175, 30.3014],
+        [59.9542, 30.3334], [59.9200, 30.3650],
+      ];
+      let mockPins = [];
+      MOCKS.forEach(([lat, lng]) => {
+        mockPins.push(L.marker([lat, lng], { icon: pin('other', 8) }).addTo(miniMap));
+      });
+
+      // ── Activity feed ──────────────────────────────────
+      function haversineKm(lat1, lon1, lat2, lon2) {
+        const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
+        const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      }
+
+      function fmtDist(km) {
+        if (km < 1) return Math.round(km * 1000) + ' м';
+        return km.toFixed(1) + ' км';
+      }
+
+      function matchType(user, myTrack) {
+        if (!myTrack || !user.track) return 'vibe';
+        const myT = (myTrack.name || '').toLowerCase();
+        const myA = (myTrack.artists || '').toLowerCase();
+        const uT  = (user.track || '').toLowerCase();
+        const uA  = (user.artist || '').toLowerCase();
+        if (myT && uT && myT === uT) return 'track';
+        if (myA && uA && myA.split(',')[0].trim() === uA.split(',')[0].trim()) return 'artist';
+        return 'vibe';
+      }
+
+      function matchLabel(type) {
+        if (type === 'track')  return { text: '🔴 тот же трек', cls: 'tag-track', dotCls: 'match-dot-track' };
+        if (type === 'artist') return { text: '⚪ тот же артист', cls: 'tag-artist', dotCls: 'match-dot-artist' };
+        return { text: '⚫ похожий вайб', cls: 'tag-vibe', dotCls: 'match-dot-vibe' };
+      }
+
+      function initials(name) {
+        if (!name) return '?';
+        return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+      }
+
+      function renderFeed(users, myLat, myLng, myTrack) {
+        const feed = document.getElementById('activityFeed');
+        if (!feed) return;
+
+        if (!users || !users.length) {
+          feed.innerHTML = `<div class="activity-empty"><strong>Никого рядом</strong>Включи музыку — появишься на радаре других</div>`;
+          return;
+        }
+
+        // Сортируем: сначала совпадения треков
+        const typeOrder = { track: 0, artist: 1, vibe: 2 };
+        const sorted = users.slice().sort((a, b) => {
+          const ta = typeOrder[matchType(a, myTrack)];
+          const tb = typeOrder[matchType(b, myTrack)];
+          return ta - tb;
+        });
+
+        feed.innerHTML = '';
+        sorted.slice(0, 6).forEach((u, i) => {
+          const type  = matchType(u, myTrack);
+          const label = matchLabel(type);
+          const dist  = (myLat && myLng && u.lat && u.lng)
+            ? fmtDist(haversineKm(myLat, myLng, u.lat, u.lng)) : '';
+          const card = document.createElement('a');
+          card.className = `activity-card${type === 'track' ? ' match-track' : ''}`;
+          card.href = '/map';
+          card.style.animationDelay = `${i * 0.05}s`;
+
+          const avaHtml = u.avatar
+            ? `<img src="${u.avatar}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`
+            : `<div class="activity-ava-ph">${initials(u.name)}</div>`;
+
+          const coverHtml = u.image
+            ? `<img class="activity-cover" src="${u.image}" alt="" />`
+            : `<div class="activity-cover-ph"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`;
+
+          card.innerHTML = `
+            <div class="activity-ava">
+              ${avaHtml}
+              <div class="activity-match-dot ${label.dotCls}"></div>
+            </div>
+            <div class="activity-info">
+              <div class="activity-user">
+                ${u.name || 'Аноним'}
+                <span class="activity-match-tag ${label.cls}">${label.text}</span>
+              </div>
+              <div class="activity-track">
+                <span class="activity-track-name">${u.track || '—'}</span>
+                ${u.artist ? `· ${u.artist}` : ''}
+              </div>
+            </div>
+            ${coverHtml}
+            ${dist ? `<div class="activity-dist">${dist}</div>` : ''}
+          `;
+          feed.appendChild(card);
+        });
+      }
+
+      // ── Геолокация + реальный радар ──────────────────
+      let myLat = null, myLng = null;
+
+      function loadRadar(myTrack) {
+        if (!myLat || !myLng) return;
+        fetch(`/api/radar/nearby?lat=${myLat}&lng=${myLng}&radius=5`)
+          .then(r => r.json())
+          .then(d => {
+            if (!d.ok) return;
+
+            // Счётчики
+            const count = d.count || 0;
+            document.getElementById('miniMapCount').textContent =
+              `${count} ${count === 1 ? 'человек' : count < 5 ? 'человека' : 'людей'} рядом`;
+            if (d.stats) {
+              document.getElementById('cntTrack').textContent  = d.stats.sameTrack  || 0;
+              document.getElementById('cntArtist').textContent = d.stats.sameArtist || 0;
+              document.getElementById('cntVibe').textContent   = d.stats.sameVibe   || 0;
+            }
+
+            // Убираем моки если есть реальные данные
+            if (d.users && d.users.length) {
+              mockPins.forEach(p => miniMap.removeLayer(p));
+              mockPins = [];
+              d.users.forEach(u => {
+                L.marker([u.lat, u.lng], { icon: pin('other', 8) }).addTo(miniMap);
+              });
+            }
+
+            // Рендер ленты
+            renderFeed(d.users, myLat, myLng, myTrack);
+          }).catch(() => {});
+      }
 
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(pos => {
-          const { latitude: lat, longitude: lng } = pos.coords;
-          map.setView([lat, lng], 13);
+          myLat = pos.coords.latitude;
+          myLng = pos.coords.longitude;
+          miniMap.setView([myLat, myLng], 14);
+          youPin.setLatLng([myLat, myLng]);
+
+          // Первая загрузка — без трека (придёт позже из home.js)
+          loadRadar(null);
+
+          // Обновляем каждые 30 сек
+          setInterval(() => {
+            const myTrack = window.__currentTrack || null;
+            loadRadar(myTrack);
+          }, 30000);
         });
       }
+
+      // Экспортируем чтобы home.js мог триггернуть обновление ленты после загрузки трека
+      window.__reloadRadarFeed = (track) => {
+        window.__currentTrack = track;
+        loadRadar(track);
+      };
     })();
   </script>
 </body>
