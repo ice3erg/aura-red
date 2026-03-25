@@ -7,7 +7,9 @@
     const s = Math.floor(ms / 1000);
     return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
   }
+
   function stopTimer() { if (progressInterval) { clearInterval(progressInterval); progressInterval = null; } }
+
   function renderProgress() {
     const tp = document.getElementById("trackProgress");
     const tc = document.getElementById("trackCurrentTime");
@@ -22,6 +24,7 @@
     tc.textContent = fmt(prg);
     td.textContent = fmt(dur);
   }
+
   function startTimer() {
     stopTimer();
     if (!isPlaying || !currentDurationMs) return;
@@ -32,7 +35,31 @@
     }, 1000);
   }
 
-  function showEmpty(title, text, action = "Подключить Spotify") {
+  // Пушим трек на сервер + геолокация → появляемся на радаре других
+  async function pushNowPlaying(track) {
+    if (!track) return;
+    try {
+      const pos = await new Promise((res, rej) =>
+        navigator.geolocation?.getCurrentPosition(res, rej, { timeout:5000 }) || rej()
+      ).catch(() => null);
+      await fetch("/api/now-playing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          track:  track.name    || "",
+          artist: track.artists || "",
+          album:  track.album   || "",
+          image:  track.image   || "",
+          url:    track.url     || "",
+          source: track.source  || "spotify",
+          lat:    pos ? pos.coords.latitude  : null,
+          lng:    pos ? pos.coords.longitude : null,
+        })
+      });
+    } catch (_) {}
+  }
+
+  function showEmpty(title, text, action = "Подключить музыку") {
     stopTimer();
     document.getElementById("trackEmptyState")?.classList.remove("hidden");
     document.getElementById("trackCard")?.classList.add("hidden");
@@ -60,31 +87,23 @@
     isPlaying = !!playing;
     renderProgress();
     startTimer();
+    pushNowPlaying(track);
   }
 
   async function loadTrack(user) {
     const notice = document.getElementById("trackNotice");
     if (notice) { notice.textContent = ""; notice.classList.add("hidden"); }
 
-    // Last.fm — приоритет (доступно всем без ограничений)
+    // Last.fm — приоритет
     if (user.lastfmConnected && user.lastfmUsername) {
       showEmpty("Загрузка трека...", "Получаем трек из Last.fm...", "Переподключить музыку");
       try {
         const r = await fetch(`/api/lastfm/current-track?username=${encodeURIComponent(user.lastfmUsername)}`);
         const d = await r.json();
-        if (!r.ok || !d.ok) {
-          showEmpty("Не удалось получить трек", d.error || "Ошибка Last.fm.", "Подключить музыку");
-          return;
-        }
-        if (!d.track || !d.isPlaying) {
-          showEmpty("Сейчас ничего не играет", "Включи музыку — трек появится здесь.", "Подключить музыку");
-          return;
-        }
+        if (!r.ok || !d.ok) { showEmpty("Не удалось получить трек", d.error||"Ошибка Last.fm.", "Подключить музыку"); return; }
+        if (!d.track || !d.isPlaying) { showEmpty("Сейчас ничего не играет", "Включи музыку — трек появится здесь.", "Подключить музыку"); return; }
         showTrack(d.track, true);
-      } catch (e) {
-        showEmpty("Ошибка загрузки", "Не удалось связаться с Last.fm.", "Подключить музыку");
-        console.error(e);
-      }
+      } catch (e) { showEmpty("Ошибка загрузки", "Не удалось связаться с Last.fm.", "Подключить музыку"); }
       return;
     }
 
@@ -105,10 +124,7 @@
       }
       if (!d.track) { showEmpty("Сейчас ничего не играет", "Включи музыку в Spotify — трек появится здесь.", "Переподключить Spotify"); return; }
       showTrack(d.track, d.isPlaying);
-    } catch (e) {
-      showEmpty("Ошибка загрузки", "Не удалось связаться со Spotify.", "Переподключить Spotify");
-      console.error(e);
-    }
+    } catch (e) { showEmpty("Ошибка загрузки", "Не удалось связаться со Spotify.", "Переподключить Spotify"); }
   }
 
   async function init() {
@@ -130,15 +146,10 @@
       stopTimer(); await U.clearSession(); U.go("/login");
     });
 
-    // Мини-карта: тап → /map
     document.getElementById("miniMapBtn")?.addEventListener("click", () => U.go("/map"));
-
-    // Ссылка на подключение музыки из empty state
-    document.getElementById("spotifyAction")?.addEventListener("click", function(e) {
-      if (this.tagName !== "A") { e.preventDefault(); U.go("/connect-music"); }
-    });
 
     loadTrack(user);
   }
+
   init();
 })();
