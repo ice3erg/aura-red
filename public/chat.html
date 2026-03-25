@@ -10,6 +10,16 @@
   <link rel="stylesheet" href="/styles.css" />
   <style>
     body { padding-bottom: 80px; }
+    .chat-overlay{position:fixed;inset:0;background:#050505;z-index:300;display:none;flex-direction:column;}
+    .chat-overlay.open{display:flex;}
+    .chat-overlay-header{display:flex;align-items:center;gap:12px;padding:16px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;}
+    .chat-back{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:4px 8px;}
+    .chat-other-name{font-size:17px;font-weight:700;flex:1;}
+    .msg-list{flex:1;overflow-y:auto;padding:12px 0;}
+    .msg-input-row{display:flex;gap:8px;padding:12px 16px;border-top:1px solid rgba(255,255,255,.07);flex-shrink:0;padding-bottom:max(12px,env(safe-area-inset-bottom));}
+    .msg-input{flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:10px 16px;color:#fff;font:inherit;font-size:14px;outline:none;resize:none;}
+    .msg-input::placeholder{color:rgba(255,255,255,.3);}
+    .msg-send{background:#ff2b2b;border:none;border-radius:50%;width:40px;height:40px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 
     .chat-header {
       padding: 20px 16px 12px;
@@ -212,6 +222,20 @@
     <div id="signalList"></div>
   </div>
 
+  <div class="chat-overlay" id="chatOverlay">
+    <div class="chat-overlay-header">
+      <button class="chat-back" id="chatBackBtn">←</button>
+      <div class="chat-other-name" id="chatOtherName">Чат</div>
+    </div>
+    <div class="msg-list" id="msgList"></div>
+    <div class="msg-input-row">
+      <textarea class="msg-input" id="msgInput" placeholder="Сообщение..." rows="1"></textarea>
+      <button class="msg-send" id="msgSendBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </div>
+  </div>
+
   <nav class="bottom-nav">
     <a class="nav-link " href="/home">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
@@ -228,86 +252,6 @@
 </nav>
 
   <script src="/js/utils.js"></script>
-  <script src="/js/auth.js"></script>
-  <script>
-    const U = window.AuraUtils;
-    const user = U.requireAuth();
-    if (!user) throw new Error('not auth');
-
-    // Моковые чаты — потом заменить на реальные
-    const MOCK_CHATS = [
-      { id:'c1', name:'Алина',  ava:'👩', last:'слушаю то же самое щас 😮',    time:'только что', unread:2, online:true  },
-      { id:'c2', name:'Макс',   ava:'👨', last:'кто такой Mnogoznaal вообще?', time:'5 мин',      unread:0, online:true  },
-      { id:'c3', name:'Соня',   ava:'🧑', last:'Минус 40 топ трек',            time:'22 мин',     unread:0, online:false },
-    ];
-
-    const MOCK_SIGNALS = [
-      { id:'s1', name:'Лера, 20',   ava:'👩', track:'Кислород — Boulevard Depo', type:'same-artist', badgeClass:'white', badgeText:'артист' },
-      { id:'s2', name:'Артём, 25',  ava:'👨', track:'САМОЛЁТ — Guf',             type:'same-vibe',   badgeClass:'gray',  badgeText:'вайб'   },
-    ];
-
-    function renderChats() {
-      const root = document.getElementById('chatList');
-      if (!MOCK_CHATS.length) {
-        root.innerHTML = `<div class="empty-state"><div class="empty-icon">💬</div><p>Чатов пока нет.<br>Найди людей на карте и напиши им!</p></div>`;
-        return;
-      }
-      root.innerHTML = MOCK_CHATS.map(c => `
-        <div class="chat-item">
-          <div class="chat-item-ava">
-            ${c.ava}
-            ${c.online ? '<div class="online-dot"></div>' : ''}
-          </div>
-          <div class="chat-item-body">
-            <div class="chat-item-name">${c.name}</div>
-            <div class="chat-item-last ${c.unread ? 'unread' : ''}">${c.last}</div>
-          </div>
-          <div class="chat-item-meta">
-            <div class="chat-item-time">${c.time}</div>
-            ${c.unread ? `<div class="unread-badge">${c.unread}</div>` : ''}
-          </div>
-        </div>
-      `).join('');
-    }
-
-    function renderSignals() {
-      const root = document.getElementById('signalList');
-      const count = document.getElementById('signalCount');
-
-      if (!MOCK_SIGNALS.length) {
-        root.innerHTML = `<div class="empty-state"><div class="empty-icon">📡</div><p>Сигналов пока нет.<br>Когда кто-то слушает то же что ты — появится здесь.</p></div>`;
-        return;
-      }
-
-      count.textContent = MOCK_SIGNALS.length ? ` · ${MOCK_SIGNALS.length}` : '';
-      root.innerHTML = MOCK_SIGNALS.map(s => `
-        <div class="signal-card">
-          <div class="signal-ava">${s.ava}</div>
-          <div class="signal-body">
-            <div class="signal-name">${s.name}</div>
-            <div class="signal-track">🎵 ${s.track}</div>
-          </div>
-          <div class="signal-badge ${s.badgeClass}">${s.badgeText}</div>
-        </div>
-      `).join('');
-    }
-
-    function switchTab(tab) {
-      document.querySelectorAll('.chat-tab').forEach((t, i) => {
-        t.classList.toggle('active', (i === 0 && tab === 'chats') || (i === 1 && tab === 'signals'));
-      });
-      document.querySelectorAll('.chat-section').forEach(s => s.classList.remove('active'));
-      document.getElementById('tab-' + tab).classList.add('active');
-    }
-
-    // sub
-    const totalUnread = MOCK_CHATS.reduce((s, c) => s + (c.unread || 0), 0);
-    document.getElementById('chatSub').textContent = totalUnread
-      ? `${totalUnread} новых сообщения`
-      : 'Нет новых сообщений';
-
-    renderChats();
-    renderSignals();
-  </script>
+  <script src="/js/chat.js"></script>
 </body>
 </html>

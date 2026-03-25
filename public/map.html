@@ -61,6 +61,24 @@
       .sheet-btn:active{opacity:.7}
       .sheet-btn.primary{background:#fff;color:#111}
       .sheet-btn.secondary{background:rgba(255,255,255,.06);color:#fff;border:1px solid rgba(255,255,255,.08)}
+      .ava-marker{border-radius:50%;overflow:hidden;cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 0 rgba(255,43,43,0)}
+      .ava-marker.same-track{border-color:#ff2b2b;box-shadow:0 0 16px rgba(255,43,43,.8)}
+      .ava-marker.same-artist{border-color:#fff;box-shadow:0 0 10px rgba(255,255,255,.6)}
+      .ava-marker.same-vibe{border-color:#666;box-shadow:0 0 6px rgba(130,130,130,.4)}
+      .ava-marker img{width:100%;height:100%;object-fit:cover;}
+      .ava-marker .ava-init{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;background:#1a1a22;}
+      .ava-pulse{border-radius:50%;position:absolute;inset:-4px;animation:mpulse 2s ease-out infinite;pointer-events:none;}
+      .same-track .ava-pulse{background:rgba(255,43,43,.3);}
+      .same-artist .ava-pulse{background:rgba(255,255,255,.2);}
+      .same-vibe .ava-pulse{background:rgba(130,130,130,.15);}
+      .aura-match{margin:14px 0 0;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);}
+      .aura-match-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.4);margin-bottom:6px;}
+      .aura-match-value{font-size:15px;font-weight:700;}
+      .aura-match-value.same-track{color:#ff6b6b;}
+      .aura-match-value.same-artist{color:#fff;}
+      .aura-match-value.same-vibe{color:#888;}
+      .sheet-btn.signal{background:rgba(255,43,43,.15);color:#ff6b6b;border:1px solid rgba(255,43,43,.3);}
+      .sheet-btn.sent{background:rgba(255,255,255,.06);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.08);cursor:default;}
     </style>
   </head>
   <body>
@@ -87,7 +105,7 @@
     <div class="sheet-backdrop" id="sheetBackdrop">
       <div class="profile-sheet">
         <div class="sheet-header">
-          <div class="sheet-ava">👤</div>
+          <div class="sheet-ava" id="sheetAva">👤</div>
           <div class="sheet-info">
             <div class="sheet-name" id="sheetName">—</div>
             <div class="sheet-city" id="sheetCity">—</div>
@@ -101,8 +119,12 @@
             <div class="sheet-track-artist" id="sheetTrackArtist">—</div>
           </div>
         </div>
+        <div class="aura-match" id="sheetAuraMatch">
+          <div class="aura-match-label">Совпадение по ауре</div>
+          <div class="aura-match-value" id="sheetAuraValue">—</div>
+        </div>
         <div class="sheet-actions">
-          <button class="sheet-btn primary">Написать</button>
+          <button class="sheet-btn signal" id="sheetSignalBtn">📡 Отправить сигнал</button>
           <button class="sheet-btn secondary" id="sheetClose">Закрыть</button>
         </div>
       </div>
@@ -126,5 +148,9 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script src="/js/utils.js"></script>
     <script src="/js/map.js"></script>
+    <script>
+      // Загружаем текущего пользователя
+      window.AuraUtils?.fetchMe?.().then(u => { window._auraCurrentUser = u; });
+    </script>
   </body>
 </html>
