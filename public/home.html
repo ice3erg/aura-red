@@ -2,15 +2,105 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Главная — +aura</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Home — +aura</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <link rel="stylesheet" href="/styles.css" />
+  <style>
+    /* ── Mini map card ─────────────────────── */
+    .mini-map-card {
+      position: relative;
+      border-radius: 20px;
+      overflow: hidden;
+      background: #0a0a10;
+      border: 1px solid #1e1e28;
+      cursor: pointer;
+      height: 148px;
+      transition: transform 0.18s, box-shadow 0.18s;
+    }
+    .mini-map-card:active { transform: scale(0.98); }
+    .mini-map-card:hover  { box-shadow: 0 0 0 1px rgba(255,43,43,0.3); }
+
+    #miniMap {
+      width: 100%; height: 100%;
+      filter: saturate(0.5) contrast(1.1) brightness(0.65);
+      pointer-events: none;
+    }
+    .leaflet-control-zoom,
+    .leaflet-control-attribution { display: none !important; }
+
+    .mini-map-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(5,5,5,0.85) 0%, transparent 55%);
+      display: flex;
+      align-items: flex-end;
+      padding: 14px 16px;
+      gap: 10px;
+    }
+    .mini-map-pulse {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #ff2b2b;
+      box-shadow: 0 0 10px #ff2b2b;
+      flex-shrink: 0;
+      animation: tc-pulse 1.8s ease-in-out infinite;
+    }
+    .mini-map-text {
+      flex: 1;
+      min-width: 0;
+    }
+    .mini-map-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.5);
+      line-height: 1;
+    }
+    .mini-map-count {
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+      margin-top: 2px;
+      line-height: 1.2;
+    }
+    .mini-map-open {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #ff2b2b;
+      background: rgba(255,43,43,0.12);
+      border: 1px solid rgba(255,43,43,0.25);
+      border-radius: 10px;
+      padding: 6px 11px;
+      white-space: nowrap;
+    }
+
+    /* ── Radar markers on mini map ─────────── */
+    .mini-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #ff2b2b;
+      box-shadow: 0 0 8px rgba(255,43,43,0.8);
+      cursor: default;
+    }
+    .mini-dot.you {
+      width: 13px; height: 13px;
+      background: #fff;
+      box-shadow: 0 0 12px rgba(255,255,255,0.9);
+    }
+  </style>
 </head>
 <body class="red-mode">
   <main class="app-shell">
+
+    <!-- Identity block -->
     <section class="top-card">
       <div class="top-row">
         <div style="display:flex;align-items:center;gap:14px;">
@@ -18,8 +108,7 @@
             <img id="homeAvatar" src="" alt="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid #2a2a35;display:none;" />
             <div id="homeAvatarPlaceholder" style="width:52px;height:52px;border-radius:50%;background:#1a1a22;border:2px solid #2a2a35;display:flex;align-items:center;justify-content:center;">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7a7a85" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="8" r="4"/>
-                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
               </svg>
             </div>
           </div>
@@ -33,70 +122,123 @@
       </div>
     </section>
 
+    <!-- NOW PLAYING -->
     <section class="card">
       <div id="trackEmptyState">
         <h2 id="spotifyBlockTitle">Spotify не подключён</h2>
-        <p id="spotifyBlockText" class="muted-text">
-          Подключи Spotify, чтобы активировать музыкальный сигнал.
-        </p>
+        <p id="spotifyBlockText" class="muted-text">Подключи Spotify, чтобы активировать музыкальный сигнал.</p>
         <a id="spotifyAction" class="primary-btn text-center" href="/connect-music">Подключить Spotify</a>
       </div>
 
-     <div id="trackCard" class="track-card hidden">
-  <div class="track-card__inner">
-    <div class="track-card__art-wrap">
-      <img id="trackImage" class="track-card__art" src="" alt="Обложка трека" />
-      <div class="track-card__art-glow"></div>
-    </div>
-    <div class="track-card__body">
-      <div class="track-card__status">
-        <span class="track-card__dot"></span>
-        Сейчас играет
-      </div>
-      <div class="track-card__name" id="trackName">Название трека</div>
-      <div class="track-card__artists" id="trackArtists">Исполнитель</div>
- 
-      <div class="player-progress-wrap">
-        <div class="player-progress-track">
-          <input
-            id="trackProgress"
-            class="player-progress"
-            type="range"
-            min="0"
-            max="100"
-            value="0"
-            disabled
-          />
-        </div>
-        <div class="player-times">
-          <span id="trackCurrentTime">0:00</span>
-          <span id="trackDuration">0:00</span>
+      <div id="trackCard" class="track-card hidden">
+        <div class="track-card__inner">
+          <div class="track-card__art-wrap">
+            <img id="trackImage" class="track-card__art" src="" alt="Обложка трека" />
+            <div class="track-card__art-glow"></div>
+          </div>
+          <div class="track-card__body">
+            <div class="track-card__status">
+              <span class="track-card__dot"></span>
+              Сейчас играет
+            </div>
+            <div class="track-card__name" id="trackName">Название трека</div>
+            <div class="track-card__artists" id="trackArtists">Исполнитель</div>
+            <div class="player-progress-wrap">
+              <div class="player-progress-track">
+                <input id="trackProgress" class="player-progress" type="range" min="0" max="100" value="0" disabled />
+              </div>
+              <div class="player-times">
+                <span id="trackCurrentTime">0:00</span>
+                <span id="trackDuration">0:00</span>
+              </div>
+            </div>
+            <a id="trackLink" class="track-card__link" href="#" target="_blank" rel="noopener noreferrer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.435-5.305-1.76-8.786-.963-.335.077-.67-.133-.746-.469-.077-.336.132-.67.469-.746 3.809-.87 7.077-.496 9.713 1.115.293.18.386.563.207.856zm1.223-2.722c-.226.367-.706.482-1.072.257-2.687-1.652-6.785-2.131-9.965-1.166-.413.127-.848-.105-.975-.517-.127-.413.104-.848.517-.975 3.632-1.102 8.147-.568 11.238 1.329.366.226.48.707.257 1.072zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71c-.493.15-1.016-.129-1.165-.623-.148-.495.13-1.016.624-1.165 3.552-1.077 9.457-.869 13.19 1.37.448.267.595.847.328 1.294-.266.448-.846.595-1.293.328z"/></svg>
+              Открыть в Spotify
+            </a>
+          </div>
         </div>
       </div>
- 
-      <a id="trackLink" class="track-card__link" href="#" target="_blank" rel="noopener noreferrer">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.435-5.305-1.76-8.786-.963-.335.077-.67-.133-.746-.469-.077-.336.132-.67.469-.746 3.809-.87 7.077-.496 9.713 1.115.293.18.386.563.207.856zm1.223-2.722c-.226.367-.706.482-1.072.257-2.687-1.652-6.785-2.131-9.965-1.166-.413.127-.848-.105-.975-.517-.127-.413.104-.848.517-.975 3.632-1.102 8.147-.568 11.238 1.329.366.226.48.707.257 1.072zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71c-.493.15-1.016-.129-1.165-.623-.148-.495.13-1.016.624-1.165 3.552-1.077 9.457-.869 13.19 1.37.448.267.595.847.328 1.294-.266.448-.846.595-1.293.328z"/>
-        </svg>
-        Открыть в Spotify
-      </a>
-    </div>
-  </div>
-</div>
 
       <div id="trackNotice" class="notice error hidden"></div>
     </section>
+
+    <!-- MINI RADAR MAP -->
+    <button id="miniMapBtn" class="mini-map-card" aria-label="Открыть радар">
+      <div id="miniMap"></div>
+      <div class="mini-map-overlay">
+        <div class="mini-map-pulse"></div>
+        <div class="mini-map-text">
+          <div class="mini-map-label">Radar</div>
+          <div class="mini-map-count" id="miniMapCount">6 людей рядом</div>
+        </div>
+        <div class="mini-map-open">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          Открыть
+        </div>
+      </div>
+    </button>
+
   </main>
 
+  <nav class="bottom-nav">
+    <a class="nav-link active" href="/home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Home</span>
+    </a>
+    <a class="nav-link" href="/map">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49"/><path d="M7.76 16.24a6 6 0 0 1 0-8.49"/><path d="M20.07 3.93a10 10 0 0 1 0 16.14"/><path d="M3.93 20.07a10 10 0 0 1 0-16.14"/></svg>
+      <span>Radar</span>
+    </a>
+    <a class="nav-link" href="/chat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span>Chat</span>
+    </a>
+    <a class="nav-link" href="/profile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      <span>Profile</span>
+    </a>
+  </nav>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="/js/utils.js"></script>
   <script src="/js/home.js"></script>
+  <script>
+    // Mini map init
+    (function() {
+      const DEFAULT = [59.9343, 30.3351];
+      const map = L.map('miniMap', {
+        zoomControl: false, attributionControl: false,
+        dragging: false, scrollWheelZoom: false,
+        doubleClickZoom: false, touchZoom: false, keyboard: false
+      }).setView(DEFAULT, 13);
 
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 20, subdomains: 'abcd'
+      }).addTo(map);
 
-<nav class="bottom-nav">
-    <a class="nav-link " href="/map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 0 8.49"/><path d="M7.76 16.24a6 6 0 0 1 0-8.49"/><path d="M20.07 3.93a10 10 0 0 1 0 16.14"/><path d="M3.93 20.07a10 10 0 0 1 0-16.14"/></svg><span>Radar</span></a>
-    <a class="nav-link active" href="/home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Home</span></a>
-    <a class="nav-link " href="/chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chat</span></a>
-    <a class="nav-link " href="/profile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Profile</span></a>
-</nav>
+      const makePin = (type) => L.divIcon({
+        className: '', html: `<div class="mini-dot ${type}"></div>`,
+        iconSize: [type === 'you' ? 13 : 10, type === 'you' ? 13 : 10],
+        iconAnchor: [type === 'you' ? 6.5 : 5, type === 'you' ? 6.5 : 5]
+      });
+
+      const MOCKS = [
+        { lat: 59.9386, lng: 30.3141 }, { lat: 59.9278, lng: 30.3476 },
+        { lat: 59.9449, lng: 30.3831 }, { lat: 59.9175, lng: 30.3014 },
+        { lat: 59.9542, lng: 30.3334 }, { lat: 59.9200, lng: 30.3650 },
+      ];
+
+      L.marker(DEFAULT, { icon: makePin('you') }).addTo(map);
+      MOCKS.forEach(p => L.marker([p.lat, p.lng], { icon: makePin('other') }).addTo(map));
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          const { latitude: lat, longitude: lng } = pos.coords;
+          map.setView([lat, lng], 13);
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
