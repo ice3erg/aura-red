@@ -65,8 +65,32 @@
   async function loadTrack(user) {
     const notice = document.getElementById("trackNotice");
     if (notice) { notice.textContent = ""; notice.classList.add("hidden"); }
+
+    // Last.fm — приоритет (доступно всем без ограничений)
+    if (user.lastfmConnected && user.lastfmUsername) {
+      showEmpty("Загрузка трека...", "Получаем трек из Last.fm...", "Переподключить музыку");
+      try {
+        const r = await fetch(`/api/lastfm/current-track?username=${encodeURIComponent(user.lastfmUsername)}`);
+        const d = await r.json();
+        if (!r.ok || !d.ok) {
+          showEmpty("Не удалось получить трек", d.error || "Ошибка Last.fm.", "Подключить музыку");
+          return;
+        }
+        if (!d.track || !d.isPlaying) {
+          showEmpty("Сейчас ничего не играет", "Включи музыку — трек появится здесь.", "Подключить музыку");
+          return;
+        }
+        showTrack(d.track, true);
+      } catch (e) {
+        showEmpty("Ошибка загрузки", "Не удалось связаться с Last.fm.", "Подключить музыку");
+        console.error(e);
+      }
+      return;
+    }
+
+    // Spotify fallback
     if (!user.spotifyConnected) {
-      showEmpty("Spotify не подключён", "Подключи Spotify, чтобы активировать музыкальный сигнал.");
+      showEmpty("Музыка не подключена", "Подключи Last.fm или Spotify, чтобы активировать музыкальный сигнал.", "Подключить музыку");
       return;
     }
     showEmpty("Загрузка трека...", "Получаем текущий трек из Spotify.", "Переподключить Spotify");
@@ -108,6 +132,11 @@
 
     // Мини-карта: тап → /map
     document.getElementById("miniMapBtn")?.addEventListener("click", () => U.go("/map"));
+
+    // Ссылка на подключение музыки из empty state
+    document.getElementById("spotifyAction")?.addEventListener("click", function(e) {
+      if (this.tagName !== "A") { e.preventDefault(); U.go("/connect-music"); }
+    });
 
     loadTrack(user);
   }

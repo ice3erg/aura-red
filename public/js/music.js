@@ -1,35 +1,89 @@
 (function () {
   const U = window.AuraUtils;
 
-  // ── connect-music.html ─────────────────────────────────
+  // ── connect-music.html — Last.fm кнопка ───────────────
+  const lastfmBtn = document.getElementById("lastfmConnectBtn");
+  if (lastfmBtn) {
+    lastfmBtn.addEventListener("click", async () => {
+      const input    = document.getElementById("lastfmUsername");
+      const errorBox = document.getElementById("errorBox");
+      const username = (input?.value || "").trim().toLowerCase();
+
+      if (!username) {
+        if (errorBox) { errorBox.textContent = "Введи Last.fm username."; errorBox.classList.remove("hidden"); }
+        return;
+      }
+
+      if (errorBox) errorBox.classList.add("hidden");
+      lastfmBtn.disabled = true;
+      lastfmBtn.textContent = "Проверяем...";
+
+      try {
+        // Проверяем что такой пользователь существует
+        const check = await fetch(`/api/lastfm/current-track?username=${encodeURIComponent(username)}`);
+        const data  = await check.json();
+
+        if (!check.ok || !data.ok) {
+          if (errorBox) {
+            errorBox.textContent = data.error || "Пользователь Last.fm не найден. Проверь username.";
+            errorBox.classList.remove("hidden");
+          }
+          lastfmBtn.disabled = false;
+          lastfmBtn.textContent = "Подключить Last.fm";
+          return;
+        }
+
+        // Сохраняем username в профиль
+        const updated = await U.updateCurrentUser({
+          lastfmConnected: true,
+          lastfmUsername:  username
+        });
+
+        if (updated) {
+          U.go("/home");
+        } else {
+          if (errorBox) { errorBox.textContent = "Ошибка сохранения. Попробуй ещё раз."; errorBox.classList.remove("hidden"); }
+          lastfmBtn.disabled = false;
+          lastfmBtn.textContent = "Подключить Last.fm";
+        }
+      } catch (e) {
+        if (errorBox) { errorBox.textContent = "Ошибка сети. Попробуй ещё раз."; errorBox.classList.remove("hidden"); }
+        lastfmBtn.disabled = false;
+        lastfmBtn.textContent = "Подключить Last.fm";
+      }
+    });
+  }
+
+  // ── connect-music.html — статус ────────────────────────
   async function applyConnectStatus() {
     const statusNode = document.getElementById("musicStatus");
-    if (!statusNode) return; // не на этой странице
+    if (!statusNode) return;
 
-    const errorBox = document.getElementById("errorBox");
     const user = await U.fetchMe();
     if (!user) { U.go("/login"); return; }
 
-    statusNode.textContent = user.spotifyConnected
-      ? `Spotify подключён: ${user.spotifyName || "аккаунт найден"}`
-      : "Spotify пока не подключён.";
+    if (user.lastfmConnected && user.lastfmUsername) {
+      statusNode.textContent = `Last.fm подключён: ${user.lastfmUsername}`;
+    } else if (user.spotifyConnected) {
+      statusNode.textContent = `Spotify подключён: ${user.spotifyName || "аккаунт найден"}`;
+    } else {
+      statusNode.textContent = "Музыка пока не подключена.";
+    }
 
     const err = new URLSearchParams(location.search).get("error");
+    const errorBox = document.getElementById("errorBox");
     if (err && errorBox) {
       errorBox.classList.remove("hidden");
-      errorBox.textContent = "Ошибка подключения Spotify: " + decodeURIComponent(err);
+      errorBox.textContent = "Ошибка: " + decodeURIComponent(err);
     }
   }
 
-  // ── connect-success.html ───────────────────────────────
+  // ── connect-success.html (Spotify fallback) ────────────
   async function finishConnectPage() {
     const user = await U.fetchMe();
     if (!user) { U.go("/login"); return; }
 
     const params = new URLSearchParams(location.search);
-
-    // Случай когда сессия была, но токены не сохранились на сервере
-    // (пользователь не был залогинен в момент OAuth) — сохраняем через API
     if (params.get("spotifyConnected") === "true" && params.get("accessToken")) {
       await fetch("/api/profile", {
         method:  "PATCH",
@@ -58,8 +112,5 @@
 
   window.AuraMusic = { applyConnectStatus, finishConnectPage };
 
-  // Авто-вызов только на connect-music
-  if (document.getElementById("musicStatus")) {
-    applyConnectStatus();
-  }
+  if (document.getElementById("musicStatus")) applyConnectStatus();
 })();
