@@ -1,29 +1,54 @@
+/**
+ * db.js — in-memory хранилище с persist в файл (если доступно)
+ * На Render filesystem ephemeral — пользователи живут пока процесс жив.
+ * Для production нужна внешняя БД (PostgreSQL/MongoDB).
+ */
+
 const fs   = require("fs");
 const path = require("path");
 
+// Пробуем использовать файл, но не падаем если нельзя
 const DATA_DIR   = path.join(__dirname, "data");
 const USERS_FILE = path.join(DATA_DIR, "users.json");
 
-if (!fs.existsSync(DATA_DIR))   fs.mkdirSync(DATA_DIR);
-if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, "[]", "utf8");
+// In-memory store — главный источник правды
+let _users = [];
+let _fileAvailable = false;
 
-function readUsers() {
-  try { return JSON.parse(fs.readFileSync(USERS_FILE, "utf8")); }
-  catch { return []; }
+function initStorage() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    if (fs.existsSync(USERS_FILE)) {
+      _users = JSON.parse(fs.readFileSync(USERS_FILE, "utf8"));
+    } else {
+      fs.writeFileSync(USERS_FILE, "[]", "utf8");
+    }
+    _fileAvailable = true;
+    console.log(`[db] loaded ${_users.length} users from file`);
+  } catch (e) {
+    console.warn("[db] file storage unavailable, using in-memory only:", e.message);
+    _fileAvailable = false;
+  }
 }
 
-function writeUsers(users) {
-  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf8");
+function persistUsers() {
+  if (!_fileAvailable) return;
+  try {
+    fs.writeFileSync(USERS_FILE, JSON.stringify(_users, null, 2), "utf8");
+  } catch (e) {
+    console.warn("[db] failed to persist:", e.message);
+  }
 }
 
-function findById(id)      { return readUsers().find(u => u.id === id) || null; }
-function findByEmail(email){ return readUsers().find(u => u.email === email.toLowerCase()) || null; }
+initStorage();
 
-function createUser({ email, passwordHash, name="", age="", city="", bio="" }) {
-  const users = readUsers();
-  const user  = {
-    id: "u_" + Date.now(),
-    email: email.toLowerCase(),
+function findById(id)       { return _users.find(u => u.id === id) || null; }
+function findByEmail(email) { return _users.find(u => u.email === email.toLowerCase()) || null; }
+
+function createUser({ email, passwordHash, name = "", age = "", city = "", bio = "" }) {
+  const user = {
+    id:                  "u_" + Date.now(),
+    email:               email.toLowerCase(),
     passwordHash,
     name, age, city, bio,
     avatar:              null,
@@ -32,23 +57,24 @@ function createUser({ email, passwordHash, name="", age="", city="", bio="" }) {
     spotifyId:           "",
     spotifyAccessToken:  "",
     spotifyRefreshToken: "",
-    createdAt: new Date().toISOString()
+    createdAt:           new Date().toISOString()
   };
-  users.push(user);
-  writeUsers(users);
+  _users.push(user);
+  persistUsers();
   return user;
 }
 
 function updateUser(id, patch) {
-  const users = readUsers();
-  const idx   = users.findIndex(u => u.id === id);
+  const idx = _users.findIndex(u => u.id === id);
   if (idx === -1) return null;
+  // Не перезаписываем passwordHash через patch
   const { passwordHash, ...safePatch } = patch;
-  users[idx] = { ...users[idx], ...safePatch };
-  writeUsers(users);
-  return users[idx];
+  _users[idx] = { ..._users[idx], ...safePatch };
+  persistUsers();
+  return _users[idx];
 }
 
+// Публичный профиль — без секретов
 function publicProfile(user) {
   if (!user) return null;
   const { passwordHash, spotifyAccessToken, spotifyRefreshToken, ...pub } = user;
