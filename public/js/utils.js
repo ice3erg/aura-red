@@ -61,10 +61,90 @@
 
   function go(url) { window.location.href = url; }
 
+  // ── Badge (непрочитанные) ──────────────────────────────
+  // Рендерит красную точку/цифру на иконке Chat в навбаре
+  function renderBadge(count) {
+    // Ищем ссылку на /chat в навбаре
+    const chatLink = document.querySelector('.nav-link[href="/chat"]');
+    if (!chatLink) return;
+
+    // Убираем старый бейдж
+    chatLink.querySelector('.nav-badge')?.remove();
+
+    if (count <= 0) return;
+
+    // Позиционируем относительно svg иконки
+    chatLink.style.position = 'relative';
+    const badge = document.createElement('div');
+    badge.className = 'nav-badge';
+    badge.textContent = count > 9 ? '9+' : String(count);
+    badge.style.cssText = `
+      position:absolute;
+      top:4px; right:calc(50% - 14px);
+      min-width:16px; height:16px;
+      padding:0 4px;
+      border-radius:99px;
+      background:#ff2b2b;
+      color:#fff;
+      font-size:10px;
+      font-weight:800;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border:2px solid var(--bg,#060608);
+      pointer-events:none;
+      line-height:1;
+      box-shadow:0 0 8px rgba(255,43,43,0.6);
+      animation:badgePop 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
+    `;
+    chatLink.appendChild(badge);
+
+    // Добавляем анимацию если ещё нет
+    if (!document.getElementById('badge-style')) {
+      const st = document.createElement('style');
+      st.id = 'badge-style';
+      st.textContent = `@keyframes badgePop{from{transform:scale(0)}to{transform:scale(1)}}`;
+      document.head.appendChild(st);
+    }
+  }
+
+  async function pollUnread() {
+    try {
+      const r = await fetch('/api/unread');
+      if (!r.ok) return;
+      const d = await r.json();
+      if (d.ok) renderBadge(d.total);
+    } catch (_) {}
+  }
+
+  // Запускаем поллинг бейджа на всех страницах кроме логина/регистрации
+  function initBadge() {
+    const path = window.location.pathname;
+    if (path === '/login' || path === '/signup') return;
+    // Первый запрос через 1 сек после загрузки
+    setTimeout(pollUnread, 1000);
+    // Затем каждые 15 сек
+    setInterval(pollUnread, 15000);
+  }
+
+  // Запускаем после загрузки DOM
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initBadge);
+  } else {
+    initBadge();
+  }
+
+  // ── Keep-alive клиентский пинг ─────────────────────────
+  // Дополнительно пингуем с клиента раз в 8 минут
+  setInterval(() => {
+    fetch('/ping').catch(() => {});
+  }, 8 * 60 * 1000);
+
   window.AuraUtils = {
     fetchMe, getCurrentUser, requireAuth,
     updateCurrentUser, clearSession,
     getSignals, getChats, avatarMarkup,
-    showNotice, hideNotice, go
+    showNotice, hideNotice, go,
+    pollUnread, renderBadge,
   };
 })();
