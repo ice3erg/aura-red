@@ -214,6 +214,15 @@ function getMyNowPlaying(userId) {
   return _nowPlaying.get(userId) || null;
 }
 
+async function getAllNowPlaying() {
+  const results = [];
+  for (const [userId, data] of _nowPlaying) {
+    const user = await findById(userId).catch(() => null);
+    results.push({ userId, name: user?.name || "?", ...data });
+  }
+  return results;
+}
+
 function haversineKm(lat1, lng1, lat2, lng2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -311,7 +320,7 @@ function sendMessage(chatId, fromId, text) {
 
 module.exports = {
   findById, findByEmail, createUser, updateUser, publicProfile,
-  setNowPlaying, getMyNowPlaying, getNearbyUsers,
+  setNowPlaying, getMyNowPlaying, getAllNowPlaying, getNearbyUsers,
   createSignal, getSignalsForUser, getSentSignalsForUser, getSignalById, acceptSignal, ignoreSignal,
   createOrGetChat, getChatsForUser, getChatById, sendMessage
 };

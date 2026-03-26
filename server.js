@@ -116,6 +116,18 @@ app.get("/debug/me", requireAuth, (req, res) => {
   });
 });
 
+// Показывает всех кто сейчас на радаре (для отладки)
+app.get("/debug/radar", requireAuth, (req, res) => {
+  const all = db.getAllNowPlaying();
+  res.json({ ok: true, count: all.length, users: all.map(u => ({
+    userId: u.userId, name: u.name,
+    track: u.track, artist: u.artist,
+    lat: u.lat, lng: u.lng,
+    hasGeo: !!(u.lat && u.lng),
+    ageSeconds: Math.round((Date.now() - u.updatedAt) / 1000),
+  }))});
+});
+
 // ── Spotify helpers ────────────────────────────────────────
 const spotifyB64 = () => "Basic " + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64");
 
