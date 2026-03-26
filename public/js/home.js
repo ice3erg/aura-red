@@ -324,32 +324,36 @@
     }
 
     // Кнопка профиля
+    // Профиль — только после принятого сигнала
+    const uid = u.id || u.userId;
+    const canSeeProfile = uid && _acceptedSignalTo.has(String(uid));
     const profileBtn = document.getElementById('sheetProfileBtn');
     if (profileBtn) {
-      profileBtn.onclick = () => {
-        if (u.name) window.location.href = `/u/${encodeURIComponent(u.name)}`;
-      };
+      if (canSeeProfile) {
+        profileBtn.style.display = '';
+        profileBtn.onclick = () => window.location.href = `/u/${encodeURIComponent(uid || u.name)}`;
+      } else {
+        profileBtn.style.display = 'none';
+      }
     }
 
-    // Загружаем полный профиль для фото
+    // Фото грузим всегда (без перехода на профиль)
     const photosEl = document.getElementById('sheetPhotos');
     if (photosEl) {
       photosEl.style.display = 'none';
       photosEl.innerHTML = '';
-      const uid = u.id || u.userId;
       if (uid && !u.isDemo) {
-        fetch(`/api/user/${encodeURIComponent(u.name || uid)}`)
+        fetch(`/api/user/${encodeURIComponent(uid)}`)
           .then(r => r.json())
           .then(d => {
             if (!d.ok) return;
             const photos = d.user?.photos || [];
             if (!photos.length) return;
-            photosEl.style.display = 'grid';
             photosEl.style.cssText = `display:grid;grid-template-columns:repeat(${Math.min(photos.length,3)},1fr);gap:4px;border-radius:12px;overflow:hidden;margin-bottom:12px;`;
+            // Тап на фото — только если принят сигнал
             photosEl.innerHTML = photos.slice(0,3).map(src =>
-              `<img src="${src}" style="width:100%;aspect-ratio:1;object-fit:cover;" />`
+              `<img src="${src}" style="width:100%;aspect-ratio:1;object-fit:cover;${canSeeProfile?'cursor:pointer;':''}" ${canSeeProfile ? `onclick="window.location.href='/u/${encodeURIComponent(uid)}'"` : ''} />`
             ).join('');
-            // Обновляем bio если есть
             if (d.user?.bio) {
               let bioEl = document.getElementById('sheetBio');
               if (!bioEl) {
