@@ -412,9 +412,8 @@ async function ignoreSignal(id) {
 // ── Chats ─────────────────────────────────────────
 async function createOrGetChat(userIdA, userIdB) {
   if (USE_PG) {
-    // Ищем существующий
     const existing = await pgPool.query(
-      `SELECT id FROM chats WHERE user_ids @> ARRAY[$1,$2]::TEXT[] AND cardinality(user_ids)=2`,
+      `SELECT id FROM chats WHERE $1=ANY(user_ids) AND $2=ANY(user_ids)`,
       [userIdA, userIdB]
     );
     if (existing.rows[0]) return existing.rows[0].id;
@@ -433,17 +432,16 @@ async function createOrGetChat(userIdA, userIdB) {
 async function getChatsForUser(userId) {
   if (USE_PG) {
     const r = await pgPool.query(
-      `SELECT c.*, array_agg(m.id ORDER BY m.created_at) as msg_ids FROM chats c
-       LEFT JOIN messages m ON m.chat_id=c.id
-       WHERE $1=ANY(c.user_ids) GROUP BY c.id ORDER BY MAX(m.created_at) DESC NULLS LAST`,
+      `SELECT * FROM chats WHERE $1=ANY(user_ids) ORDER BY created_at DESC`,
       [userId]
     );
-    // Загружаем сообщения отдельно для каждого чата
     return Promise.all(r.rows.map(async row => {
-      const msgs = await pgPool.query(`SELECT * FROM messages WHERE chat_id=$1 ORDER BY created_at ASC`, [row.id]);
+      const msgs = await pgPool.query(
+        `SELECT * FROM messages WHERE chat_id=$1 ORDER BY created_at ASC`, [row.id]
+      );
       return {
         id: row.id,
-        userIds: row.user_ids,
+        userIds: row.user_ids || [],
         createdAt: Number(row.created_at),
         messages: msgs.rows.map(m => ({ id:m.id, fromId:m.from_id, text:m.text, createdAt:Number(m.created_at) }))
       };

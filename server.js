@@ -431,30 +431,41 @@ app.get("/api/unread", requireAuth, async (req, res) => {
 });
 
 app.get("/api/chats", requireAuth, async (req, res) => {
-  const rawChats = await db.getChatsForUser(req.user.id);
-  const chats = await Promise.all(rawChats.map(async chat => {
-    const otherId = chat.userIds.find(id => id !== req.user.id);
-    const other   = otherId ? await db.findById(otherId) : null;
-    const lastMsg = chat.messages[chat.messages.length - 1];
-    const unread  = chat.messages.filter(m => m.fromId !== req.user.id && m.fromId !== "system").length;
-    return { id:chat.id, other:other ? db.publicProfile(other) : null,
-      lastMsg:lastMsg ? { text:lastMsg.text, fromId:lastMsg.fromId, createdAt:lastMsg.createdAt } : null,
-      unread, createdAt:chat.createdAt };
-  }));
-  res.json({ ok:true, chats });
+  try {
+    const rawChats = await db.getChatsForUser(req.user.id);
+    const chats = await Promise.all(rawChats.map(async chat => {
+      const otherId = (chat.userIds || []).find(id => id !== req.user.id);
+      const other   = otherId ? await db.findById(otherId) : null;
+      const msgs    = chat.messages || [];
+      const lastMsg = msgs[msgs.length - 1];
+      const unread  = msgs.filter(m => m.fromId !== req.user.id && m.fromId !== "system").length;
+      return { id:chat.id, other:other ? db.publicProfile(other) : null,
+        lastMsg:lastMsg ? { text:lastMsg.text, fromId:lastMsg.fromId, createdAt:lastMsg.createdAt } : null,
+        unread, createdAt:chat.createdAt };
+    }));
+    res.json({ ok:true, chats });
+  } catch(e) {
+    console.error("[chats]", e.message);
+    res.json({ ok:true, chats:[] });
+  }
 });
 
 app.get("/api/chats/:id/messages", requireAuth, async (req, res) => {
-  const chat = await db.getChatById(req.params.id);
-  if (!chat) return res.status(404).json({ ok:false, error:"Чат не найден" });
-  if (!chat.userIds.includes(req.user.id)) return res.status(403).json({ ok:false, error:"Нет доступа" });
-  res.json({ ok:true, messages:chat.messages });
+  try {
+    const chat = await db.getChatById(req.params.id);
+    if (!chat) return res.status(404).json({ ok:false, error:"Чат не найден" });
+    if (!(chat.userIds || []).includes(req.user.id)) return res.status(403).json({ ok:false, error:"Нет доступа" });
+    res.json({ ok:true, messages: chat.messages || [] });
+  } catch(e) {
+    console.error("[messages]", e.message);
+    res.status(500).json({ ok:false, error:"Ошибка загрузки сообщений" });
+  }
 });
 
 app.post("/api/chats/:id/messages", requireAuth, async (req, res) => {
   const chat = await db.getChatById(req.params.id);
   if (!chat) return res.status(404).json({ ok:false, error:"Чат не найден" });
-  if (!chat.userIds.includes(req.user.id)) return res.status(403).json({ ok:false, error:"Нет доступа" });
+  if (!(chat.userIds || []).includes(req.user.id)) return res.status(403).json({ ok:false, error:"Нет доступа" });
   const { text } = req.body;
   if (!text?.trim()) return res.status(400).json({ ok:false, error:"Пустое сообщение" });
   const msg = await db.sendMessage(req.params.id, req.user.id, text.trim());
