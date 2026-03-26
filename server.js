@@ -117,8 +117,8 @@ app.get("/debug/me", requireAuth, (req, res) => {
 });
 
 // Показывает всех кто сейчас на радаре (для отладки)
-app.get("/debug/radar", requireAuth, (req, res) => {
-  const all = db.getAllNowPlaying();
+app.get("/debug/radar", requireAuth, async (req, res) => {
+  const all = await db.getAllNowPlaying();
   res.json({ ok: true, count: all.length, users: all.map(u => ({
     userId: u.userId, name: u.name,
     track: u.track, artist: u.artist,
