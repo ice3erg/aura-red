@@ -251,7 +251,20 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 async function getNearbyUsers(lat, lng, radiusKm, excludeUserId) {
   const results = [];
   for (const [userId, data] of _nowPlaying) {
-    if (userId === excludeUserId || !data.lat || !data.lng) continue;
+    if (userId === excludeUserId) continue;
+    // Если нет геолокации но есть трек — показываем как "рядом" (расстояние неизвестно)
+    if (!data.lat || !data.lng) {
+      const user = await findById(userId);
+      if (!user) continue;
+      results.push({
+        userId, name: user.name||"Аноним", avatar: user.avatar||null,
+        city: user.city||"", track: data.track||"", artist: data.artist||"",
+        album: data.album||"", image: data.image||"", url: data.url||"",
+        source: data.source||"", lat: lat, lng: lng, // показываем рядом с текущим пользователем
+        distKm: null, noGeo: true, updatedAt: data.updatedAt
+      });
+      continue;
+    }
     const dist = haversineKm(lat, lng, data.lat, data.lng);
     if (dist <= radiusKm) {
       const user = await findById(userId);
@@ -265,7 +278,12 @@ async function getNearbyUsers(lat, lng, radiusKm, excludeUserId) {
       });
     }
   }
-  return results.sort((a,b) => a.distKm - b.distKm);
+  // Сначала с геолокацией (по дистанции), потом без
+  return results.sort((a,b) => {
+    if (a.distKm === null) return 1;
+    if (b.distKm === null) return -1;
+    return a.distKm - b.distKm;
+  });
 }
 
 // ═══════════════════════════════════════════════════
