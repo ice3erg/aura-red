@@ -78,7 +78,7 @@ app.get("/api/auth/me", requireAuth, (req, res) => res.json({ ok:true, user:db.p
 
 // ── Profile API ────────────────────────────────────────────
 app.patch("/api/profile", requireAuth, async (req, res) => {
-  const { name, age, city, bio, avatar, spotifyConnected, spotifyName, spotifyId,
+  const { name, age, city, bio, avatar, cover, spotifyConnected, spotifyName, spotifyId,
     spotifyAccessToken, spotifyRefreshToken, lastfmUsername, lastfmConnected } = req.body;
   const u = req.user;
   const updated = await db.updateUser(u.id, {
@@ -87,6 +87,7 @@ app.patch("/api/profile", requireAuth, async (req, res) => {
     city:   city   !== undefined ? String(city).trim().slice(0,60)  : u.city,
     bio:    bio    !== undefined ? String(bio).trim().slice(0,300)  : u.bio,
     avatar: avatar !== undefined ? avatar                            : u.avatar,
+    cover:  cover  !== undefined ? cover                             : u.cover,
     ...(spotifyConnected    !== undefined && { spotifyConnected }),
     ...(spotifyName         !== undefined && { spotifyName }),
     ...(spotifyId           !== undefined && { spotifyId }),

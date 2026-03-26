@@ -31,6 +31,7 @@ if (USE_PG) {
       city TEXT DEFAULT '',
       bio TEXT DEFAULT '',
       avatar TEXT,
+      cover TEXT,
       spotify_connected BOOLEAN DEFAULT false,
       spotify_name TEXT DEFAULT '',
       spotify_id TEXT DEFAULT '',
@@ -41,7 +42,10 @@ if (USE_PG) {
       current_track JSONB,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
-  `).then(() => console.log("[db] PostgreSQL ready"))
+  `).then(() => {
+    // Добавляем cover для существующих БД (безопасно — IF NOT EXISTS)
+    return pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS cover TEXT`);
+  }).then(() => console.log("[db] PostgreSQL ready"))
     .catch(e => console.error("[db] PG init error:", e.message));
 }
 
@@ -57,6 +61,7 @@ function rowToUser(row) {
     city:                row.city || "",
     bio:                 row.bio  || "",
     avatar:              row.avatar || null,
+    cover:               row.cover  || null,
     spotifyConnected:    row.spotify_connected || false,
     spotifyName:         row.spotify_name || "",
     spotifyId:           row.spotify_id || "",
@@ -94,7 +99,7 @@ async function pgUpdateUser(id, patch) {
   let i = 1;
 
   const map = {
-    name: "name", age: "age", city: "city", bio: "bio", avatar: "avatar",
+    name: "name", age: "age", city: "city", bio: "bio", avatar: "avatar", cover: "cover",
     spotifyConnected: "spotify_connected", spotifyName: "spotify_name",
     spotifyId: "spotify_id", spotifyAccessToken: "spotify_access_token",
     spotifyRefreshToken: "spotify_refresh_token",
