@@ -219,16 +219,19 @@
         const lastTxt = last
           ? (isSys ? last.text : isMine ? `Вы: ${last.text}` : last.text)
           : 'Нет сообщений';
+        // Непрочитанные = сообщения после последнего открытия чата
+        const lastRead = getLastRead(chat.id);
+        const hasUnread = last && !isMine && !isSys && last.createdAt > lastRead;
         return `${idx > 0 ? '<div class="divider"></div>' : ''}
         <div class="chat-row" data-chat-id="${chat.id}">
           <div class="chat-row-ava">${ava(other, 50)}</div>
           <div class="chat-row-body">
             <div class="chat-row-name">${other?.name||'Аноним'}</div>
-            <div class="chat-row-last ${chat.unread&&!isMine?'unread':''}">${lastTxt}</div>
+            <div class="chat-row-last ${hasUnread?'unread':''}">${lastTxt}</div>
           </div>
           <div class="chat-row-meta">
             <div class="chat-row-time">${last ? timeAgo(last.createdAt) : ''}</div>
-            ${chat.unread&&!isMine ? '<div class="unread-dot"></div>' : ''}
+            ${hasUnread ? '<div class="unread-dot"></div>' : ''}
           </div>
         </div>`;
       }).join('');
@@ -242,8 +245,17 @@
   }
 
   // ── Chat dialog ────────────────────────────────────────
+  // Храним время последнего прочтения каждого чата
+  function markRead(chatId) {
+    try { localStorage.setItem('read_' + chatId, Date.now()); } catch(_) {}
+  }
+  function getLastRead(chatId) {
+    try { return parseInt(localStorage.getItem('read_' + chatId) || '0'); } catch(_) { return 0; }
+  }
+
   async function openChat(chatId) {
     _activeChatId = chatId;
+    markRead(chatId); // помечаем как прочитанное
     const dialog = document.getElementById('chatDialog');
     const msgs   = document.getElementById('dlgMessages');
     if (!dialog) return;
@@ -252,32 +264,43 @@
 
     try {
       const [chatsR, msgsR] = await Promise.all([
-        fetch('/api/chats').then(r=>r.json()),
-        fetch(`/api/chats/${chatId}/messages`).then(r=>r.json())
+        fetch('/api/chats').then(r => {
+          if (r.status === 401) { window.location.href = '/login'; throw new Error('auth'); }
+          return r.json();
+        }),
+        fetch(`/api/chats/${chatId}/messages`).then(r => {
+          if (r.status === 401) { window.location.href = '/login'; throw new Error('auth'); }
+          return r.json();
+        })
       ]);
+
       const chat  = chatsR.chats?.find(c=>c.id===chatId);
       const other = chat?.other;
 
-      // Заполняем хедер
       const dlgName = document.getElementById('dlgName');
       const dlgAva  = document.getElementById('dlgAva');
       if (dlgName) dlgName.textContent = other?.name || 'Аноним';
       if (dlgAva)  dlgAva.innerHTML    = ava(other, 36);
 
-      // Тап на хедер → профиль собеседника
       const dlgHeader = document.querySelector('.dlg-header');
       if (dlgHeader && other?.name) {
         dlgHeader.style.cursor = 'pointer';
         dlgHeader.onclick = () => window.location.href = `/u/${encodeURIComponent(other.name)}`;
       }
 
-      // Стрелка в хедере
       const dlgArrow = document.getElementById('dlgArrow');
       if (dlgArrow) dlgArrow.style.display = other?.name ? '' : 'none';
 
+      if (!msgsR.ok) {
+        msgs.innerHTML = `<div style="text-align:center;padding:32px;color:rgba(255,255,255,.3);">${msgsR.error || 'Не удалось загрузить сообщения'}</div>`;
+        return;
+      }
+
       renderMessages(msgsR.messages||[]);
-    } catch {
-      msgs.innerHTML = '<div style="text-align:center;padding:32px;color:rgba(255,255,255,.3);">Ошибка загрузки.</div>';
+    } catch(e) {
+      if (e.message === 'auth') return;
+      msgs.innerHTML = '<div style="text-align:center;padding:32px;color:rgba(255,255,255,.3);">Ошибка загрузки.<br><span style="font-size:11px;cursor:pointer;text-decoration:underline;" onclick="openChat(\''+chatId+'\')">Попробовать снова</span></div>';
+    }
     }
   }
 
@@ -319,6 +342,7 @@
     input.style.height = 'auto';
     _isTyping = false;
     hideTyping();
+    markRead(_activeChatId);
     try {
       const r = await fetch(`/api/chats/${_activeChatId}/messages`, {
         method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text})
@@ -374,7 +398,10 @@
       try {
         await Promise.all([loadSignals(), loadSentSignals(), loadNotifications()]);
         if (_activeChatId) {
-          const r = await fetch(`/api/chats/${_activeChatId}/messages`).then(r=>r.json());
+          const r = await fetch(`/api/chats/${_activeChatId}/messages`).then(r => {
+          if (r.status === 401) { window.location.href = '/login'; throw new Error('auth'); }
+          return r.json();
+        });
           if (r.ok) {
             const msgs = r.messages||[];
             const lastMsg = msgs[msgs.length-1];
