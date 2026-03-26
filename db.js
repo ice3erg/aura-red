@@ -162,6 +162,14 @@ async function findById(id) {
   return _users.find(u => u.id === id) || null;
 }
 
+async function getAllUsers() {
+  if (USE_PG) {
+    const r = await pgPool.query("SELECT * FROM users ORDER BY created_at DESC");
+    return r.rows.map(rowToUser);
+  }
+  return [..._users];
+}
+
 async function findByEmail(email) {
   if (USE_PG) return pgFindByEmail(email);
   return _users.find(u => u.email === email.toLowerCase()) || null;
@@ -458,7 +466,7 @@ async function sendMessage(chatId, fromId, text) {
 }
 
 module.exports = {
-  findById, findByEmail, createUser, updateUser, publicProfile,
+  findById, findByEmail, getAllUsers, createUser, updateUser, publicProfile,
   setNowPlaying, getMyNowPlaying, getAllNowPlaying, getNearbyUsers,
   createSignal, getSignalsForUser, getSentSignalsForUser, getSignalById, acceptSignal, ignoreSignal, markSignalsSeenByFrom,
   createOrGetChat, getChatsForUser, getChatById, sendMessage

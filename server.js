@@ -35,6 +35,22 @@ const pages = {
 };
 Object.entries(pages).forEach(([r,f]) => app.get(r, (_,res) => res.sendFile(path.join(publicDir,f))));
 
+// Публичный профиль /u/:name → user-profile.html
+app.get("/u/:name", (req, res) => res.sendFile(path.join(publicDir, "user-profile.html")));
+
+// API: получить публичный профиль по имени или id
+app.get("/api/user/:nameOrId", async (req, res) => {
+  const param = req.params.nameOrId;
+  let user = await db.findById(param).catch(() => null);
+  if (!user) {
+    // Ищем по имени (case-insensitive)
+    const all = await db.getAllUsers?.() || [];
+    user = all.find(u => u.name?.toLowerCase() === param.toLowerCase());
+  }
+  if (!user) return res.status(404).json({ ok: false, error: "Пользователь не найден" });
+  res.json({ ok: true, user: db.publicProfile(user) });
+});
+
 // ── Auth middleware ────────────────────────────────────────
 async function requireAuth(req, res, next) {
   if (!req.session?.userId) return res.status(401).json({ ok:false, error:"Не авторизован" });
