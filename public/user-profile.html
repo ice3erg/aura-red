@@ -17,12 +17,22 @@
 
     .page{position:relative;z-index:1;max-width:480px;margin:0 auto}
 
-    /* Cover */
+    /* Cover / Collage */
     .cover{position:relative;height:220px;background:#0d0d12;overflow:hidden}
     .cover-img{width:100%;height:100%;object-fit:cover;display:none}
     .cover-img.visible{display:block}
     .cover-ph{width:100%;height:100%;background:linear-gradient(135deg,#0d0d16 0%,#1a1a2e 100%)}
     .cover-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(6,6,8,1) 0%,rgba(6,6,8,0.3) 60%,transparent 100%)}
+    /* Photo collage */
+    .collage-grid{width:100%;height:100%;display:grid;gap:2px;position:absolute;inset:0}
+    .collage-grid.n1{grid-template-columns:1fr}
+    .collage-grid.n2{grid-template-columns:1fr 1fr}
+    .collage-grid.n3{grid-template-columns:2fr 1fr;grid-template-rows:1fr 1fr}
+    .collage-grid.n4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+    .collage-grid.n5,.collage-grid.n6{grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr}
+    .collage-cell{overflow:hidden;background:#1a1a22}
+    .collage-cell.span2{grid-row:span 2}
+    .collage-cell img{width:100%;height:100%;object-fit:cover;display:block}
 
     /* Back button */
     .back-btn{position:absolute;top:calc(env(safe-area-inset-top)+12px);left:14px;z-index:10;width:36px;height:36px;border-radius:50%;background:rgba(6,6,8,0.7);border:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none}
@@ -134,11 +144,7 @@
       <div id="trackList"></div>
     </div>
 
-    <!-- Photos -->
-    <div class="section" id="photosSection" style="display:none">
-      <div class="section-title">Фото</div>
-      <div class="photos-grid" id="photosGrid"></div>
-    </div>
+    <!-- Photos показываются как коллаж сверху -->
   </div>
 
   <script src="/js/utils.js"></script>
@@ -195,8 +201,25 @@
       // Заполняем
       document.title = `${profileUser.name} — +aura`;
 
-      // Cover
-      if (profileUser.cover) {
+      // Cover / Photo collage
+      const photos = Array.isArray(profileUser.photos) ? profileUser.photos : [];
+      const coverBlock = document.getElementById('coverBlock');
+      if (photos.length > 0) {
+        // Строим коллаж из фото
+        document.getElementById('coverPh').style.display = 'none';
+        const n = Math.min(photos.length, 6);
+        const grid = document.createElement('div');
+        grid.className = `collage-grid n${n}`;
+        photos.slice(0, n).forEach((src, i) => {
+          const cell = document.createElement('div');
+          cell.className = 'collage-cell' + (n === 3 && i === 0 ? ' span2' : '');
+          const img = document.createElement('img');
+          img.src = src; img.alt = '';
+          cell.appendChild(img);
+          grid.appendChild(cell);
+        });
+        coverBlock.insertBefore(grid, coverBlock.firstChild);
+      } else if (profileUser.cover) {
         const ci = document.getElementById('coverImg');
         ci.src = profileUser.cover; ci.classList.add('visible');
         document.getElementById('coverPh').style.display = 'none';
@@ -260,6 +283,19 @@
           }
         } catch {}
 
+        // Проверяем не в чате ли уже
+        try {
+          const chatsR = await fetch('/api/chats').then(r=>r.json());
+          if (chatsR.ok) {
+            const hasChat = (chatsR.chats||[]).some(ch => ch.other?.id === profileUser.id);
+            if (hasChat) {
+              btn.textContent = '💬 Уже общаемся';
+              btn.className = 'signal-btn sent';
+              btn.disabled = true;
+            }
+          }
+        } catch {}
+
         btn.addEventListener('click', async () => {
           if (btn.disabled) return;
           btn.disabled = true; btn.textContent = 'Отправляем...';
@@ -307,16 +343,7 @@
         `).join('');
       }
 
-      // Photos
-      const photos = Array.isArray(profileUser.photos) ? profileUser.photos : [];
-      if (photos.length) {
-        const sec = document.getElementById('photosSection');
-        const grid = document.getElementById('photosGrid');
-        sec.style.display = '';
-        grid.innerHTML = photos.map(src =>
-          `<img src="${src}" alt="" loading="lazy" />`
-        ).join('');
-      }
+
 
       // Если это мой профиль — кнопка редактировать
       if (isMe) {
