@@ -352,6 +352,34 @@ app.post("/api/signals/:id/ignore", requireAuth, (req, res) => {
 });
 
 // ── Chats ──────────────────────────────────────────────────
+// ── Unread badge counts ────────────────────────────────────
+app.get("/api/unread", requireAuth, async (req, res) => {
+  const rawChats   = db.getChatsForUser(req.user.id);
+  const rawSignals = db.getSignalsForUser(req.user.id).filter(s => s.status === "pending");
+
+  // Считаем непрочитанные сообщения по всем чатам
+  // "непрочитанные" = сообщения не от меня после моего последнего сообщения
+  let unreadMessages = 0;
+  for (const chat of rawChats) {
+    const msgs = chat.messages || [];
+    // Находим индекс последнего моего сообщения
+    let lastMyIdx = -1;
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].fromId === req.user.id) { lastMyIdx = i; break; }
+    }
+    // Считаем чужие сообщения после него
+    const newMsgs = msgs.slice(lastMyIdx + 1).filter(
+      m => m.fromId !== req.user.id && m.fromId !== "system"
+    );
+    if (newMsgs.length > 0) unreadMessages++;
+  }
+
+  const pendingSignals = rawSignals.length;
+  const total = unreadMessages + pendingSignals;
+
+  res.json({ ok: true, total, unreadMessages, pendingSignals });
+});
+
 app.get("/api/chats", requireAuth, async (req, res) => {
   const rawChats = db.getChatsForUser(req.user.id);
   const chats = await Promise.all(rawChats.map(async chat => {
@@ -382,6 +410,22 @@ app.post("/api/chats/:id/messages", requireAuth, (req, res) => {
   const msg = db.sendMessage(req.params.id, req.user.id, text.trim());
   res.json({ ok:true, message:msg });
 });
+
+// ── Ping (keep-alive) ──────────────────────────────────────
+app.get("/ping", (req, res) => res.json({ ok: true, ts: Date.now() }));
+
+// Само-пинг каждые 10 минут чтобы Render не засыпал
+if (process.env.RENDER_EXTERNAL_URL) {
+  const selfUrl = process.env.RENDER_EXTERNAL_URL + "/ping";
+  setInterval(async () => {
+    try {
+      await axios.get(selfUrl, { timeout: 10000 });
+      console.log("[keep-alive] ping ok");
+    } catch (e) {
+      console.warn("[keep-alive] ping failed:", e.message);
+    }
+  }, 10 * 60 * 1000); // каждые 10 минут
+}
 
 // ── 404 ───────────────────────────────────────────────────
 app.use((_,res) => res.status(404).sendFile(path.join(publicDir,"index.html")));
