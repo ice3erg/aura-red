@@ -56,8 +56,11 @@
   // ── Other markers ────────────────────────────────────────
   function makeIcon(u, sent) {
     const mt = u.matchType || 'same-vibe';
-    const size = mt === 'same-track' ? 44 : 38;
+
+    // Размер зависит от матча — track самый большой
+    const size = mt === 'same-track' ? 46 : mt === 'same-artist' ? 40 : 34;
     const fs = Math.round(size * 0.38);
+
     const inner = u.avatar
       ? `<img src="${u.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
       : `<div class="ava-init" style="font-size:${fs}px;">${(u.name || '?')[0].toUpperCase()}</div>`;
@@ -66,14 +69,17 @@
       ? `<div style="position:absolute;top:-3px;right:-3px;width:15px;height:15px;border-radius:50%;background:#22c55e;border:2px solid #050505;display:flex;align-items:center;justify-content:center;font-size:8px;z-index:2;">✓</div>`
       : '';
 
-    // Пузырёк с треком для same-track
+    // Пузырёк с треком только для same-track
     const bubble = mt === 'same-track' && u.track
       ? `<div class="track-bubble">${u.track}</div>`
       : '';
 
+    // Демо-маркер полупрозрачный
+    const opacity = u.isDemo ? '0.45' : '1';
+
     return L.divIcon({
       className: '',
-      html: `<div class="ava-marker ${mt}" style="width:${size}px;height:${size}px;position:relative;">
+      html: `<div class="ava-marker ${mt}" style="width:${size}px;height:${size}px;position:relative;opacity:${opacity};">
                <div class="ava-pulse"></div>
                ${inner}
                ${sentBadge}
@@ -88,10 +94,8 @@
     _radarMarkers.forEach(m => map.removeLayer(m));
     _radarMarkers = [];
 
-    const relevant = users.filter(u => {
-      const mt = u.matchType || 'same-vibe';
-      return mt === 'same-track' || mt === 'same-artist';
-    });
+    // Показываем ВСЕХ — track/artist/vibe, с разными размерами
+    const relevant = users; // все пользователи
 
     relevant.forEach(u => {
       const sent = _sentSignalTo.has(String(u.id || u.userId));
@@ -100,13 +104,18 @@
       _radarMarkers.push(m);
     });
 
-    // Счётчик людей
+    // Счётчик — только track+artist как "на волне"
+    const onWave = relevant.filter(u => u.matchType === 'same-track' || u.matchType === 'same-artist');
     const chip = document.getElementById('peopleChip');
     const countEl = document.getElementById('peopleCount');
     if (relevant.length > 0) {
       chip.style.display = 'flex';
-      const n = relevant.length;
-      countEl.textContent = `${n} ${n === 1 ? 'человек' : n < 5 ? 'человека' : 'людей'} на волне`;
+      if (onWave.length > 0) {
+        const n = onWave.length;
+        countEl.textContent = `${n} ${n === 1 ? 'человек' : n < 5 ? 'человека' : 'людей'} на волне`;
+      } else {
+        countEl.textContent = `${relevant.length} слушают рядом`;
+      }
     } else {
       chip.style.display = 'none';
     }
@@ -138,15 +147,32 @@
     }
   }
 
+  // Фейковые пользователи для демо (когда никого нет рядом)
+  function getMocks(lat, lng) {
+    const spread = 0.018;
+    return [
+      { userId:'demo1', name:'Саша',  avatar:null, track:'Blindspot', artist:'Travis Scott', matchType:'same-artist', lat:lat+spread*0.7, lng:lng+spread*1.1 },
+      { userId:'demo2', name:'Миша',  avatar:null, track:'Telekinesis', artist:'Travis Scott', matchType:'same-track',  lat:lat-spread*0.5, lng:lng+spread*0.8 },
+      { userId:'demo3', name:'Лена',  avatar:null, track:'Neon Guts', artist:'Lil Uzi Vert', matchType:'same-vibe',   lat:lat+spread*0.3, lng:lng-spread*1.2 },
+      { userId:'demo4', name:'Дима',  avatar:null, track:'Money Trees', artist:'Kendrick Lamar', matchType:'same-vibe', lat:lat-spread*1.1, lng:lng-spread*0.4 },
+      { userId:'demo5', name:'Аня',   avatar:null, track:'Stargazing', artist:'Travis Scott', matchType:'same-artist', lat:lat+spread*1.3, lng:lng+spread*0.2 },
+    ];
+  }
+
+  let _usingMocks = false;
+
   async function loadRadar(lat, lng) {
     try {
       const r = await fetch(`/api/radar/nearby?lat=${lat}&lng=${lng}&radius=50`);
       const d = await r.json();
       if (r.ok && d.ok && d.users?.length) {
+        _usingMocks = false;
         renderUsers(d.users); return;
       }
     } catch (_) {}
-    renderUsers([]);
+    // Показываем демо-пользователей если никого нет
+    _usingMocks = true;
+    renderUsers(getMocks(lat, lng).map(u => ({ ...u, isDemo: true })));
   }
 
   // ── Push now playing ─────────────────────────────────────
@@ -274,6 +300,16 @@
     else coverEl.style.display = 'none';
     document.getElementById('sheetTrackName').textContent   = u.track  || '—';
     document.getElementById('sheetTrackArtist').textContent = u.artist || '—';
+
+    // Если демо-пользователь — показываем заглушку
+    if (u.isDemo) {
+      const btn = document.getElementById('sheetSignalBtn');
+      btn.textContent = '👻 Демо — слушай музыку';
+      btn.className = 'sheet-btn secondary';
+      btn.disabled = true;
+      backdrop.classList.add('open');
+      return;
+    }
 
     // Кнопка сигнала
     const btn = document.getElementById('sheetSignalBtn');

@@ -206,7 +206,7 @@
         root.innerHTML = `<div class="empty-msgs">
           <div class="ei">📡</div>
           <p>Тут пока пусто.<br>Найди людей на радаре и отправь сигнал — они появятся здесь.</p>
-          <a href="/map">Открыть радар</a>
+          <a href="/home">Открыть радар</a>
         </div>`;
         return;
       }
