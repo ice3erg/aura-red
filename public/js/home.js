@@ -498,7 +498,6 @@
       });
       const d = await r.json();
       if (d.ok) {
-        // Обновляем пилюлю
         _currentTrack = { name: track, artists: artist, source: 'manual', image: '' };
         const pill  = document.getElementById('nowPill');
         const dot   = document.getElementById('npDot');
@@ -512,10 +511,18 @@
         title.textContent = `${track} · ${artist}`;
         pill.classList.add('beating');
         window.closeManualSheet();
-        // Обновляем радар
         if (pos) loadRadar(pos.lat, pos.lng);
+      } else {
+        // Показываем ошибку
+        btn.textContent = d.error || 'Ошибка — попробуй снова';
+        btn.style.background = 'rgba(255,43,43,0.3)';
+        setTimeout(() => { btn.style.background = ''; btn.textContent = 'Опубликовать 📡'; btn.disabled = false; }, 2500);
+        return;
       }
-    } catch (_) {}
+    } catch (_) {
+      btn.textContent = 'Ошибка сети';
+      setTimeout(() => { btn.textContent = 'Опубликовать 📡'; }, 2000);
+    }
     btn.disabled = false; btn.textContent = 'Опубликовать 📡';
   });
 
