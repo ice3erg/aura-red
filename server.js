@@ -422,13 +422,21 @@ app.get("/api/unread", requireAuth, async (req, res) => {
   const pendingSignals  = rawSignals.filter(s => s.status === "pending").length;
   const unseenAccepted  = sentSignals.filter(s => s.status === "accepted" && !s.seenByFrom).length;
   let unreadMessages = 0;
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000; // последние 24 часа
   for (const chat of rawChats) {
     const msgs = chat.messages || [];
-    let lastMyIdx = -1;
+    // Находим последнее моё сообщение
+    let lastMyTs = 0;
     for (let i = msgs.length - 1; i >= 0; i--) {
-      if (msgs[i].fromId === req.user.id) { lastMyIdx = i; break; }
+      if (msgs[i].fromId === req.user.id) { lastMyTs = msgs[i].createdAt || 0; break; }
     }
-    const newMsgs = msgs.slice(lastMyIdx + 1).filter(m => m.fromId !== req.user.id && m.fromId !== "system");
+    // Новые = чужие сообщения после моего последнего И за последние 24ч
+    const newMsgs = msgs.filter(m =>
+      m.fromId !== req.user.id &&
+      m.fromId !== "system" &&
+      (m.createdAt || 0) > lastMyTs &&
+      (m.createdAt || 0) > cutoff
+    );
     if (newMsgs.length > 0) unreadMessages++;
   }
   const total = unreadMessages + pendingSignals + unseenAccepted;
