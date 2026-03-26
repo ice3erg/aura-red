@@ -264,14 +264,28 @@ app.get("/api/radar/nearby", requireAuth, async (req, res) => {
   const radius = Math.min(parseFloat(req.query.radius)||5, 50);
   if (isNaN(lat)||isNaN(lng)) return res.status(400).json({ ok:false, error:"Нужны lat и lng" });
   const nearby = await db.getNearbyUsers(lat, lng, radius, req.user.id);
-  const myTrack  = (await db.findById(req.user.id))?.currentTrack;
-  const myArtist = myTrack?.artist?.toLowerCase()||"";
-  const myName   = myTrack?.track?.toLowerCase()||"";
-  const users = nearby.map(u => ({
-    ...u,
-    matchType: myName   && u.track?.toLowerCase()  === myName   ? "same-track"  :
-               myArtist && u.artist?.toLowerCase() === myArtist ? "same-artist" : "same-vibe"
-  }));
+
+  // Берём мой трек из радара (свежее) или из базы (fallback)
+  const myRadar  = db.getMyNowPlaying(req.user.id);
+  const myTrack  = myRadar || (await db.findById(req.user.id))?.currentTrack;
+  const myName   = myTrack?.track?.toLowerCase().trim()  || "";
+  const myArtist = myTrack?.artist?.toLowerCase().trim() || "";
+
+  function artistMatch(a, b) {
+    if (!a || !b) return false;
+    // Совпадение если один содержит другого (для "Artist A, Artist B")
+    return a === b || a.includes(b) || b.includes(a);
+  }
+
+  const users = nearby.map(u => {
+    const uTrack  = u.track?.toLowerCase().trim()  || "";
+    const uArtist = u.artist?.toLowerCase().trim() || "";
+    const matchType =
+      myName   && uTrack  && myName === uTrack          ? "same-track"  :
+      myArtist && uArtist && artistMatch(myArtist, uArtist) ? "same-artist" : "same-vibe";
+    return { ...u, matchType };
+  });
+
   res.json({ ok:true, count:users.length, users,
     stats:{ sameTrack:users.filter(u=>u.matchType==="same-track").length,
             sameArtist:users.filter(u=>u.matchType==="same-artist").length,

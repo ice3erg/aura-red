@@ -200,7 +200,7 @@ function publicProfile(user) {
 const _nowPlaying = new Map();
 
 setInterval(() => {
-  const cutoff = Date.now() - 2 * 60 * 1000;
+  const cutoff = Date.now() - 5 * 60 * 1000;
   for (const [uid, data] of _nowPlaying) {
     if (data.updatedAt < cutoff) _nowPlaying.delete(uid);
   }
@@ -208,6 +208,10 @@ setInterval(() => {
 
 function setNowPlaying(userId, data) {
   _nowPlaying.set(userId, { ...data, updatedAt: Date.now() });
+}
+
+function getMyNowPlaying(userId) {
+  return _nowPlaying.get(userId) || null;
 }
 
 function haversineKm(lat1, lng1, lat2, lng2) {
@@ -307,7 +311,7 @@ function sendMessage(chatId, fromId, text) {
 
 module.exports = {
   findById, findByEmail, createUser, updateUser, publicProfile,
-  setNowPlaying, getNearbyUsers,
+  setNowPlaying, getMyNowPlaying, getNearbyUsers,
   createSignal, getSignalsForUser, getSentSignalsForUser, getSignalById, acceptSignal, ignoreSignal,
   createOrGetChat, getChatsForUser, getChatById, sendMessage
 };
