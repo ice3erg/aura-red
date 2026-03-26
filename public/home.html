@@ -992,7 +992,7 @@
 
       function loadRadar(myTrack) {
         if (!myLat || !myLng) return;
-        fetch(`/api/radar/nearby?lat=${myLat}&lng=${myLng}&radius=5`)
+        fetch(`/api/radar/nearby?lat=${myLat}&lng=${myLng}&radius=50`)
           .then(r => r.json())
           .then(d => {
             if (!d.ok) return;
