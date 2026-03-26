@@ -116,7 +116,49 @@
       showCover(_coverData);
     });
 
-    // ── Music connect/disconnect ──────────────────────────
+    // ── Photos gallery ────────────────────────────────────
+    let _photos = Array.isArray(user.photos) ? [...user.photos] : [];
+    let _photosChanged = false;
+
+    function renderPhotos() {
+      const grid = document.getElementById('photosGrid');
+      if (!grid) return;
+      grid.innerHTML = '';
+      _photos.forEach((src, i) => {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:rgba(255,255,255,0.05);';
+        const img = document.createElement('img');
+        img.src = src;
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+        const del = document.createElement('button');
+        del.textContent = '✕';
+        del.style.cssText = 'position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,0.7);border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;';
+        del.onclick = () => { _photos.splice(i, 1); _photosChanged = true; renderPhotos(); };
+        wrap.appendChild(img);
+        wrap.appendChild(del);
+        grid.appendChild(wrap);
+      });
+      const addBtn = document.getElementById('addPhotoBtn');
+      if (addBtn) addBtn.style.display = _photos.length >= 6 ? 'none' : '';
+    }
+    renderPhotos();
+
+    document.getElementById('addPhotoBtn')?.addEventListener('click', () => {
+      document.getElementById('photoInput')?.click();
+    });
+
+    document.getElementById('photoInput')?.addEventListener('change', async e => {
+      const files = Array.from(e.target.files || []);
+      for (const file of files) {
+        if (_photos.length >= 6) break;
+        if (file.size > 5 * 1024 * 1024) continue;
+        const b64 = await fileToBase64(file);
+        _photos.push(b64);
+        _photosChanged = true;
+      }
+      e.target.value = '';
+      renderPhotos();
+    });
     const lastfmCard    = document.getElementById('lastfmCard');
     const lastfmStatus  = document.getElementById('lastfmStatus');
     const lastfmBtn     = document.getElementById('lastfmBtn');
@@ -243,6 +285,7 @@
       };
       if (_avatarChanged) payload.avatar = _avatarData;
       if (_coverChanged)  payload.cover  = _coverData;
+      if (_photosChanged) payload.photos = _photos;
 
       const updated = await U.updateCurrentUser(payload);
       if (btn) { btn.disabled = false; btn.textContent = 'Сохранить профиль'; }
@@ -252,6 +295,7 @@
         updateNameDisplay();
         _avatarChanged = false;
         _coverChanged  = false;
+        _photosChanged = false;
       } else {
         showNotice('Ошибка сохранения. Попробуй ещё раз.');
       }
