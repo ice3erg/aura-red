@@ -50,7 +50,8 @@ if (USE_PG) {
     return pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS cover TEXT`)
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS photos JSONB DEFAULT '[]'`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS track_history JSONB DEFAULT '[]'`))
-      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS aura_points INTEGER DEFAULT 0`));
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS aura_points INTEGER DEFAULT 0`))
+      .then(() => pgPool.query(`ALTER TABLE signals ADD COLUMN IF NOT EXISTS seen_by_from BOOLEAN DEFAULT false`));
   }).then(() => console.log("[db] PostgreSQL ready"))
     .catch(e => console.error("[db] PG init error:", e.message));
 }
