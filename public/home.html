@@ -348,99 +348,66 @@
     .mini-radar-btn {
       position: relative;
       width: 100%;
-      height: 180px;
+      height: 220px;
       border-radius: 22px;
       overflow: hidden;
-      background: #080810;
-      border: 1px solid var(--border);
+      background: #06060a;
+      border: 1px solid rgba(255,255,255,0.06);
       cursor: pointer;
       display: block;
-      transition: border-color 0.2s, transform 0.15s;
+      transition: border-color 0.25s, transform 0.15s;
       -webkit-tap-highlight-color: transparent;
     }
-    .mini-radar-btn:hover  { border-color: rgba(255,43,43,0.25); }
-    .mini-radar-btn:active { transform: scale(0.985); }
+    .mini-radar-btn:hover  { border-color: rgba(255,43,43,0.2); }
+    .mini-radar-btn:active { transform: scale(0.988); }
 
     #miniMap {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
-      filter: saturate(0.4) contrast(1.15) brightness(0.6);
+      filter: saturate(0.3) contrast(1.2) brightness(0.55);
       pointer-events: none;
     }
     .leaflet-control-zoom,
     .leaflet-control-attribution { display: none !important; }
 
-    /* Overlay gradient */
-    .mini-radar-overlay {
+    /* edge vignette */
+    .radar-vignette {
       position: absolute;
       inset: 0;
-      background: linear-gradient(
-        to top,
-        rgba(8,8,16,0.95) 0%,
-        rgba(8,8,16,0.3) 50%,
-        transparent 100%
-      );
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      padding: 16px 18px;
+      border-radius: inherit;
+      background:
+        radial-gradient(ellipse at center, transparent 40%, rgba(6,6,10,0.85) 100%);
+      pointer-events: none;
+      z-index: 1;
     }
 
-    .mini-radar-stats {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-    .radar-chip {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      padding: 4px 9px;
-      border-radius: 99px;
-      font-size: 11px;
-      font-weight: 700;
-      color: #fff;
-      background: rgba(8,8,16,0.7);
-      border: 1px solid var(--border);
-      backdrop-filter: blur(8px);
-    }
-    .radar-chip .chip-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .chip-dot.red   { background: var(--red); box-shadow: 0 0 5px var(--red); }
-    .chip-dot.white { background: #fff; }
-    .chip-dot.gray  { background: #666; }
-
-    .mini-radar-bottom {
+    /* top row: LIVE + Радар pill */
+    .radar-top-row {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      right: 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-    }
-    .mini-radar-count {
-      font-size: 15px;
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      gap: 7px;
+      z-index: 5;
     }
     .live-badge {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      padding: 3px 8px;
+      gap: 5px;
+      padding: 4px 9px;
       border-radius: 99px;
-      background: var(--red-dim);
-      border: 1px solid rgba(255,43,43,0.25);
+      background: rgba(6,6,10,0.7);
+      border: 1px solid rgba(255,43,43,0.3);
       font-size: 10px;
       font-weight: 800;
       color: var(--red);
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.1em;
+      backdrop-filter: blur(12px);
     }
     .live-badge-dot {
       width: 5px; height: 5px;
@@ -448,22 +415,22 @@
       background: var(--red);
       animation: pulse-dot 1.5s ease-in-out infinite;
     }
-
-    .mini-radar-open {
-      display: flex;
+    .radar-open-pill {
+      display: inline-flex;
       align-items: center;
       gap: 5px;
-      padding: 8px 14px;
-      border-radius: 10px;
+      padding: 5px 11px;
+      border-radius: 99px;
       background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
-      font-size: 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      font-size: 11px;
       font-weight: 700;
-      color: #fff;
-      backdrop-filter: blur(8px);
+      color: rgba(255,255,255,0.7);
+      backdrop-filter: blur(12px);
     }
 
     /* mini dots */
+    
     .mini-dot {
       border-radius: 50%;
       background: var(--red);
@@ -790,33 +757,28 @@
     <div class="track-notice" id="trackNotice"></div>
 
     <!-- MINI RADAR -->
-    <div class="radar-section">
-      <div class="radar-label">Радар</div>
+    <div class="radar-section" style="margin-top:14px;">
       <button class="mini-radar-btn" id="miniMapBtn" aria-label="Открыть радар">
         <div id="miniMap"></div>
-        <div class="mini-radar-overlay">
-          <div class="mini-radar-stats">
-            <div class="radar-chip"><div class="chip-dot red"></div><span id="cntTrack">0</span> трек</div>
-            <div class="radar-chip"><div class="chip-dot white"></div><span id="cntArtist">0</span> артист</div>
-            <div class="radar-chip"><div class="chip-dot gray"></div><span id="cntVibe">0</span> вайб</div>
-          </div>
-          <div class="mini-radar-bottom">
-            <div class="mini-radar-count">
-              <span id="miniMapCount">— людей рядом</span>
-              <div class="live-badge"><div class="live-badge-dot"></div>live</div>
-            </div>
-            <div class="mini-radar-open">
-              Открыть
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-            </div>
+
+        <!-- виньетка по краям -->
+        <div class="radar-vignette"></div>
+
+        <!-- уголок: LIVE + кнопка -->
+        <div class="radar-top-row">
+          <div class="live-badge"><div class="live-badge-dot"></div>live</div>
+          <div class="radar-open-pill">
+            Радар
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </div>
         </div>
-        <!-- Нет сигнала overlay -->
-        <div id="noSignalOverlay" style="display:none;position:absolute;inset:0;background:rgba(6,6,8,0.88);backdrop-filter:blur(6px);border-radius:inherit;display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:20px;z-index:10;">
-          <div style="font-size:28px;">📡</div>
-          <div style="font-size:14px;font-weight:800;color:#fff;">Нет сигнала</div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.45);line-height:1.5;">Подключи Last.fm или Spotify<br>чтобы появиться на радаре</div>
-          <a href="/profile" style="margin-top:4px;padding:8px 16px;border-radius:10px;background:var(--red);color:#fff;font:700 12px/1 Inter,sans-serif;text-decoration:none;">Подключить музыку</a>
+
+        <!-- нет сигнала -->
+        <div id="noSignalOverlay" style="display:none;position:absolute;inset:0;background:rgba(6,6,8,0.9);backdrop-filter:blur(8px);border-radius:inherit;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px;z-index:10;">
+          <div style="font-size:32px;line-height:1;">📡</div>
+          <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.2px;">Нет сигнала</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.4);line-height:1.6;">Подключи музыку чтобы<br>появиться на радаре</div>
+          <a href="/profile" style="margin-top:2px;padding:9px 18px;border-radius:10px;background:var(--red);color:#fff;font:700 12px/1 Inter,sans-serif;text-decoration:none;">Подключить</a>
         </div>
       </button>
     </div>
