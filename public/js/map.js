@@ -244,7 +244,7 @@
   // ── Geo + Radar ───────────────────────────────────────────
   async function loadRadar(lat, lng) {
     try {
-      const r = await fetch(`/api/radar/nearby?lat=${lat}&lng=${lng}&radius=5`);
+      const r = await fetch(`/api/radar/nearby?lat=${lat}&lng=${lng}&radius=50`);
       const d = await r.json();
       if (r.ok && d.ok && d.users && d.users.length > 0) {
         renderUsers(d.users);
