@@ -33,6 +33,7 @@ if (USE_PG) {
       avatar TEXT,
       cover TEXT,
       photos JSONB DEFAULT '[]',
+      aura_points INTEGER DEFAULT 0,
       track_history JSONB DEFAULT '[]',
       spotify_connected BOOLEAN DEFAULT false,
       spotify_name TEXT DEFAULT '',
@@ -48,7 +49,8 @@ if (USE_PG) {
     // Добавляем cover для существующих БД (безопасно — IF NOT EXISTS)
     return pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS cover TEXT`)
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS photos JSONB DEFAULT '[]'`))
-      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS track_history JSONB DEFAULT '[]'`));
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS track_history JSONB DEFAULT '[]'`))
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS aura_points INTEGER DEFAULT 0`));
   }).then(() => console.log("[db] PostgreSQL ready"))
     .catch(e => console.error("[db] PG init error:", e.message));
 }
@@ -68,6 +70,7 @@ function rowToUser(row) {
     cover:               row.cover  || null,
     photos:              row.photos  || [],
     trackHistory:        row.track_history || [],
+    auraPoints:          row.aura_points || 0,
     spotifyConnected:    row.spotify_connected || false,
     spotifyName:         row.spotify_name || "",
     spotifyId:           row.spotify_id || "",
@@ -105,7 +108,7 @@ async function pgUpdateUser(id, patch) {
   let i = 1;
 
   const map = {
-    name: "name", age: "age", city: "city", bio: "bio", avatar: "avatar", cover: "cover", photos: "photos", trackHistory: "track_history",
+    name: "name", age: "age", city: "city", bio: "bio", avatar: "avatar", cover: "cover", photos: "photos", trackHistory: "track_history", auraPoints: "aura_points",
     spotifyConnected: "spotify_connected", spotifyName: "spotify_name",
     spotifyId: "spotify_id", spotifyAccessToken: "spotify_access_token",
     spotifyRefreshToken: "spotify_refresh_token",

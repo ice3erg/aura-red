@@ -284,6 +284,14 @@ app.post("/api/now-playing", requireAuth, async (req, res) => {
   if (data.lng !== null && (isNaN(data.lng)||data.lng<-180||data.lng>180)) data.lng=null;
   db.setNowPlaying(req.user.id, data);
 
+  // +1 аура за активность (не чаще раза в 10 мин)
+  const lastPush = db.getMyNowPlaying(req.user.id);
+  const tenMin = 10 * 60 * 1000;
+  if (!lastPush || Date.now() - (lastPush.updatedAt || 0) > tenMin) {
+    const u = await db.findById(req.user.id);
+    if (u) await db.updateUser(req.user.id, { auraPoints: (u.auraPoints || 0) + 1 });
+  }
+
   // Обновляем текущий трек и историю треков (последние 10)
   const user = await db.findById(req.user.id);
   const history = Array.isArray(user?.trackHistory) ? user.trackHistory : [];
@@ -368,6 +376,9 @@ app.post("/api/signals/:id/accept", requireAuth, async (req, res) => {
   const from = await db.findById(signal.fromId);
   const emoji = signal.matchType==="same-track" ? "🔴" : signal.matchType==="same-artist" ? "⚪" : "⚫";
   await db.sendMessage(updated.chatId, "system", `${emoji} ${from?.name||"Кто-то"} слушал ${signal.artist} — ${signal.track}`);
+  // +5 ауры отправителю за принятый сигнал
+  const fromUser = await db.findById(signal.fromId);
+  if (fromUser) await db.updateUser(signal.fromId, { auraPoints: (fromUser.auraPoints || 0) + 5 });
   res.json({ ok:true, chatId:updated.chatId });
 });
 
