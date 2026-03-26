@@ -1,245 +1,352 @@
 (function () {
   const U = window.AuraUtils;
-  let progressInterval = null, currentProgressMs = 0, currentDurationMs = 0, isPlaying = false;
+  const DEFAULT = [59.9343, 30.3351];
 
-  function fmt(ms) {
-    if (!ms || ms < 0) return "0:00";
-    const s = Math.floor(ms / 1000);
-    return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
-  }
+  // ── Map init ─────────────────────────────────────────────
+  const map = L.map('map', {
+    zoomControl: false, attributionControl: false,
+    dragging: true, scrollWheelZoom: true,
+    doubleClickZoom: true, touchZoom: true,
+  }).setView(DEFAULT, 14);
 
-  function stopTimer() {
-    if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
-  }
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 20, subdomains: 'abcd', attribution: ''
+  }).addTo(map);
 
-  function renderProgress() {
-    const fill = document.getElementById("progressFill");
-    const tc   = document.getElementById("trackCurrentTime");
-    const td   = document.getElementById("trackDuration");
-    const dur  = currentDurationMs > 0 ? currentDurationMs : 0;
-    const prg  = Math.max(0, Math.min(currentProgressMs, dur));
-    const pct  = dur > 0 ? (prg / dur) * 100 : 0;
-    if (fill) fill.style.setProperty("--progress-pct", pct.toFixed(1) + "%");
-    if (tc) tc.textContent = fmt(prg);
-    if (td) td.textContent = fmt(dur);
-  }
-
-  function startTimer() {
-    stopTimer();
-    if (!isPlaying || !currentDurationMs) return;
-    progressInterval = setInterval(() => {
-      currentProgressMs += 1000;
-      if (currentProgressMs >= currentDurationMs) { currentProgressMs = currentDurationMs; stopTimer(); }
-      renderProgress();
-    }, 1000);
-  }
-
-  // Пушим трек на сервер + геолокация → появляемся на радаре других
-  // Кэшируем последнюю геопозицию чтобы не запрашивать каждый раз
+  // ── State ────────────────────────────────────────────────
+  let _user = null;
+  let _youMarker = null;
+  let _radarMarkers = [];
+  let _sentSignalTo = new Set();
   let _lastPos = null;
+  let _currentTrack = null;
 
+  // ── Geo ──────────────────────────────────────────────────
   function getGeo() {
-    return new Promise((res) => {
+    return new Promise(res => {
       if (!navigator.geolocation) { res(null); return; }
-      // Сначала отдаём кэш если свежий (< 2 мин)
       if (_lastPos && Date.now() - _lastPos.ts < 120000) { res(_lastPos); return; }
       navigator.geolocation.getCurrentPosition(
-        pos => {
-          _lastPos = { lat: pos.coords.latitude, lng: pos.coords.longitude, ts: Date.now() };
+        p => {
+          _lastPos = { lat: p.coords.latitude, lng: p.coords.longitude, ts: Date.now() };
           res(_lastPos);
         },
-        () => res(_lastPos), // при ошибке — отдаём старую если есть
+        () => res(_lastPos),
         { timeout: 8000, maximumAge: 60000, enableHighAccuracy: false }
       );
     });
   }
 
+  // ── You marker ───────────────────────────────────────────
+  function makeYouIcon(user) {
+    const size = 48;
+    const inner = user?.avatar
+      ? `<img src="${user.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
+      : `<div class="ava-init" style="font-size:18px;">${(user?.name || 'Я')[0].toUpperCase()}</div>`;
+    return L.divIcon({
+      className: '',
+      html: `<div class="you-marker" style="width:${size}px;height:${size}px;">
+               <div class="you-ring"></div>
+               ${inner}
+             </div>`,
+      iconSize: [size, size], iconAnchor: [size/2, size/2],
+    });
+  }
+
+  // ── Other markers ────────────────────────────────────────
+  function makeIcon(u, sent) {
+    const mt = u.matchType || 'same-vibe';
+    const size = mt === 'same-track' ? 44 : 38;
+    const fs = Math.round(size * 0.38);
+    const inner = u.avatar
+      ? `<img src="${u.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
+      : `<div class="ava-init" style="font-size:${fs}px;">${(u.name || '?')[0].toUpperCase()}</div>`;
+
+    const sentBadge = sent
+      ? `<div style="position:absolute;top:-3px;right:-3px;width:15px;height:15px;border-radius:50%;background:#22c55e;border:2px solid #050505;display:flex;align-items:center;justify-content:center;font-size:8px;z-index:2;">✓</div>`
+      : '';
+
+    // Пузырёк с треком для same-track
+    const bubble = mt === 'same-track' && u.track
+      ? `<div class="track-bubble">${u.track}</div>`
+      : '';
+
+    return L.divIcon({
+      className: '',
+      html: `<div class="ava-marker ${mt}" style="width:${size}px;height:${size}px;position:relative;">
+               <div class="ava-pulse"></div>
+               ${inner}
+               ${sentBadge}
+               ${bubble}
+             </div>`,
+      iconSize: [size, size], iconAnchor: [size/2, size/2],
+    });
+  }
+
+  // ── Radar ────────────────────────────────────────────────
+  function renderUsers(users) {
+    _radarMarkers.forEach(m => map.removeLayer(m));
+    _radarMarkers = [];
+
+    const relevant = users.filter(u => {
+      const mt = u.matchType || 'same-vibe';
+      return mt === 'same-track' || mt === 'same-artist';
+    });
+
+    relevant.forEach(u => {
+      const sent = _sentSignalTo.has(String(u.id || u.userId));
+      const m = L.marker([u.lat, u.lng], { icon: makeIcon(u, sent) }).addTo(map);
+      m.on('click', e => { L.DomEvent.stopPropagation(e); openSheet({ ...u, signalSent: sent }); });
+      _radarMarkers.push(m);
+    });
+
+    // Счётчик людей
+    const chip = document.getElementById('peopleChip');
+    const countEl = document.getElementById('peopleCount');
+    if (relevant.length > 0) {
+      chip.style.display = 'flex';
+      const n = relevant.length;
+      countEl.textContent = `${n} ${n === 1 ? 'человек' : n < 5 ? 'человека' : 'людей'} на волне`;
+    } else {
+      chip.style.display = 'none';
+    }
+  }
+
+  async function loadRadar(lat, lng) {
+    try {
+      const r = await fetch(`/api/radar/nearby?lat=${lat}&lng=${lng}&radius=50`);
+      const d = await r.json();
+      if (r.ok && d.ok && d.users?.length) {
+        renderUsers(d.users); return;
+      }
+    } catch (_) {}
+    renderUsers([]);
+  }
+
+  // ── Push now playing ─────────────────────────────────────
   async function pushNowPlaying(track) {
     if (!track) return;
+    const pos = await getGeo();
     try {
-      const pos = await getGeo();
-      const r = await fetch("/api/now-playing", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      await fetch('/api/now-playing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          track:  track.name    || "",
-          artist: track.artists || "",
-          album:  track.album   || "",
-          image:  track.image   || "",
-          url:    track.url     || "",
-          source: track.source  || "spotify",
+          track:  track.name    || '',
+          artist: track.artists || '',
+          album:  track.album   || '',
+          image:  track.image   || '',
+          url:    track.url     || '',
+          source: track.source  || 'spotify',
           lat:    pos?.lat ?? null,
           lng:    pos?.lng ?? null,
         })
       });
-      const d = await r.json();
-      // Показываем статус пуша для отладки
-      const notice = document.getElementById("trackNotice");
-      if (!r.ok && notice) {
-        notice.textContent = "Радар: " + (d.error || "не удалось обновить позицию");
-        notice.style.display = "block";
-      } else if (notice) {
-        notice.style.display = "none";
-      }
     } catch (_) {}
   }
 
-  function showEmpty(title, text, actionText = "Подключить музыку") {
-    stopTimer();
-    document.getElementById('miniMapBtn')?.classList.remove('beating');
-    const empty = document.getElementById("trackEmptyState");
-    const card  = document.getElementById("trackCard");
-    const link  = document.getElementById("trackLink");
-    const prog  = document.getElementById("progressRow");
-    if (empty) empty.style.display = "flex";
-    if (card)  { card.classList.remove("visible"); card.style.display = "none"; }
-    if (link)  link.style.display = "none";
-    if (prog)  prog.style.display = "none";
-    const t = document.getElementById("spotifyBlockTitle");
-    const x = document.getElementById("spotifyBlockText");
-    const a = document.getElementById("spotifyAction");
-    if (t) t.textContent = title;
-    if (x) x.textContent = text;
-    if (a) { a.textContent = actionText; a.href = "/profile"; }
-  }
-
-  function showTrack(track, playing) {
-    const empty = document.getElementById("trackEmptyState");
-    const card  = document.getElementById("trackCard");
-    if (empty) empty.style.display = "none";
-    if (card)  { card.style.display = ""; card.classList.add("visible"); }
-
-    // Обложка
-    const img = document.getElementById("trackImage");
-    if (img) {
-      if (track.image) { img.src = track.image; img.style.display = ""; }
-      else img.style.display = "none";
-    }
-
-    const nm = document.getElementById("trackName");
-    const ar = document.getElementById("trackArtists");
-    const lk = document.getElementById("trackLink");
-    if (nm) nm.textContent = track.name    || "Без названия";
-    if (ar) ar.textContent = track.artists || "Неизвестный исполнитель";
-    if (lk) {
-      if (track.url) { lk.href = track.url; lk.classList.add("visible"); }
-      else lk.classList.remove("visible");
-    }
-
-    // Прогресс-бар (только Spotify даёт длительность)
-    currentProgressMs = Number(track.progressMs || 0);
-    currentDurationMs = Number(track.durationMs || 0);
-    isPlaying = !!playing;
-    const pr = document.getElementById("progressRow");
-    if (pr) pr.style.display = currentDurationMs > 0 ? "block" : "none";
-    renderProgress();
-    startTimer();
-
-    pushNowPlaying(track);
-    window.__currentTrack = track;
-
-    // Пульсация радара в бит (120 BPM по умолчанию = 0.5s)
-    const bpm = 120;
-    const beatDur = (60 / bpm).toFixed(3) + 's';
-    const radarBtn = document.getElementById('miniMapBtn');
-    if (radarBtn) {
-      radarBtn.style.setProperty('--beat-dur', beatDur);
-      radarBtn.classList.add('beating');
-    }
-
-    // Обновляем ленту активности с актуальным треком
-    if (window.__reloadRadarFeed) window.__reloadRadarFeed(track);
-  }
-
+  // ── Now Playing pill ─────────────────────────────────────
   async function loadTrack(user) {
-    const notice = document.getElementById("trackNotice");
-    if (notice) { notice.textContent = ""; notice.classList.add("hidden"); }
+    let track = null;
 
-    // Last.fm — приоритет (открытый, без лимитов)
     if (user.lastfmConnected && user.lastfmUsername) {
-      showEmpty("Загрузка...", "Получаем трек из Last.fm...", "Переподключить");
       try {
         const r = await fetch(`/api/lastfm/current-track?username=${encodeURIComponent(user.lastfmUsername)}`);
         const d = await r.json();
-        if (!r.ok || !d.ok) { showEmpty("Ошибка Last.fm", d.error || "Попробуй позже", "Настройки музыки"); return; }
-        if (!d.track || !d.isPlaying) { showEmpty("Ничего не играет", "Включи музыку — трек появится здесь.", "Настройки музыки"); return; }
-        showTrack(d.track, true);
-      } catch { showEmpty("Ошибка сети", "Не удалось связаться с Last.fm.", "Настройки музыки"); }
-      return;
+        if (d.ok && d.track && d.isPlaying) track = d.track;
+      } catch (_) {}
     }
 
-    // Spotify fallback
-    if (!user.spotifyConnected) {
-      showEmpty("Музыка не подключена", "Подключи Last.fm или Spotify чтобы активировать сигнал.", "Подключить музыку");
-      return;
+    if (!track && user.spotifyConnected) {
+      try {
+        const r = await fetch('/api/spotify/current-track');
+        const d = await r.json();
+        if (d.ok && d.track) track = d.track;
+      } catch (_) {}
     }
-    showEmpty("Загрузка...", "Получаем трек из Spotify...", "Переподключить Spotify");
-    try {
-      const r = await fetch("/api/spotify/current-track");
-      const d = await r.json();
-      if (!r.ok || !d.ok) {
-        if (r.status === 401) { showEmpty("Сессия Spotify истекла", "Нужно переподключить Spotify.", "Переподключить"); return; }
-        showEmpty("Spotify недоступен", d.error || "Трек не удалось получить.", "Переподключить");
-        if (d.error && notice) { notice.textContent = d.error; notice.classList.remove("hidden"); }
-        return;
+
+    const pill    = document.getElementById('nowPill');
+    const cover   = document.getElementById('npCover');
+    const coverPh = document.getElementById('npCoverPh');
+    const dot     = document.getElementById('npDot');
+    const title   = document.getElementById('npTitle');
+    const connect = document.getElementById('npConnect');
+
+    if (track) {
+      _currentTrack = track;
+      pill.classList.add('has-track');
+      dot.classList.remove('idle');
+
+      if (track.image) {
+        cover.src = track.image;
+        cover.style.display = 'block';
+        coverPh.style.display = 'none';
+      } else {
+        cover.style.display = 'none';
+        coverPh.style.display = 'flex';
       }
-      if (!d.track) { showEmpty("Ничего не играет", "Включи музыку в Spotify — трек появится здесь.", "Настройки"); return; }
-      showTrack(d.track, d.isPlaying);
-    } catch { showEmpty("Ошибка сети", "Не удалось связаться со Spotify.", "Переподключить"); }
+      title.textContent = `${track.name} · ${track.artists}`;
+      connect.style.display = 'none';
+
+      // Beat pulse на карте
+      const n = document.getElementById('nowPill');
+      n.style.setProperty('--beat-dur', '0.5s');
+      n.classList.add('beating');
+
+      pushNowPlaying(track);
+
+      // Обновляем радар с новым треком
+      const pos = await getGeo();
+      if (pos) loadRadar(pos.lat, pos.lng);
+
+    } else {
+      pill.classList.remove('has-track');
+      dot.classList.add('idle');
+      cover.style.display = 'none';
+      coverPh.style.display = 'flex';
+      pill.classList.remove('beating');
+
+      if (!user.lastfmConnected && !user.spotifyConnected) {
+        title.textContent = 'Подключи музыку';
+        connect.style.display = 'flex';
+        connect.textContent = 'Подключить';
+        connect.href = '/profile';
+      } else {
+        title.textContent = 'Ничего не играет';
+        connect.style.display = 'none';
+      }
+    }
   }
 
-  async function init() {
-    const user = await U.requireAuth();
-    if (!user) return;
+  // ── Sheet ────────────────────────────────────────────────
+  const backdrop = document.getElementById('sheetBackdrop');
 
-    // Identity
-    const nm  = document.getElementById("homeName");
-    const ct  = document.getElementById("homeCity");
-    const av  = document.getElementById("homeAvatar");
-    const avp = document.getElementById("homeAvatarPh");
-    if (nm) nm.textContent = user.name || "Пользователь";
-    if (ct) ct.textContent = user.city ? `📍 ${user.city}` : "";
-    if (user.avatar && av) {
-      av.src = user.avatar;
-      av.style.display = "block";
-      if (avp) avp.style.display = "none";
-    }
+  const BADGES = {
+    'same-track':  '🔴 тот же трек',
+    'same-artist': '⚪ тот же артист',
+    'same-vibe':   '⚫ похожий вайб',
+  };
 
-    // Logout
-    document.getElementById("logoutBtn")?.addEventListener("click", async () => {
-      stopTimer();
-      await fetch("/api/auth/logout", { method: "POST" });
-      U.go("/login");
-    });
+  function openSheet(u) {
+    const mt = u.matchType || 'same-vibe';
 
-    // Mini radar → полная карта (только если подключена музыка)
-    document.getElementById("miniMapBtn")?.addEventListener("click", () => {
-      const hasMusic = user.lastfmConnected || user.spotifyConnected;
-      if (hasMusic) U.go("/map");
-    });
+    // Аватар
+    const avaEl = document.getElementById('sheetAva');
+    avaEl.innerHTML = u.avatar
+      ? `<img src="${u.avatar}" />`
+      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;">${(u.name||'?')[0]}</div>`;
 
-    // Показываем/скрываем no-signal overlay на радаре
-    const hasMusic = user.lastfmConnected || user.spotifyConnected;
-    const noSignalOverlay = document.getElementById("noSignalOverlay");
-    const activitySection = document.getElementById("activitySection");
-    if (!hasMusic) {
-      if (noSignalOverlay) noSignalOverlay.style.display = "flex";
-      if (activitySection) activitySection.style.display = "none";
+    document.getElementById('sheetName').textContent  = u.name || '—';
+    document.getElementById('sheetCity').textContent  = u.city ? `📍 ${u.city}` : '';
+    const badge = document.getElementById('sheetBadge');
+    badge.textContent = BADGES[mt] || '';
+    badge.className = 'match-badge ' + mt;
+
+    // Трек
+    const coverEl = document.getElementById('sheetCover');
+    if (u.image) { coverEl.src = u.image; coverEl.style.display = ''; }
+    else coverEl.style.display = 'none';
+    document.getElementById('sheetTrackName').textContent   = u.track  || '—';
+    document.getElementById('sheetTrackArtist').textContent = u.artist || '—';
+
+    // Кнопка сигнала
+    const btn = document.getElementById('sheetSignalBtn');
+    btn._userId = u.id || u.userId;
+    if (u.signalSent) {
+      btn.textContent = '✓ Сигнал отправлен';
+      btn.className = 'sheet-btn sent';
+      btn.disabled = true;
     } else {
-      if (noSignalOverlay) noSignalOverlay.style.display = "none";
-      if (activitySection) activitySection.style.display = "";
+      btn.textContent = '📡 Отправить сигнал';
+      btn.className = 'sheet-btn signal';
+      btn.disabled = false;
     }
 
-    // Загружаем трек
-    loadTrack(user);
+    backdrop.classList.add('open');
+  }
 
-    // Обновляем трек каждые 30 сек
-    setInterval(() => loadTrack(user), 30000);
+  function closeSheet() { backdrop.classList.remove('open'); }
 
-    // Отдельно пингуем радар каждые 90 сек чтобы позиция не протухла
-    setInterval(() => {
-      const t = window.__currentTrack;
-      if (t) pushNowPlaying(t);
+  document.getElementById('sheetClose').addEventListener('click', closeSheet);
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) closeSheet(); });
+  map.on('click', closeSheet);
+
+  // Сигнал
+  document.getElementById('sheetSignalBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('sheetSignalBtn');
+    if (btn.disabled) return;
+    const toId = btn._userId;
+    btn.textContent = '...'; btn.disabled = true;
+    try {
+      const res = await fetch('/api/signals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ toId, type: 'wave', track: _currentTrack?.name || '', artist: _currentTrack?.artists || '', matchType: 'same-track' })
+      });
+      const d = await res.json();
+      if (res.ok && d.ok) {
+        btn.textContent = '✓ Сигнал отправлен';
+        btn.className = 'sheet-btn sent';
+        _sentSignalTo.add(String(toId));
+        const pos = await getGeo();
+        if (pos) loadRadar(pos.lat, pos.lng);
+      } else if (res.status === 409) {
+        btn.textContent = '✓ Уже отправлен'; btn.className = 'sheet-btn sent';
+      } else {
+        btn.textContent = '📡 Отправить сигнал'; btn.className = 'sheet-btn signal'; btn.disabled = false;
+      }
+    } catch { btn.textContent = '📡 Отправить сигнал'; btn.className = 'sheet-btn signal'; btn.disabled = false; }
+  });
+
+  // ── Locate button ─────────────────────────────────────────
+  document.getElementById('locateBtn').addEventListener('click', async () => {
+    const pos = await getGeo();
+    if (pos) map.flyTo([pos.lat, pos.lng], 15, { duration: 0.8 });
+  });
+
+  // ── Sent signals ─────────────────────────────────────────
+  async function loadSentSignalIds() {
+    try {
+      const r = await fetch('/api/signals?direction=sent');
+      const d = await r.json();
+      if (!d.ok) return;
+      const sigs = d.sentSignals || d.signals || [];
+      _sentSignalTo = new Set(
+        sigs.filter(s => s.status === 'pending').map(s => String(s.toId || s.to?.id))
+      );
+    } catch {}
+  }
+
+  // ── Init ─────────────────────────────────────────────────
+  async function init() {
+    _user = await U.requireAuth();
+    if (!_user) return;
+
+    // You marker
+    _youMarker = L.marker(DEFAULT, { icon: makeYouIcon(_user), zIndexOffset: 1000 }).addTo(map);
+
+    // Sent signals
+    await loadSentSignalIds();
+
+    // Трек
+    loadTrack(_user);
+    setInterval(() => loadTrack(_user), 30000);
+
+    // Геолокация
+    const pos = await getGeo();
+    if (pos) {
+      map.setView([pos.lat, pos.lng], 14);
+      _youMarker.setLatLng([pos.lat, pos.lng]);
+      loadRadar(pos.lat, pos.lng);
+    }
+
+    // Keep-alive radar
+    setInterval(async () => {
+      const p = await getGeo();
+      if (p && _currentTrack) {
+        pushNowPlaying(_currentTrack);
+        loadRadar(p.lat, p.lng);
+      }
     }, 90000);
   }
 
