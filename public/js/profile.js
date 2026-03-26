@@ -335,6 +335,19 @@
       }
     });
 
+    // ── Share profile ─────────────────────────────────────
+    document.getElementById('shareProfileBtn')?.addEventListener('click', () => {
+      const name = user.name || '';
+      const url = `${location.origin}/u/${encodeURIComponent(name)}`;
+      if (navigator.share) {
+        navigator.share({ title: `${name} в +aura`, url });
+      } else {
+        navigator.clipboard?.writeText(url).then(() => {
+          showNotice('Ссылка скопирована!', 'success');
+        });
+      }
+    });
+
     // ── Logout ───────────────────────────────────────────
     document.getElementById('logoutBtn')?.addEventListener('click', async () => {
       await fetch('/api/auth/logout', { method: 'POST' });
