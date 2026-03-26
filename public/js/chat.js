@@ -301,7 +301,6 @@
       if (e.message === 'auth') return;
       msgs.innerHTML = '<div style="text-align:center;padding:32px;color:rgba(255,255,255,.3);">Ошибка загрузки.<br><span style="font-size:11px;cursor:pointer;text-decoration:underline;" onclick="openChat(\''+chatId+'\')">Попробовать снова</span></div>';
     }
-    }
   }
 
   function renderMessages(messages) {
