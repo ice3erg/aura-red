@@ -33,6 +33,7 @@ if (USE_PG) {
       avatar TEXT,
       cover TEXT,
       photos JSONB DEFAULT '[]',
+      track_history JSONB DEFAULT '[]',
       spotify_connected BOOLEAN DEFAULT false,
       spotify_name TEXT DEFAULT '',
       spotify_id TEXT DEFAULT '',
@@ -46,7 +47,8 @@ if (USE_PG) {
   `).then(() => {
     // Добавляем cover для существующих БД (безопасно — IF NOT EXISTS)
     return pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS cover TEXT`)
-      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS photos JSONB DEFAULT '[]'`));
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS photos JSONB DEFAULT '[]'`))
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS track_history JSONB DEFAULT '[]'`));
   }).then(() => console.log("[db] PostgreSQL ready"))
     .catch(e => console.error("[db] PG init error:", e.message));
 }
@@ -65,6 +67,7 @@ function rowToUser(row) {
     avatar:              row.avatar || null,
     cover:               row.cover  || null,
     photos:              row.photos  || [],
+    trackHistory:        row.track_history || [],
     spotifyConnected:    row.spotify_connected || false,
     spotifyName:         row.spotify_name || "",
     spotifyId:           row.spotify_id || "",
@@ -102,7 +105,7 @@ async function pgUpdateUser(id, patch) {
   let i = 1;
 
   const map = {
-    name: "name", age: "age", city: "city", bio: "bio", avatar: "avatar", cover: "cover", photos: "photos",
+    name: "name", age: "age", city: "city", bio: "bio", avatar: "avatar", cover: "cover", photos: "photos", trackHistory: "track_history",
     spotifyConnected: "spotify_connected", spotifyName: "spotify_name",
     spotifyId: "spotify_id", spotifyAccessToken: "spotify_access_token",
     spotifyRefreshToken: "spotify_refresh_token",
@@ -113,7 +116,7 @@ async function pgUpdateUser(id, patch) {
   for (const [key, col] of Object.entries(map)) {
     if (patch[key] !== undefined) {
       sets.push(`${col}=$${i++}`);
-      vals.push(key === "currentTrack" ? JSON.stringify(patch[key]) : patch[key]);
+      vals.push(["currentTrack","photos","trackHistory"].includes(key) ? JSON.stringify(patch[key]) : patch[key]);
     }
   }
 
@@ -272,6 +275,7 @@ if (USE_PG) {
       match_type TEXT DEFAULT 'same-vibe',
       status TEXT DEFAULT 'pending',
       chat_id TEXT,
+      seen_by_from BOOLEAN DEFAULT false,
       created_at BIGINT DEFAULT extract(epoch from now())*1000
     )
   `).catch(e => console.error('[db] signals table error:', e.message));
@@ -317,7 +321,17 @@ async function createSignal({ fromId, toId, type, track, artist, matchType }) {
 }
 
 function pgRowToSignal(r) {
-  return { id: r.id, fromId: r.from_id, toId: r.to_id, type: r.type, track: r.track, artist: r.artist, matchType: r.match_type, status: r.status, chatId: r.chat_id, createdAt: Number(r.created_at) };
+  return { id: r.id, fromId: r.from_id, toId: r.to_id, type: r.type, track: r.track, artist: r.artist, matchType: r.match_type, status: r.status, chatId: r.chat_id, seenByFrom: r.seen_by_from || false, createdAt: Number(r.created_at) };
+}
+
+async function markSignalsSeenByFrom(userId) {
+  if (USE_PG) {
+    await pgPool.query(`UPDATE signals SET seen_by_from=true WHERE from_id=$1 AND status='accepted'`, [userId]);
+  } else {
+    for (const s of _signals.values()) {
+      if (s.fromId === userId && s.status === 'accepted') s.seenByFrom = true;
+    }
+  }
 }
 
 async function getSignalsForUser(userId) {
@@ -446,6 +460,6 @@ async function sendMessage(chatId, fromId, text) {
 module.exports = {
   findById, findByEmail, createUser, updateUser, publicProfile,
   setNowPlaying, getMyNowPlaying, getAllNowPlaying, getNearbyUsers,
-  createSignal, getSignalsForUser, getSentSignalsForUser, getSignalById, acceptSignal, ignoreSignal,
+  createSignal, getSignalsForUser, getSentSignalsForUser, getSignalById, acceptSignal, ignoreSignal, markSignalsSeenByFrom,
   createOrGetChat, getChatsForUser, getChatById, sendMessage
 };

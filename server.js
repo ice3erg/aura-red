@@ -267,7 +267,18 @@ app.post("/api/now-playing", requireAuth, async (req, res) => {
   if (data.lat !== null && (isNaN(data.lat)||data.lat<-90 ||data.lat>90))  data.lat=null;
   if (data.lng !== null && (isNaN(data.lng)||data.lng<-180||data.lng>180)) data.lng=null;
   db.setNowPlaying(req.user.id, data);
-  await db.updateUser(req.user.id, { currentTrack: data });
+
+  // Обновляем текущий трек и историю треков (последние 10)
+  const user = await db.findById(req.user.id);
+  const history = Array.isArray(user?.trackHistory) ? user.trackHistory : [];
+  const entry = { track: data.track, artist: data.artist, image: data.image, ts: Date.now() };
+  // Не дублируем если тот же трек что и последний
+  const last = history[0];
+  const newHistory = (last?.track === entry.track && last?.artist === entry.artist)
+    ? history
+    : [entry, ...history].slice(0, 10);
+
+  await db.updateUser(req.user.id, { currentTrack: data, trackHistory: newHistory });
   res.json({ ok:true });
 });
 
@@ -352,12 +363,32 @@ app.post("/api/signals/:id/ignore", requireAuth, async (req, res) => {
   res.json({ ok:true });
 });
 
+// ── Notifications: принятые сигналы ───────────────────────
+app.get("/api/notifications", requireAuth, async (req, res) => {
+  // Сигналы которые Я отправил и они были приняты
+  const sent = await db.getSentSignalsForUser(req.user.id);
+  const accepted = sent.filter(s => s.status === "accepted" && !s.seenByFrom);
+  const result = await Promise.all(accepted.map(async s => ({
+    ...s,
+    to: s.toId ? db.publicProfile(await db.findById(s.toId)) : null
+  })));
+  res.json({ ok: true, notifications: result });
+});
+
+app.post("/api/notifications/seen", requireAuth, async (req, res) => {
+  // Помечаем все принятые сигналы как просмотренные
+  await db.markSignalsSeenByFrom(req.user.id);
+  res.json({ ok: true });
+});
+
 app.get("/api/unread", requireAuth, async (req, res) => {
-  const [rawChats, rawSignals] = await Promise.all([
+  const [rawChats, rawSignals, sentSignals] = await Promise.all([
     db.getChatsForUser(req.user.id),
     db.getSignalsForUser(req.user.id),
+    db.getSentSignalsForUser(req.user.id),
   ]);
-  const pendingSignals = rawSignals.filter(s => s.status === "pending").length;
+  const pendingSignals  = rawSignals.filter(s => s.status === "pending").length;
+  const unseenAccepted  = sentSignals.filter(s => s.status === "accepted" && !s.seenByFrom).length;
   let unreadMessages = 0;
   for (const chat of rawChats) {
     const msgs = chat.messages || [];
@@ -368,7 +399,8 @@ app.get("/api/unread", requireAuth, async (req, res) => {
     const newMsgs = msgs.slice(lastMyIdx + 1).filter(m => m.fromId !== req.user.id && m.fromId !== "system");
     if (newMsgs.length > 0) unreadMessages++;
   }
-  res.json({ ok:true, total: unreadMessages + pendingSignals, unreadMessages, pendingSignals });
+  const total = unreadMessages + pendingSignals + unseenAccepted;
+  res.json({ ok:true, total, unreadMessages, pendingSignals, unseenAccepted });
 });
 
 app.get("/api/chats", requireAuth, async (req, res) => {
