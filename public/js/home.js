@@ -60,6 +60,7 @@
 
   function showEmpty(title, text, actionText = "Подключить музыку") {
     stopTimer();
+    document.getElementById('miniMapBtn')?.classList.remove('beating');
     const empty = document.getElementById("trackEmptyState");
     const card  = document.getElementById("trackCard");
     const link  = document.getElementById("trackLink");
@@ -109,6 +110,15 @@
     startTimer();
 
     pushNowPlaying(track);
+
+    // Пульсация радара в бит (120 BPM по умолчанию = 0.5s)
+    const bpm = 120;
+    const beatDur = (60 / bpm).toFixed(3) + 's';
+    const radarBtn = document.getElementById('miniMapBtn');
+    if (radarBtn) {
+      radarBtn.style.setProperty('--beat-dur', beatDur);
+      radarBtn.classList.add('beating');
+    }
 
     // Обновляем ленту активности с актуальным треком
     if (window.__reloadRadarFeed) window.__reloadRadarFeed(track);
