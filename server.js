@@ -499,8 +499,7 @@ app.use((_,res) => res.status(404).sendFile(path.join(publicDir,"index.html")));
 
 // ── Global error handler ──────────────────────────────────
 app.use((err, req, res, next) => {
-  console.error("[server error]", err.message, err.stack?.split("
-")[1]);
+  console.error("[server error]", err.message);
   res.status(500).json({ ok: false, error: "Внутренняя ошибка сервера" });
 });
 
