@@ -75,13 +75,20 @@
       return;
     }
 
-    // Ячейки по сетке
     grid.innerHTML = photos.slice(0, n).map((src, i) => {
-      // Для 3 фото — первое занимает 2 строки
       const span = (n === 3 && i === 0) ? ' span2' : '';
-      return `<div class="collage-cell${span}"><img src="${src}" alt="" loading="lazy" /></div>`;
+      return `<div class="collage-cell${span}" style="position:relative;">
+        <img src="${src}" alt="" loading="lazy" />
+        <button onclick="deletePhoto(${i})" style="position:absolute;top:5px;right:5px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,0.7);border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;z-index:5;">✕</button>
+      </div>`;
     }).join('');
   }
+
+  window.deletePhoto = function(i) {
+    _photos.splice(i, 1);
+    _photosChanged = true;
+    buildCollage(_photos);
+  };
 
   // ── Track ticker ──────────────────────────────────────────
   function buildTicker(history) {
