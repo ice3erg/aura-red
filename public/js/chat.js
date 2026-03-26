@@ -282,10 +282,13 @@
       if (dlgName) dlgName.textContent = other?.name || 'Аноним';
       if (dlgAva)  dlgAva.innerHTML    = ava(other, 36);
 
-      const dlgHeader = document.querySelector('.dlg-header');
-      if (dlgHeader && other?.name) {
-        dlgHeader.style.cursor = 'pointer';
-        dlgHeader.onclick = () => window.location.href = `/u/${encodeURIComponent(other.name)}`;
+      // Переход на профиль только по аватарке и имени, НЕ по всему хедеру
+      const dlgAvaEl = document.getElementById('dlgAva');
+      const dlgNameEl = document.getElementById('dlgName');
+      if (other?.name) {
+        const goProfile = (e) => { e.stopPropagation(); window.location.href = `/u/${encodeURIComponent(other.id || other.name)}`; };
+        if (dlgAvaEl) { dlgAvaEl.style.cursor = 'pointer'; dlgAvaEl.onclick = goProfile; }
+        if (dlgNameEl) { dlgNameEl.style.cursor = 'pointer'; dlgNameEl.onclick = goProfile; }
       }
 
       const dlgArrow = document.getElementById('dlgArrow');
