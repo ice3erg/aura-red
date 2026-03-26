@@ -39,11 +39,16 @@
     .leaflet-control-attribution { display: none !important; }
 
     /* ── Top pill: NOW PLAYING ── */
-    .now-pill {
+    .now-pill-wrap {
       position: fixed;
       top: calc(env(safe-area-inset-top) + 12px);
-      left: 50%; transform: translateX(-50%);
+      left: 16px; right: 16px;
       z-index: 50;
+      display: flex; justify-content: center;
+      pointer-events: none;
+      animation: slideDown 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    .now-pill {
       display: flex; align-items: center; gap: 10px;
       padding: 10px 16px 10px 12px;
       border-radius: 99px;
@@ -51,13 +56,12 @@
       border: 1px solid var(--border);
       backdrop-filter: blur(24px);
       -webkit-backdrop-filter: blur(24px);
-      max-width: calc(100vw - 32px);
+      max-width: 340px; width: 100%;
       box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-      cursor: pointer;
-      transition: transform 0.15s, box-shadow 0.15s;
-      animation: slideDown 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+      cursor: pointer; pointer-events: auto;
+      transition: opacity 0.15s, transform 0.1s;
     }
-    .now-pill:active { transform: translateX(-50%) scale(0.97); }
+    .now-pill:active { transform: scale(0.97); opacity: 0.9; }
     .now-pill.has-track { border-color: rgba(255,43,43,0.25); }
 
     .np-cover {
@@ -314,8 +318,8 @@
 
     /* ── Animations ── */
     @keyframes slideDown {
-      from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+      from { opacity: 0; transform: translateY(-16px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
     @keyframes slideUp {
       from { opacity: 0; transform: translateY(30px); }
@@ -353,6 +357,7 @@
   <div class="map-logo">+aura</div>
 
   <!-- NOW PLAYING pill -->
+  <div class="now-pill-wrap">
   <div class="now-pill" id="nowPill">
     <div class="np-cover-ph" id="npCoverPh">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
@@ -365,6 +370,7 @@
     </div>
     <a class="np-connect" id="npConnect" href="/profile" style="display:none;">+</a>
   </div>
+  </div><!-- /now-pill-wrap -->
 
   <!-- People count -->
   <div class="people-chip" id="peopleChip" style="display:none;">

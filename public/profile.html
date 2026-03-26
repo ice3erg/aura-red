@@ -453,6 +453,16 @@
       <div class="notice" id="profileNotice"></div>
     </div>
 
+    <!-- Photos -->
+    <div class="section">
+      <div class="section-title">Фото</div>
+      <div id="photosGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px;"></div>
+      <input type="file" id="photoInput" accept="image/*" multiple style="display:none;" />
+      <button id="addPhotoBtn" style="width:100%;padding:13px;border-radius:14px;background:rgba(255,255,255,0.04);border:1px dashed rgba(255,255,255,0.12);color:rgba(255,255,255,0.45);font:600 13px/1 Inter,sans-serif;cursor:pointer;transition:border-color 0.2s,color 0.2s;" onmouseover="this.style.borderColor='rgba(255,43,43,0.3)';this.style.color='rgba(255,255,255,0.7)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.12)';this.style.color='rgba(255,255,255,0.45)'">
+        + Добавить фото (до 6)
+      </button>
+    </div>
+
     <!-- Save -->
     <div class="section">
       <button class="save-btn" id="saveBtn">Сохранить профиль</button>
