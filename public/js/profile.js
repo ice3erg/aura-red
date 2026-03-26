@@ -1,15 +1,10 @@
 (function () {
   const U = window.AuraUtils;
 
-  // ── Helpers ────────────────────────────────────────────
   function markFilled(input) {
-    if (input) {
-      const update = () => input.value.trim()
-        ? input.classList.add('has-value')
-        : input.classList.remove('has-value');
-      update();
-      input.addEventListener('input', update);
-    }
+    if (!input) return;
+    const upd = () => input.value.trim() ? input.classList.add('has-value') : input.classList.remove('has-value');
+    upd(); input.addEventListener('input', upd);
   }
 
   function showNotice(text, type = 'error') {
@@ -29,58 +24,129 @@
     });
   }
 
-  // State
-  let _avatarData  = null; // base64 или null (убрать) или undefined (не менялось)
-  let _coverData   = null;
+  // ── Aura system ───────────────────────────────────────────
+  const RANKS = [
+    { name: 'Новичок',      min: 0   },
+    { name: 'Слушатель',    min: 10  },
+    { name: 'Меломан',      min: 30  },
+    { name: 'Вибратор',     min: 75  },
+    { name: 'Резонатор',    min: 150 },
+    { name: 'Аурист',       min: 300 },
+    { name: 'Легенда',      min: 600 },
+  ];
+
+  function getRank(pts) {
+    for (let i = RANKS.length - 1; i >= 0; i--) {
+      if (pts >= RANKS[i].min) return { rank: RANKS[i], next: RANKS[i + 1] || null, idx: i };
+    }
+    return { rank: RANKS[0], next: RANKS[1], idx: 0 };
+  }
+
+  function renderAura(pts) {
+    const { rank, next } = getRank(pts);
+    const scoreEl = document.getElementById('auraScore');
+    const rankEl  = document.getElementById('auraRank');
+    const barEl   = document.getElementById('auraBarFill');
+    const nextEl  = document.getElementById('auraNext');
+    if (scoreEl) scoreEl.textContent = pts;
+    if (rankEl)  rankEl.textContent  = rank.name;
+    if (next) {
+      const pct = Math.min(100, Math.round(((pts - rank.min) / (next.min - rank.min)) * 100));
+      if (barEl)  barEl.style.width = pct + '%';
+      if (nextEl) nextEl.textContent = (next.min - pts) + ' до «' + next.name + '»';
+    } else {
+      if (barEl)  barEl.style.width = '100%';
+      if (nextEl) nextEl.textContent = 'Максимальный уровень';
+    }
+  }
+
+  // ── Photo collage ─────────────────────────────────────────
+  function buildCollage(photos) {
+    const grid = document.getElementById('collageGrid');
+    if (!grid) return;
+    const n = Math.min(photos.length, 6);
+    grid.className = `collage-grid n${n}`;
+
+    if (n === 0) {
+      grid.innerHTML = `<div class="collage-empty" onclick="document.getElementById('photoInput').click()">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+        Добавь фото для коллажа
+      </div>`;
+      return;
+    }
+
+    // Ячейки по сетке
+    grid.innerHTML = photos.slice(0, n).map((src, i) => {
+      // Для 3 фото — первое занимает 2 строки
+      const span = (n === 3 && i === 0) ? ' span2' : '';
+      return `<div class="collage-cell${span}"><img src="${src}" alt="" loading="lazy" /></div>`;
+    }).join('');
+  }
+
+  // ── Track ticker ──────────────────────────────────────────
+  function buildTicker(history) {
+    if (!history.length) return;
+    const section = document.getElementById('tickerSection');
+    const track   = document.getElementById('tickerTrack');
+    if (!section || !track) return;
+    section.style.display = '';
+
+    // Дублируем для бесшовного цикла
+    const items = [...history.slice(0, 8), ...history.slice(0, 8)];
+    track.innerHTML = items.map(t => `
+      <div class="ticker-item">
+        ${t.image
+          ? `<img class="ticker-cover" src="${t.image}" alt="" />`
+          : `<div class="ticker-cover-ph"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`
+        }
+        <span class="ticker-text">${t.track}</span>
+        <span class="ticker-artist">${t.artist}</span>
+        <span class="ticker-sep">·</span>
+      </div>
+    `).join('');
+
+    // Скорость зависит от количества треков
+    const dur = Math.max(12, items.length * 2.5);
+    track.style.animationDuration = dur + 's';
+  }
+
+  let _photos = [];
+  let _photosChanged = false;
+  let _avatarData = null;
   let _avatarChanged = false;
-  let _coverChanged  = false;
 
   async function init() {
     const user = await U.requireAuth();
     if (!user) return;
 
-    // ── Populate fields ─────────────────────────────────
+    // ── Fields ──────────────────────────────────────────────
     const fieldName = document.getElementById('fieldName');
     const fieldAge  = document.getElementById('fieldAge');
     const fieldCity = document.getElementById('fieldCity');
     const fieldBio  = document.getElementById('fieldBio');
-
     if (fieldName) { fieldName.value = user.name || ''; markFilled(fieldName); }
     if (fieldAge)  { fieldAge.value  = user.age  || ''; markFilled(fieldAge); }
     if (fieldCity) { fieldCity.value = user.city || ''; markFilled(fieldCity); }
     if (fieldBio)  { fieldBio.value  = user.bio  || ''; markFilled(fieldBio); }
 
-    // ── Name display ────────────────────────────────────
+    // Live name preview
     function updateNameDisplay() {
-      const nd = document.getElementById('nameDisplay');
-      const cd = document.getElementById('cityDisplay');
-      const ad = document.getElementById('ageDisplay');
-      const dot = document.getElementById('ageDot');
+      const nd  = document.getElementById('nameDisplay');
+      const cd  = document.getElementById('cityDisplay');
+      const ad  = document.getElementById('ageDisplay');
       if (nd) nd.textContent = fieldName?.value.trim() || user.name || '—';
       const city = fieldCity?.value.trim() || user.city || '';
       const age  = fieldAge?.value.trim()  || user.age  || '';
       if (cd) cd.textContent = city ? `📍 ${city}` : '';
-      if (ad) ad.textContent = age ? `${age} лет` : '';
-      if (dot) dot.style.display = (city && age) ? '' : 'none';
+      if (ad) ad.textContent = age  ? `${age} лет` : '';
     }
     updateNameDisplay();
     [fieldName, fieldAge, fieldCity].forEach(f => f?.addEventListener('input', updateNameDisplay));
 
-    // ── Avatar ──────────────────────────────────────────
+    // ── Avatar ──────────────────────────────────────────────
     const avatarImg = document.getElementById('avatarImg');
     const avatarPh  = document.getElementById('avatarPh');
-
-    function showAvatar(src) {
-      if (avatarImg) { avatarImg.src = src; avatarImg.classList.add('visible'); }
-      if (avatarPh)  avatarPh.style.display = 'none';
-    }
-    function showAvatarPh() {
-      if (avatarImg) { avatarImg.src = ''; avatarImg.classList.remove('visible'); }
-      if (avatarPh)  avatarPh.style.display = '';
-    }
-
-    if (user.avatar) showAvatar(user.avatar);
-    else showAvatarPh();
+    if (user.avatar) { avatarImg.src = user.avatar; avatarImg.classList.add('visible'); avatarPh.style.display = 'none'; }
 
     document.getElementById('avatarInput')?.addEventListener('change', async e => {
       const file = e.target.files[0];
@@ -88,77 +154,70 @@
       if (file.size > 5 * 1024 * 1024) { showNotice('Фото до 5 МБ'); return; }
       _avatarData = await fileToBase64(file);
       _avatarChanged = true;
-      showAvatar(_avatarData);
+      avatarImg.src = _avatarData; avatarImg.classList.add('visible');
+      avatarPh.style.display = 'none';
     });
 
-    // ── Cover photo ─────────────────────────────────────
-    const coverImg = document.getElementById('coverImg');
-    const coverPh  = document.getElementById('coverPlaceholder');
-
-    function showCover(src) {
-      if (coverImg) { coverImg.src = src; coverImg.classList.add('visible'); }
-      if (coverPh)  coverPh.style.display = 'none';
-    }
-    function showCoverPh() {
-      if (coverImg) { coverImg.src = ''; coverImg.classList.remove('visible'); }
-      if (coverPh)  coverPh.style.display = '';
+    // ── Rays when playing ───────────────────────────────────
+    if (user.currentTrack?.track) {
+      document.getElementById('avatarRays')?.classList.add('playing');
     }
 
-    if (user.cover) showCover(user.cover);
-    else showCoverPh();
-
-    document.getElementById('coverInput')?.addEventListener('change', async e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      if (file.size > 8 * 1024 * 1024) { showNotice('Фото до 8 МБ'); return; }
-      _coverData = await fileToBase64(file);
-      _coverChanged = true;
-      showCover(_coverData);
-    });
-
-    // ── Photos gallery ────────────────────────────────────
-    let _photos = Array.isArray(user.photos) ? [...user.photos] : [];
-    let _photosChanged = false;
-
-    function renderPhotos() {
-      const grid = document.getElementById('photosGrid');
-      if (!grid) return;
-      grid.innerHTML = '';
-      _photos.forEach((src, i) => {
-        const wrap = document.createElement('div');
-        wrap.style.cssText = 'position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:rgba(255,255,255,0.05);';
-        const img = document.createElement('img');
-        img.src = src;
-        img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
-        const del = document.createElement('button');
-        del.textContent = '✕';
-        del.style.cssText = 'position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,0.7);border:none;color:#fff;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;';
-        del.onclick = () => { _photos.splice(i, 1); _photosChanged = true; renderPhotos(); };
-        wrap.appendChild(img);
-        wrap.appendChild(del);
-        grid.appendChild(wrap);
-      });
-      const addBtn = document.getElementById('addPhotoBtn');
-      if (addBtn) addBtn.style.display = _photos.length >= 6 ? 'none' : '';
-    }
-    renderPhotos();
-
-    document.getElementById('addPhotoBtn')?.addEventListener('click', () => {
-      document.getElementById('photoInput')?.click();
-    });
+    // ── Photos collage ──────────────────────────────────────
+    _photos = Array.isArray(user.photos) ? [...user.photos] : [];
+    buildCollage(_photos);
 
     document.getElementById('photoInput')?.addEventListener('change', async e => {
       const files = Array.from(e.target.files || []);
       for (const file of files) {
         if (_photos.length >= 6) break;
         if (file.size > 5 * 1024 * 1024) continue;
-        const b64 = await fileToBase64(file);
-        _photos.push(b64);
+        _photos.push(await fileToBase64(file));
         _photosChanged = true;
       }
       e.target.value = '';
-      renderPhotos();
+      buildCollage(_photos);
     });
+
+    // ── Aura ────────────────────────────────────────────────
+    renderAura(user.auraPoints || 0);
+
+    // ── Stats ────────────────────────────────────────────────
+    try {
+      const [sigsR, chatsR] = await Promise.all([
+        fetch('/api/signals').then(r => r.json()),
+        fetch('/api/chats').then(r => r.json()),
+      ]);
+      // Только принятые сигналы (реальные связи)
+      const acceptedSigs = (sigsR.signals || []).filter(s => s.status === 'accepted').length;
+      const el = document.getElementById('statSignals');
+      if (el) el.textContent = acceptedSigs;
+      const chEl = document.getElementById('statChats');
+      if (chEl) chEl.textContent = (chatsR.chats || []).length;
+    } catch {}
+
+    // Дни с регистрации
+    if (user.createdAt) {
+      const days = Math.max(1, Math.floor((Date.now() - new Date(user.createdAt).getTime()) / 86400000));
+      const dEl = document.getElementById('statDays');
+      if (dEl) dEl.textContent = days;
+    }
+
+    // ── Ticker ──────────────────────────────────────────────
+    const history = Array.isArray(user.trackHistory) ? user.trackHistory : [];
+    buildTicker(history);
+
+    // ── Share ────────────────────────────────────────────────
+    document.getElementById('shareBtn')?.addEventListener('click', () => {
+      const url = `${location.origin}/u/${encodeURIComponent(user.name || '')}`;
+      if (navigator.share) {
+        navigator.share({ title: `${user.name} в +aura`, url });
+      } else {
+        navigator.clipboard?.writeText(url).then(() => showNotice('Ссылка скопирована!', 'success'));
+      }
+    });
+
+    // ── Music ────────────────────────────────────────────────
     const lastfmCard    = document.getElementById('lastfmCard');
     const lastfmStatus  = document.getElementById('lastfmStatus');
     const lastfmBtn     = document.getElementById('lastfmBtn');
@@ -167,7 +226,6 @@
     const spotifyStatus = document.getElementById('spotifyStatus');
     const spotifyBtn    = document.getElementById('spotifyBtn');
 
-    // Рисуем состояние Last.fm
     function renderLastfm(connected, username) {
       if (connected && username) {
         lastfmCard?.classList.add('connected');
@@ -182,7 +240,6 @@
       }
     }
 
-    // Рисуем состояние Spotify
     function renderSpotify(connected) {
       if (connected) {
         spotifyCard?.classList.add('connected');
@@ -198,23 +255,18 @@
     renderLastfm(user.lastfmConnected, user.lastfmUsername);
     renderSpotify(user.spotifyConnected);
 
-    // Last.fm: подключить (из инпута) или отключить
     lastfmBtn?.addEventListener('click', async () => {
       if (user.lastfmConnected) {
-        // Отключить
         lastfmBtn.disabled = true; lastfmBtn.textContent = '...';
         await U.updateCurrentUser({ lastfmConnected: false, lastfmUsername: '' });
         user.lastfmConnected = false; user.lastfmUsername = '';
-        renderLastfm(false, '');
-        lastfmBtn.disabled = false;
+        renderLastfm(false, ''); lastfmBtn.disabled = false;
       } else {
-        // Показываем инпут — кнопка "Сохранить" в инпуте сделает подключение
         if (lastfmInput) lastfmInput.style.display = '';
         document.getElementById('lastfmUsernameField')?.focus();
       }
     });
 
-    // Last.fm: сохранить username из инпута
     document.getElementById('lastfmSaveBtn')?.addEventListener('click', async () => {
       const input = document.getElementById('lastfmUsernameField');
       const username = (input?.value || '').trim().toLowerCase();
@@ -233,122 +285,40 @@
       saveBtn.disabled = false; saveBtn.textContent = 'Сохранить';
     });
 
-    // Spotify: подключить (OAuth) или отключить
     spotifyBtn?.addEventListener('click', async () => {
       if (user.spotifyConnected) {
         spotifyBtn.disabled = true; spotifyBtn.textContent = '...';
         await U.updateCurrentUser({ spotifyConnected: false, spotifyAccessToken: '', spotifyRefreshToken: '' });
-        user.spotifyConnected = false;
-        renderSpotify(false);
-        spotifyBtn.disabled = false;
+        user.spotifyConnected = false; renderSpotify(false); spotifyBtn.disabled = false;
       } else {
         location.href = '/spotify/login';
       }
     });
 
-    // ── Stats ────────────────────────────────────────────
-    async function loadStats() {
-      try {
-        const [sigsR, chatsR] = await Promise.all([
-          fetch('/api/signals').then(r => r.json()),
-          fetch('/api/chats').then(r => r.json()),
-        ]);
-        const sigCount   = document.getElementById('statSignals');
-        const chatCount  = document.getElementById('statChats');
-        const vibeEl     = document.getElementById('statVibe');
-        if (sigCount && sigsR.ok)   sigCount.textContent  = (sigsR.signals || []).length;
-        if (chatCount && chatsR.ok) chatCount.textContent = (chatsR.chats  || []).length;
-        // Определяем вайб по трекам (если подключена музыка)
-        if (vibeEl) {
-          if (user.lastfmConnected || user.spotifyConnected) vibeEl.textContent = '🔴';
-          else vibeEl.textContent = '—';
-        }
-      } catch {}
-    }
-    loadStats();
-
-    // ── Track history ─────────────────────────────────────
-    function renderTrackHistory() {
-      const history = Array.isArray(user.trackHistory) ? user.trackHistory : [];
-      const section = document.getElementById('trackHistorySection');
-      const list    = document.getElementById('trackHistoryList');
-      if (!section || !list || !history.length) return;
-
-      section.style.display = '';
-      list.innerHTML = history.slice(0, 5).map(t => {
-        const ago = timeAgoShort(t.ts);
-        return `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);">
-          ${t.image
-            ? `<img src="${t.image}" style="width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0;" />`
-            : `<div style="width:38px;height:38px;border-radius:8px;background:rgba(255,255,255,0.06);flex-shrink:0;display:flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`
-          }
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.track}</div>
-            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.artist}</div>
-          </div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.25);flex-shrink:0;">${ago}</div>
-        </div>`;
-      }).join('');
-    }
-
-    function timeAgoShort(ts) {
-      const d = Math.floor((Date.now() - ts) / 1000);
-      if (d < 60)    return 'только что';
-      if (d < 3600)  return Math.floor(d/60) + ' мин';
-      if (d < 86400) return Math.floor(d/3600) + ' ч';
-      return Math.floor(d/86400) + ' д';
-    }
-
-    renderTrackHistory();
-
-    // ── Save ─────────────────────────────────────────────
+    // ── Save ─────────────────────────────────────────────────
     document.getElementById('saveBtn')?.addEventListener('click', async () => {
       const name = fieldName?.value.trim() || '';
       const city = fieldCity?.value.trim() || '';
       if (!name) { showNotice('Введи имя'); return; }
       if (!city) { showNotice('Введи город'); return; }
-
       const btn = document.getElementById('saveBtn');
       if (btn) { btn.disabled = true; btn.textContent = 'Сохраняем...'; }
-
-      const payload = {
-        name,
-        age:  fieldAge?.value.trim() || '',
-        city,
-        bio:  fieldBio?.value.trim() || '',
-      };
+      const payload = { name, age: fieldAge?.value.trim() || '', city, bio: fieldBio?.value.trim() || '' };
       if (_avatarChanged) payload.avatar = _avatarData;
-      if (_coverChanged)  payload.cover  = _coverData;
       if (_photosChanged) payload.photos = _photos;
-
       const updated = await U.updateCurrentUser(payload);
       if (btn) { btn.disabled = false; btn.textContent = 'Сохранить профиль'; }
-
       if (updated) {
         showNotice('Профиль сохранён!', 'success');
         updateNameDisplay();
-        _avatarChanged = false;
-        _coverChanged  = false;
-        _photosChanged = false;
+        buildCollage(_photos);
+        _avatarChanged = false; _photosChanged = false;
       } else {
-        showNotice('Ошибка сохранения. Попробуй ещё раз.');
+        showNotice('Ошибка сохранения');
       }
     });
 
-    // ── Share profile ─────────────────────────────────────
-    document.getElementById('shareProfileBtn')?.addEventListener('click', () => {
-      const name = user.name || '';
-      const url = `${location.origin}/u/${encodeURIComponent(name)}`;
-      if (navigator.share) {
-        navigator.share({ title: `${name} в +aura`, url });
-      } else {
-        navigator.clipboard?.writeText(url).then(() => {
-          showNotice('Ссылка скопирована!', 'success');
-        });
-      }
-    });
-
-    // ── Logout ───────────────────────────────────────────
+    // ── Logout ───────────────────────────────────────────────
     document.getElementById('logoutBtn')?.addEventListener('click', async () => {
       await fetch('/api/auth/logout', { method: 'POST' });
       U.go('/login');
