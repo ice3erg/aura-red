@@ -362,10 +362,6 @@
       <input type="file" id="avatarInput" accept="image/*" />
 
       <div class="avatar-actions">
-        <a class="music-link-btn" id="musicLinkBtn" href="/connect-music">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-          Музыка
-        </a>
       </div>
     </div>
 
@@ -429,7 +425,16 @@
           <div class="music-name">Last.fm</div>
           <div class="music-status" id="lastfmStatus">Не подключено</div>
         </div>
-        <button class="music-action connect" id="lastfmBtn" onclick="location.href='/connect-music'">Подключить</button>
+        <button class="music-action connect" id="lastfmBtn">Подключить</button>
+      </div>
+      <!-- Last.fm username input (скрыт когда подключено) -->
+      <div id="lastfmInputWrap" style="display:none;margin-top:-2px;margin-bottom:8px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:8px;">Last.fm Username</div>
+        <div style="display:flex;gap:8px;">
+          <input id="lastfmUsernameField" type="text" placeholder="твой_username" autocomplete="off" autocorrect="off" autocapitalize="none"
+            style="flex:1;padding:10px 13px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#fff;font:600 14px/1 Inter,sans-serif;outline:none;" />
+          <button id="lastfmSaveBtn" style="padding:10px 16px;border-radius:10px;background:var(--red);color:#fff;border:none;font:700 13px/1 Inter,sans-serif;cursor:pointer;white-space:nowrap;">Сохранить</button>
+        </div>
       </div>
       <div class="music-card" id="spotifyCard">
         <div class="music-icon spotify">
@@ -439,7 +444,7 @@
           <div class="music-name">Spotify</div>
           <div class="music-status" id="spotifyStatus">Не подключено</div>
         </div>
-        <button class="music-action connect" id="spotifyBtn" onclick="location.href='/spotify/login'">Подключить</button>
+        <button class="music-action connect" id="spotifyBtn">Подключить</button>
       </div>
     </div>
 
