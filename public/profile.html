@@ -43,10 +43,10 @@
     /* ── Avatar row ── */
     .avatar-row{position:relative;padding:0 20px;margin-top:-46px;margin-bottom:0;display:flex;align-items:flex-end;justify-content:space-between}
     .avatar-wrap{position:relative;width:90px;height:90px;flex-shrink:0;cursor:pointer}
-    .avatar-img{width:100%;height:100%;border-radius:50%;object-fit:cover;border:3px solid var(--bg);display:none;background:#1a1a22}
+    .avatar-img{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;object-fit:cover;border:3px solid var(--bg);display:none;background:#1a1a22}
     .avatar-img.visible{display:block}
-    .avatar-ph{width:100%;height:100%;border-radius:50%;background:#1a1a22;border:3px solid var(--bg);display:flex;align-items:center;justify-content:center}
-    .avatar-edit-btn{position:absolute;bottom:2px;right:2px;width:26px;height:26px;border-radius:50%;background:var(--red);border:2px solid var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer}
+    .avatar-ph{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;background:#1a1a22;border:3px solid var(--bg);display:flex;align-items:center;justify-content:center}
+    .avatar-edit-btn{position:absolute;bottom:2px;right:2px;width:26px;height:26px;border-radius:50%;background:var(--red);border:2px solid var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2}
 
     /* Лучи вокруг аватара когда играет трек */
     .avatar-rays{position:absolute;inset:-12px;border-radius:50%;pointer-events:none;display:none}
