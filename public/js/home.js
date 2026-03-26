@@ -62,34 +62,31 @@
     stopTimer();
     const empty = document.getElementById("trackEmptyState");
     const card  = document.getElementById("trackCard");
+    const link  = document.getElementById("trackLink");
+    const prog  = document.getElementById("progressRow");
     if (empty) empty.style.display = "flex";
-    if (card)  card.classList.add("hidden");
+    if (card)  { card.classList.remove("visible"); card.style.display = "none"; }
+    if (link)  link.style.display = "none";
+    if (prog)  prog.style.display = "none";
     const t = document.getElementById("spotifyBlockTitle");
     const x = document.getElementById("spotifyBlockText");
     const a = document.getElementById("spotifyAction");
     if (t) t.textContent = title;
     if (x) x.textContent = text;
-    if (a) { a.textContent = actionText; a.href = "/connect-music"; }
+    if (a) { a.textContent = actionText; a.href = "/profile"; }
   }
 
   function showTrack(track, playing) {
     const empty = document.getElementById("trackEmptyState");
     const card  = document.getElementById("trackCard");
     if (empty) empty.style.display = "none";
-    if (card)  card.classList.remove("hidden");
+    if (card)  { card.style.display = ""; card.classList.add("visible"); }
 
-    // Арт + blur-фон
+    // Обложка
     const img = document.getElementById("trackImage");
-    const bg  = document.getElementById("trackBg");
-    const ph  = document.getElementById("trackArtPh");
-    if (track.image) {
-      if (img) { img.src = track.image; img.style.display = ""; }
-      if (ph)  ph.style.display = "none";
-      if (bg)  bg.style.backgroundImage = `url(${track.image})`;
-    } else {
-      if (img) img.style.display = "none";
-      if (ph)  ph.style.display = "flex";
-      if (bg)  bg.style.backgroundImage = "";
+    if (img) {
+      if (track.image) { img.src = track.image; img.style.display = ""; }
+      else img.style.display = "none";
     }
 
     const nm = document.getElementById("trackName");
@@ -98,16 +95,16 @@
     if (nm) nm.textContent = track.name    || "Без названия";
     if (ar) ar.textContent = track.artists || "Неизвестный исполнитель";
     if (lk) {
-      if (track.url) { lk.href = track.url; lk.style.display = "flex"; }
-      else lk.style.display = "none";
+      if (track.url) { lk.href = track.url; lk.classList.add("visible"); }
+      else lk.classList.remove("visible");
     }
 
-    // Прогресс-бар (только для Spotify у которого есть длительность)
+    // Прогресс-бар (только Spotify даёт длительность)
     currentProgressMs = Number(track.progressMs || 0);
     currentDurationMs = Number(track.durationMs || 0);
     isPlaying = !!playing;
-    const pw = document.getElementById("progressWrap");
-    if (pw) pw.style.display = currentDurationMs > 0 ? "" : "none";
+    const pr = document.getElementById("progressRow");
+    if (pr) pr.style.display = currentDurationMs > 0 ? "block" : "none";
     renderProgress();
     startTimer();
 
