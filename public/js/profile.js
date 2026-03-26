@@ -267,6 +267,40 @@
     }
     loadStats();
 
+    // ── Track history ─────────────────────────────────────
+    function renderTrackHistory() {
+      const history = Array.isArray(user.trackHistory) ? user.trackHistory : [];
+      const section = document.getElementById('trackHistorySection');
+      const list    = document.getElementById('trackHistoryList');
+      if (!section || !list || !history.length) return;
+
+      section.style.display = '';
+      list.innerHTML = history.slice(0, 5).map(t => {
+        const ago = timeAgoShort(t.ts);
+        return `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);">
+          ${t.image
+            ? `<img src="${t.image}" style="width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0;" />`
+            : `<div style="width:38px;height:38px;border-radius:8px;background:rgba(255,255,255,0.06);flex-shrink:0;display:flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`
+          }
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.track}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.artist}</div>
+          </div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.25);flex-shrink:0;">${ago}</div>
+        </div>`;
+      }).join('');
+    }
+
+    function timeAgoShort(ts) {
+      const d = Math.floor((Date.now() - ts) / 1000);
+      if (d < 60)    return 'только что';
+      if (d < 3600)  return Math.floor(d/60) + ' мин';
+      if (d < 86400) return Math.floor(d/3600) + ' ч';
+      return Math.floor(d/86400) + ' д';
+    }
+
+    renderTrackHistory();
+
     // ── Save ─────────────────────────────────────────────
     document.getElementById('saveBtn')?.addEventListener('click', async () => {
       const name = fieldName?.value.trim() || '';

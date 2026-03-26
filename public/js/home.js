@@ -110,6 +110,32 @@
     } else {
       chip.style.display = 'none';
     }
+
+    // Пустое состояние
+    let emptyEl = document.getElementById('mapEmpty');
+    if (relevant.length === 0 && _currentTrack) {
+      if (!emptyEl) {
+        emptyEl = document.createElement('div');
+        emptyEl.id = 'mapEmpty';
+        emptyEl.style.cssText = `
+          position:fixed;bottom:calc(80px + env(safe-area-inset-bottom) + 16px);
+          left:50%;transform:translateX(-50%);
+          background:rgba(10,10,16,0.88);border:1px solid rgba(255,255,255,0.08);
+          border-radius:18px;padding:14px 20px;
+          backdrop-filter:blur(20px);
+          display:flex;align-items:center;gap:10px;
+          font-size:13px;font-weight:600;color:rgba(255,255,255,0.6);
+          z-index:50;white-space:nowrap;
+          box-shadow:0 4px 20px rgba(0,0,0,0.4);
+          animation:fadeIn 0.3s ease both;
+        `;
+        emptyEl.innerHTML = '<span style="font-size:20px;">🔍</span> Никого на волне рядом';
+        document.body.appendChild(emptyEl);
+      }
+      emptyEl.style.display = 'flex';
+    } else if (emptyEl) {
+      emptyEl.style.display = 'none';
+    }
   }
 
   async function loadRadar(lat, lng) {
@@ -328,7 +354,17 @@
     // Sent signals
     await loadSentSignalIds();
 
-    // Трек
+    // Трек — сразу пушим из базы (восстановление после рестарта сервера)
+    if (_user.currentTrack?.track) {
+      const pos = await getGeo();
+      if (pos) {
+        fetch('/api/now-playing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...(_user.currentTrack), lat: pos.lat, lng: pos.lng })
+        }).catch(() => {});
+      }
+    }
     loadTrack(_user);
     setInterval(() => loadTrack(_user), 30000);
 
@@ -352,3 +388,5 @@
 
   init();
 })();
+
+// Patch applied by build

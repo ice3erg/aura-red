@@ -88,6 +88,52 @@
     });
   }
 
+  // ── Уведомления о принятых сигналах ──────────────────
+  async function loadNotifications() {
+    try {
+      const r = await fetch('/api/notifications');
+      const d = await r.json();
+      if (!d.ok || !d.notifications.length) return;
+
+      // Показываем баннер для каждого непросмотренного
+      d.notifications.forEach(n => {
+        const name = n.to?.name || 'Кто-то';
+        showToast(`✅ ${name} принял твой сигнал!`, n.chatId);
+      });
+
+      // Помечаем как просмотренные
+      await fetch('/api/notifications/seen', { method: 'POST' });
+    } catch {}
+  }
+
+  function showToast(text, chatId) {
+    const existing = document.getElementById('signalToast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.id = 'signalToast';
+    toast.style.cssText = `
+      position:fixed;top:calc(env(safe-area-inset-top)+16px);left:50%;
+      transform:translateX(-50%);
+      background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);
+      color:#86efac;border-radius:16px;padding:12px 18px;
+      font:700 14px/1.4 Inter,sans-serif;z-index:999;
+      backdrop-filter:blur(20px);box-shadow:0 8px 32px rgba(0,0,0,0.4);
+      cursor:pointer;max-width:calc(100vw - 32px);text-align:center;
+      animation:slideDown 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
+    `;
+    toast.textContent = text;
+    if (!document.getElementById('toast-style')) {
+      const st = document.createElement('style');
+      st.id = 'toast-style';
+      st.textContent = `@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}`;
+      document.head.appendChild(st);
+    }
+    if (chatId) toast.onclick = () => { window.openChat(chatId); toast.remove(); };
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
+  }
+
   window.openSignalsSheet = () => document.getElementById('signalsSheet').classList.add('open');
   window.closeSignalsSheet = () => document.getElementById('signalsSheet').classList.remove('open');
   document.getElementById('signalsSheet')?.addEventListener('click', e => {
@@ -240,6 +286,19 @@
     msgs.scrollTop = msgs.scrollHeight;
   }
 
+  // ── Typing indicator ──────────────────────────────────
+  let _typingTimer = null;
+  let _isTyping = false;
+
+  function showTyping() {
+    const el = document.getElementById('typingIndicator');
+    if (el) { el.style.display = 'flex'; }
+  }
+  function hideTyping() {
+    const el = document.getElementById('typingIndicator');
+    if (el) { el.style.display = 'none'; }
+  }
+
   async function sendMsg() {
     if (!_activeChatId) return;
     const input = document.getElementById('dlgInput');
@@ -247,6 +306,8 @@
     if (!text) return;
     input.value = '';
     input.style.height = 'auto';
+    _isTyping = false;
+    hideTyping();
     try {
       const r = await fetch(`/api/chats/${_activeChatId}/messages`, {
         method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text})
@@ -293,12 +354,27 @@
     await Promise.all([loadChats(), loadSignals(), loadSentSignals()]);
     if (chatId) openChat(chatId);
 
+    // Загружаем уведомления при старте
+    loadNotifications();
+
     // Polling every 8 sec
     setInterval(async () => {
-      await Promise.all([loadSignals(), loadSentSignals()]);
+      await Promise.all([loadSignals(), loadSentSignals(), loadNotifications()]);
       if (_activeChatId) {
         const r = await fetch(`/api/chats/${_activeChatId}/messages`).then(r=>r.json());
-        if (r.ok) renderMessages(r.messages||[]);
+        if (r.ok) {
+        const msgs = r.messages||[];
+        const lastMsg = msgs[msgs.length-1];
+        // Показываем typing если последнее сообщение от собеседника < 15 сек назад
+        if (lastMsg && lastMsg.fromId !== _me?.id && lastMsg.fromId !== 'system') {
+          const age = Date.now() - lastMsg.createdAt;
+          if (age < 15000) showTyping();
+          else hideTyping();
+        } else {
+          hideTyping();
+        }
+        renderMessages(msgs);
+      }
       } else {
         loadChats();
       }
