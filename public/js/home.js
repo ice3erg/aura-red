@@ -281,7 +281,17 @@
     'same-vibe':   '⚫ похожий вайб',
   };
 
+  let _sheetUser = null;
+
+  function openUserProfile() {
+    if (_sheetUser && !_sheetUser.isDemo && _sheetUser.name) {
+      window.location.href = `/u/${encodeURIComponent(_sheetUser.name)}`;
+    }
+  }
+  window.openUserProfile = openUserProfile;
+
   function openSheet(u) {
+    _sheetUser = u;
     const mt = u.matchType || 'same-vibe';
 
     // Аватар
@@ -313,6 +323,47 @@
       return;
     }
 
+    // Кнопка профиля
+    const profileBtn = document.getElementById('sheetProfileBtn');
+    if (profileBtn) {
+      profileBtn.onclick = () => {
+        if (u.name) window.location.href = `/u/${encodeURIComponent(u.name)}`;
+      };
+    }
+
+    // Загружаем полный профиль для фото
+    const photosEl = document.getElementById('sheetPhotos');
+    if (photosEl) {
+      photosEl.style.display = 'none';
+      photosEl.innerHTML = '';
+      const uid = u.id || u.userId;
+      if (uid && !u.isDemo) {
+        fetch(`/api/user/${encodeURIComponent(u.name || uid)}`)
+          .then(r => r.json())
+          .then(d => {
+            if (!d.ok) return;
+            const photos = d.user?.photos || [];
+            if (!photos.length) return;
+            photosEl.style.display = 'grid';
+            photosEl.style.cssText = `display:grid;grid-template-columns:repeat(${Math.min(photos.length,3)},1fr);gap:4px;border-radius:12px;overflow:hidden;margin-bottom:12px;`;
+            photosEl.innerHTML = photos.slice(0,3).map(src =>
+              `<img src="${src}" style="width:100%;aspect-ratio:1;object-fit:cover;" />`
+            ).join('');
+            // Обновляем bio если есть
+            if (d.user?.bio) {
+              let bioEl = document.getElementById('sheetBio');
+              if (!bioEl) {
+                bioEl = document.createElement('div');
+                bioEl.id = 'sheetBio';
+                bioEl.style.cssText = 'font-size:13px;color:rgba(255,255,255,0.6);line-height:1.5;margin-bottom:12px;padding:0 2px;';
+                photosEl.parentNode.insertBefore(bioEl, photosEl.nextSibling);
+              }
+              bioEl.textContent = d.user.bio;
+            }
+          }).catch(() => {});
+      }
+    }
+
     // Кнопка сигнала
     const btn = document.getElementById('sheetSignalBtn');
     btn._userId = u.id || u.userId;
@@ -331,7 +382,7 @@
 
   function closeSheet() { backdrop.classList.remove('open'); }
 
-  document.getElementById('sheetClose').addEventListener('click', closeSheet);
+  document.getElementById('sheetClose')?.addEventListener('click', closeSheet);
   backdrop.addEventListener('click', e => { if (e.target === backdrop) closeSheet(); });
   map.on('click', closeSheet);
 

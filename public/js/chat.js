@@ -264,6 +264,17 @@
       if (dlgName) dlgName.textContent = other?.name || 'Аноним';
       if (dlgAva)  dlgAva.innerHTML    = ava(other, 36);
 
+      // Тап на хедер → профиль собеседника
+      const dlgHeader = document.querySelector('.dlg-header');
+      if (dlgHeader && other?.name) {
+        dlgHeader.style.cursor = 'pointer';
+        dlgHeader.onclick = () => window.location.href = `/u/${encodeURIComponent(other.name)}`;
+      }
+
+      // Стрелка в хедере
+      const dlgArrow = document.getElementById('dlgArrow');
+      if (dlgArrow) dlgArrow.style.display = other?.name ? '' : 'none';
+
       renderMessages(msgsR.messages||[]);
     } catch {
       msgs.innerHTML = '<div style="text-align:center;padding:32px;color:rgba(255,255,255,.3);">Ошибка загрузки.</div>';
