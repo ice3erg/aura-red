@@ -10,822 +10,408 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
       --red: #ff2b2b;
       --red-dim: rgba(255,43,43,0.15);
-      --red-glow: rgba(255,43,43,0.4);
+      --red-glow: rgba(255,43,43,0.5);
       --bg: #060608;
-      --surface: rgba(255,255,255,0.04);
-      --border: rgba(255,255,255,0.07);
-      --text: #ffffff;
+      --border: rgba(255,255,255,0.08);
+      --text: #fff;
       --muted: rgba(255,255,255,0.45);
-      --faint: rgba(255,255,255,0.18);
+      --surface: rgba(10,10,16,0.85);
     }
 
     html, body {
-      height: 100%;
+      height: 100%; overflow: hidden;
       background: var(--bg);
       color: var(--text);
       font-family: 'Inter', system-ui, sans-serif;
       -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
     }
 
-    body {
-      padding-bottom: calc(72px + env(safe-area-inset-bottom));
-    }
-
-    /* ── Ambient background glow ── */
-    .bg-glow {
-      position: fixed;
-      top: -20%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 600px;
-      height: 400px;
-      background: radial-gradient(ellipse, rgba(255,43,43,0.08) 0%, transparent 70%);
-      pointer-events: none;
+    /* ── Full-screen map ── */
+    #map {
+      position: fixed; inset: 0;
       z-index: 0;
+      filter: saturate(0.55) contrast(1.1) brightness(0.75);
     }
-
-    .page {
-      position: relative;
-      z-index: 1;
-      max-width: 480px;
-      margin: 0 auto;
-      padding: 0 0 24px;
-    }
-
-    /* ── Header ── */
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 56px 20px 20px;
-    }
-
-    .header-identity {
-      display: flex;
-      align-items: center;
-      gap: 13px;
-    }
-
-    .header-ava {
-      position: relative;
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .header-ava img,
-    .header-ava-placeholder {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      object-fit: cover;
-    }
-    .header-ava-placeholder {
-      background: rgba(255,255,255,0.06);
-      border: 1.5px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .header-ava::after {
-      content: '';
-      position: absolute;
-      inset: -2px;
-      border-radius: 50%;
-      border: 1.5px solid var(--border);
-      pointer-events: none;
-    }
-
-    .header-text {}
-    .header-greeting {
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--muted);
-      letter-spacing: 0.02em;
-    }
-    .header-name {
-      font-size: 20px;
-      font-weight: 800;
-      letter-spacing: -0.3px;
-      line-height: 1.15;
-    }
-
-    .header-logout {
-      background: none;
-      border: 1px solid var(--border);
-      color: var(--muted);
-      font: inherit;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 7px 13px;
-      border-radius: 99px;
-      cursor: pointer;
-      transition: color 0.2s, border-color 0.2s;
-    }
-    .header-logout:hover { color: var(--text); border-color: var(--faint); }
-
-    /* ── NOW PLAYING block ── */
-    .now-playing {
-      margin: 4px 20px 0;
-      border-radius: 22px;
-      overflow: hidden;
-      position: relative;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--border);
-      transition: border-color 0.3s;
-    }
-    .now-playing.has-track {
-      border-color: rgba(255,43,43,0.2);
-      background: rgba(255,43,43,0.04);
-    }
-
-    /* Empty state */
-    .np-empty {
-      padding: 28px 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .np-empty-label {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-    }
-    .np-empty-title {
-      font-size: 18px;
-      font-weight: 800;
-      letter-spacing: -0.2px;
-    }
-    .np-empty-sub {
-      font-size: 13px;
-      color: var(--muted);
-      line-height: 1.5;
-    }
-    .np-connect-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      margin-top: 4px;
-      padding: 11px 18px;
-      border-radius: 12px;
-      background: var(--red);
-      color: #fff;
-      font: inherit;
-      font-size: 13px;
-      font-weight: 700;
-      text-decoration: none;
-      border: none;
-      cursor: pointer;
-      width: fit-content;
-      transition: opacity 0.15s;
-    }
-    .np-connect-btn:active { opacity: 0.8; }
-
-    /* Track state */
-    .np-track {
-      display: none;
-      padding: 18px 20px 16px;
-      gap: 16px;
-      align-items: center;
-    }
-    .np-track.visible { display: flex; }
-
-    .np-cover-wrap {
-      position: relative;
-      flex-shrink: 0;
-    }
-    .np-cover {
-      width: 68px;
-      height: 68px;
-      border-radius: 12px;
-      object-fit: cover;
-      background: rgba(255,255,255,0.06);
-      display: block;
-    }
-    .np-cover-placeholder {
-      width: 68px;
-      height: 68px;
-      border-radius: 12px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .np-playing-dot {
-      position: absolute;
-      bottom: -3px;
-      right: -3px;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: var(--red);
-      border: 2px solid var(--bg);
-      animation: pulse-dot 2s ease-in-out infinite;
-    }
-    @keyframes pulse-dot {
-      0%, 100% { box-shadow: 0 0 0 0 var(--red-glow); }
-      50%       { box-shadow: 0 0 0 6px transparent; }
-    }
-
-    .np-info {
-      flex: 1;
-      min-width: 0;
-    }
-    .np-status {
-      font-size: 10px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--red);
-      margin-bottom: 4px;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .np-title {
-      font-size: 16px;
-      font-weight: 800;
-      letter-spacing: -0.2px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      line-height: 1.2;
-    }
-    .np-artist {
-      font-size: 13px;
-      color: var(--muted);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-top: 3px;
-    }
-
-    .np-progress-row {
-      padding: 0 20px 16px;
-      display: none;
-    }
-    .np-progress-row.visible { display: block; }
-    .np-bar-track {
-      position: relative;
-      height: 3px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 99px;
-      overflow: hidden;
-      margin-bottom: 6px;
-    }
-    .np-bar-track::after {
-      content: '';
-      position: absolute;
-      left: 0; top: 0; bottom: 0;
-      width: var(--progress-pct, 0%);
-      background: var(--red);
-      border-radius: 99px;
-      transition: width 0.9s linear;
-    }
-    .np-bar-input {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      opacity: 0;
-      cursor: default;
-    }
-    .np-times {
-      display: flex;
-      justify-content: space-between;
-      font-size: 10px;
-      color: var(--muted);
-      font-weight: 500;
-    }
-
-    .np-open-link {
-      display: none;
-      align-items: center;
-      gap: 6px;
-      margin: 0 20px 16px;
-      padding: 8px 13px;
-      border-radius: 9px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--border);
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 600;
-      text-decoration: none;
-      width: fit-content;
-      transition: color 0.2s, border-color 0.2s;
-    }
-    .np-open-link.visible { display: inline-flex; }
-    .np-open-link:hover { color: #1DB954; border-color: rgba(29,185,84,0.3); }
-
-    /* ── RADAR mini ── */
-    .radar-section {
-      margin: 14px 20px 0;
-    }
-
-    .section-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 10px;
-      padding: 0 2px;
-    }
-
-    .radar-label {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-    }
-
-    .mini-radar-btn {
-      position: relative;
-      width: 100%;
-      height: 220px;
-      border-radius: 22px;
-      overflow: hidden;
-      background: #06060a;
-      border: 1px solid rgba(255,255,255,0.06);
-      cursor: pointer;
-      display: block;
-      transition: border-color 0.25s, transform 0.15s;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .mini-radar-btn:hover  { border-color: rgba(255,43,43,0.2); }
-    .mini-radar-btn:active { transform: scale(0.988); }
-
-    #miniMap {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      filter: saturate(0.5) contrast(1.1) brightness(0.8);
-      pointer-events: none;
-    }
-    .leaflet-control-zoom,
+    .leaflet-control-zoom { display: none !important; }
     .leaflet-control-attribution { display: none !important; }
 
-    /* edge vignette — только по краям, центр открыт */
-    .radar-vignette {
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      background:
-        linear-gradient(to bottom, rgba(6,6,10,0.5) 0%, transparent 30%, transparent 70%, rgba(6,6,10,0.7) 100%),
-        linear-gradient(to right,  rgba(6,6,10,0.4) 0%, transparent 20%, transparent 80%, rgba(6,6,10,0.4) 100%);
-      pointer-events: none;
-      z-index: 1;
-    }
-
-    /* top row: LIVE + Радар pill */
-    .radar-top-row {
-      position: absolute;
-      top: 14px;
-      left: 14px;
-      right: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      z-index: 5;
-    }
-    .live-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 4px 9px;
+    /* ── Top pill: NOW PLAYING ── */
+    .now-pill {
+      position: fixed;
+      top: calc(env(safe-area-inset-top) + 12px);
+      left: 50%; transform: translateX(-50%);
+      z-index: 50;
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px 10px 12px;
       border-radius: 99px;
-      background: rgba(6,6,10,0.7);
-      border: 1px solid rgba(255,43,43,0.3);
-      font-size: 10px;
-      font-weight: 800;
-      color: var(--red);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      backdrop-filter: blur(12px);
-    }
-    .live-badge-dot {
-      width: 5px; height: 5px;
-      border-radius: 50%;
-      background: var(--red);
-      animation: pulse-dot 1.5s ease-in-out infinite;
-    }
-    .radar-open-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 5px 11px;
-      border-radius: 99px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.1);
-      font-size: 11px;
-      font-weight: 700;
-      color: rgba(255,255,255,0.7);
-      backdrop-filter: blur(12px);
-    }
-
-    /* mini dots */
-    
-    .mini-dot {
-      border-radius: 50%;
-      background: var(--red);
-      box-shadow: 0 0 6px var(--red-glow);
-    }
-    .mini-dot.you {
-      background: #fff;
-      box-shadow: 0 0 10px rgba(255,255,255,0.8);
-    }
-    .mini-dot.other { background: var(--red); }
-
-    /* ── ACTIVITY FEED ── */
-    .activity-section {
-      margin: 16px 20px 0;
-      animation: fadeInUp 0.4s 0.24s ease both;
-    }
-
-    .activity-label {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-      margin-bottom: 10px;
-      padding: 0 2px;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-    }
-    .activity-live-dot {
-      width: 5px; height: 5px;
-      border-radius: 50%;
-      background: var(--red);
-      animation: pulse-dot 1.5s ease-in-out infinite;
-      flex-shrink: 0;
-    }
-
-    .activity-feed {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .activity-card {
-      display: flex;
-      align-items: center;
-      gap: 13px;
-      padding: 13px 16px;
-      border-radius: 16px;
       background: var(--surface);
       border: 1px solid var(--border);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      max-width: calc(100vw - 32px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
       cursor: pointer;
-      transition: background 0.2s, border-color 0.2s, transform 0.15s;
-      -webkit-tap-highlight-color: transparent;
-      animation: fadeInUp 0.35s ease both;
-      text-decoration: none;
-      color: inherit;
+      transition: transform 0.15s, box-shadow 0.15s;
+      animation: slideDown 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
     }
-    .activity-card:hover {
+    .now-pill:active { transform: translateX(-50%) scale(0.97); }
+    .now-pill.has-track { border-color: rgba(255,43,43,0.25); }
+
+    .np-cover {
+      width: 36px; height: 36px; border-radius: 8px;
+      object-fit: cover; flex-shrink: 0;
+      background: rgba(255,255,255,0.08);
+    }
+    .np-cover-ph {
+      width: 36px; height: 36px; border-radius: 8px;
       background: rgba(255,255,255,0.06);
-      border-color: rgba(255,255,255,0.12);
-    }
-    .activity-card:active { transform: scale(0.98); }
-
-    .activity-card.match-track {
-      border-color: rgba(255,43,43,0.2);
-      background: rgba(255,43,43,0.05);
-    }
-    .activity-card.match-track:hover {
-      background: rgba(255,43,43,0.08);
-      border-color: rgba(255,43,43,0.3);
-    }
-
-    .activity-ava {
-      position: relative;
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
+      border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
-    .activity-ava img {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      object-fit: cover;
+    .np-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--red);
+      box-shadow: 0 0 8px var(--red);
+      flex-shrink: 0;
+      animation: pulse-dot 1.8s ease-in-out infinite;
     }
-    .activity-ava-ph {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.07);
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--muted);
-    }
-    .activity-match-dot {
-      position: absolute;
-      bottom: -1px;
-      right: -1px;
-      width: 13px;
-      height: 13px;
-      border-radius: 50%;
-      border: 2px solid var(--bg);
-      font-size: 7px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .match-dot-track  { background: var(--red); box-shadow: 0 0 6px var(--red-glow); }
-    .match-dot-artist { background: #888; }
-    .match-dot-vibe   { background: #444; }
+    .np-dot.idle { background: rgba(255,255,255,0.2); box-shadow: none; animation: none; }
 
-    .activity-info {
-      flex: 1;
-      min-width: 0;
+    .np-info { min-width: 0; flex: 1; }
+    .np-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); }
+    .np-title {
+      font-size: 13px; font-weight: 800; letter-spacing: -0.1px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 180px;
     }
-    .activity-user {
-      font-size: 13px;
-      font-weight: 700;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-bottom: 2px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+
+    .np-connect {
+      font-size: 11px; font-weight: 700; color: var(--red);
+      white-space: nowrap; text-decoration: none;
+      padding: 5px 10px; border-radius: 99px;
+      background: var(--red-dim); border: 1px solid rgba(255,43,43,0.2);
     }
-    .activity-match-tag {
-      font-size: 10px;
-      font-weight: 700;
-      padding: 1px 6px;
+
+    /* ── Logo top-left ── */
+    .map-logo {
+      position: fixed;
+      top: calc(env(safe-area-inset-top) + 14px);
+      left: 16px;
+      z-index: 50;
+      font-size: 18px; font-weight: 900; letter-spacing: -0.5px;
+      color: #fff;
+      text-shadow: 0 0 12px rgba(255,255,255,0.6), 0 0 28px rgba(255,43,43,0.25);
+      animation: fadeIn 0.4s ease both;
+    }
+
+    /* ── People count bottom-left ── */
+    .people-chip {
+      position: fixed;
+      bottom: calc(72px + env(safe-area-inset-bottom) + 16px);
+      left: 16px;
+      z-index: 50;
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 13px;
       border-radius: 99px;
-      flex-shrink: 0;
-    }
-    .tag-track  { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,43,43,0.2); }
-    .tag-artist { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); border: 1px solid var(--border); }
-    .tag-vibe   { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.35); border: 1px solid rgba(255,255,255,0.06); }
-
-    .activity-track {
-      font-size: 12px;
-      color: var(--muted);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .activity-track-name { color: rgba(255,255,255,0.75); font-weight: 600; }
-
-    .activity-cover {
-      width: 38px;
-      height: 38px;
-      border-radius: 8px;
-      object-fit: cover;
-      flex-shrink: 0;
-      background: rgba(255,255,255,0.06);
-    }
-    .activity-cover-ph {
-      width: 38px;
-      height: 38px;
-      border-radius: 8px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    /* distance badge */
-    .activity-dist {
-      font-size: 11px;
-      color: var(--muted);
-      font-weight: 500;
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-
-    /* empty feed */
-    .activity-empty {
-      padding: 24px 16px;
-      border-radius: 16px;
       background: var(--surface);
       border: 1px solid var(--border);
-      text-align: center;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.6;
+      backdrop-filter: blur(16px);
+      font-size: 12px; font-weight: 700;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+      animation: fadeIn 0.4s 0.2s ease both;
     }
-    .activity-empty strong {
-      display: block;
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 4px;
+    .people-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--red); box-shadow: 0 0 6px var(--red);
+      animation: pulse-dot 1.5s ease-in-out infinite;
     }
+
+    /* ── Locate me button ── */
+    .locate-btn {
+      position: fixed;
+      bottom: calc(72px + env(safe-area-inset-bottom) + 16px);
+      right: 16px;
+      z-index: 50;
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(16px);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+      transition: transform 0.15s;
+      animation: fadeIn 0.4s 0.25s ease both;
+    }
+    .locate-btn:active { transform: scale(0.9); }
+    .locate-btn svg { opacity: 0.8; }
+
+    /* ── Markers ── */
+    .ava-marker {
+      border-radius: 50%; overflow: visible;
+      cursor: pointer;
+      border: 2.5px solid #fff;
+      box-shadow: 0 0 0 0 rgba(255,43,43,0);
+      position: relative;
+    }
+    .ava-marker.same-track {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px rgba(255,43,43,0.3), 0 0 20px rgba(255,43,43,0.6);
+    }
+    .ava-marker.same-artist {
+      border-color: #fff;
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.2), 0 0 12px rgba(255,255,255,0.4);
+    }
+    .ava-marker img { width:100%;height:100%;border-radius:50%;object-fit:cover; }
+    .ava-init {
+      width:100%;height:100%;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      font-weight:800;color:#fff;background:#1a1a22;
+    }
+    .ava-pulse {
+      position:absolute; inset:-5px; border-radius:50%;
+      pointer-events:none;
+    }
+    .same-track .ava-pulse { animation: markerPulse 2s ease-out infinite; background: rgba(255,43,43,0.25); }
+    .same-artist .ava-pulse { animation: markerPulse 2.5s ease-out infinite; background: rgba(255,255,255,0.15); }
+
+    /* You marker */
+    .you-marker {
+      border-radius: 50%;
+      border: 3px solid #fff;
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.2), 0 0 30px rgba(255,255,255,0.7), 0 0 50px rgba(255,43,43,0.3);
+      overflow: hidden;
+      position: relative;
+    }
+    .you-ring {
+      position: absolute; inset: -8px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.3);
+      animation: youRing 3s ease-in-out infinite;
+    }
+
+    /* ── Track bubble above marker ── */
+    .track-bubble {
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%; transform: translateX(-50%);
+      background: rgba(10,10,16,0.92);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 6px 10px;
+      white-space: nowrap;
+      font-size: 11px; font-weight: 700;
+      color: #fff;
+      backdrop-filter: blur(16px);
+      pointer-events: none;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      max-width: 160px;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .track-bubble::after {
+      content: '';
+      position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+      border: 5px solid transparent;
+      border-top-color: rgba(10,10,16,0.92);
+    }
+
+    /* ── Sheet ── */
+    .sheet-backdrop {
+      position: fixed; inset: 0; z-index: 200;
+      display: none; align-items: flex-end;
+      background: rgba(0,0,0,0.3);
+      backdrop-filter: blur(4px);
+    }
+    .sheet-backdrop.open { display: flex; }
+
+    .sheet {
+      width: 100%;
+      background: rgba(10,10,14,0.98);
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: 28px 28px 0 0;
+      padding: 12px 20px calc(20px + env(safe-area-inset-bottom));
+      box-shadow: 0 -20px 60px rgba(0,0,0,0.5);
+      animation: slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    .sheet-handle {
+      width: 36px; height: 4px; border-radius: 99px;
+      background: rgba(255,255,255,0.15);
+      margin: 0 auto 20px;
+    }
+    .sheet-header {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 14px;
+    }
+    .sheet-ava {
+      width: 54px; height: 54px; border-radius: 50%;
+      background: #1a1a22; flex-shrink: 0;
+      overflow: hidden;
+      border: 2px solid rgba(255,255,255,0.1);
+    }
+    .sheet-ava img { width:100%;height:100%;object-fit:cover; }
+    .sheet-name { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
+    .sheet-city { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .match-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      margin-top: 6px; padding: 4px 10px;
+      border-radius: 99px; font-size: 11px; font-weight: 700;
+    }
+    .match-badge.same-track { background: var(--red-dim); color: #ff6b6b; border: 1px solid rgba(255,43,43,0.3); }
+    .match-badge.same-artist { background: rgba(255,255,255,0.07); color: #fff; border: 1px solid rgba(255,255,255,0.14); }
+    .match-badge.same-vibe { background: rgba(130,130,130,0.1); color: #aaa; border: 1px solid rgba(130,130,130,0.2); }
+
+    .sheet-track {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px; border-radius: 16px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      margin-bottom: 14px;
+    }
+    .sheet-track-cover {
+      width: 44px; height: 44px; border-radius: 8px;
+      object-fit: cover; flex-shrink: 0;
+      background: rgba(255,255,255,0.06);
+    }
+    .sheet-track-name { font-size: 14px; font-weight: 700; }
+    .sheet-track-artist { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .sheet-actions { display: flex; gap: 10px; }
+    .sheet-btn {
+      flex: 1; padding: 14px; border-radius: 14px;
+      font: 700 14px/1 'Inter', sans-serif;
+      border: none; cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+    }
+    .sheet-btn:active { transform: scale(0.97); opacity: 0.8; }
+    .sheet-btn.signal { background: var(--red); color: #fff; }
+    .sheet-btn.sent { background: rgba(34,197,94,0.15); color: #86efac; border: 1px solid rgba(34,197,94,0.25); cursor: default; }
+    .sheet-btn.secondary { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.7); border: 1px solid var(--border); }
 
     /* ── Bottom nav ── */
     .bottom-nav {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
+      position: fixed; bottom: 0; left: 0; right: 0;
       height: calc(64px + env(safe-area-inset-bottom));
       padding-bottom: env(safe-area-inset-bottom);
-      background: rgba(6,6,8,0.92);
+      background: rgba(6,6,8,0.88);
       backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
       border-top: 1px solid var(--border);
-      display: flex;
-      align-items: stretch;
-      z-index: 100;
+      display: flex; align-items: stretch; z-index: 100;
     }
     .nav-link {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      text-decoration: none;
-      color: rgba(255,255,255,0.3);
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      transition: color 0.2s;
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 4px;
+      text-decoration: none; color: rgba(255,255,255,0.3);
+      font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+      text-transform: uppercase; transition: color 0.2s;
+      position: relative;
     }
-    .nav-link:hover  { color: rgba(255,255,255,0.6); }
+    .nav-link:hover { color: rgba(255,255,255,0.6); }
     .nav-link.active { color: var(--red); }
     .nav-link svg { width: 22px; height: 22px; }
     .nav-link.active svg { filter: drop-shadow(0 0 5px var(--red-glow)); }
 
-    /* ── Notice ── */
-    .track-notice {
-      margin: 8px 20px 0;
-      padding: 10px 14px;
-      border-radius: 12px;
-      background: rgba(255,43,43,0.08);
-      border: 1px solid rgba(255,43,43,0.2);
-      color: rgba(255,150,150,0.9);
-      font-size: 13px;
-      display: none;
-    }
-    .track-notice.visible { display: block; }
-
     /* ── Animations ── */
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(12px); }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    .header      { animation: fadeInUp 0.4s ease both; }
-    .now-playing { animation: fadeInUp 0.4s 0.08s ease both; }
-    .radar-section { animation: fadeInUp 0.4s 0.16s ease both; }
-
-    /* ── Beat pulse ── */
+    @keyframes fadeIn {
+      from { opacity: 0; } to { opacity: 1; }
+    }
+    @keyframes pulse-dot {
+      0%, 100% { box-shadow: 0 0 0 0 var(--red-glow); }
+      50%       { box-shadow: 0 0 0 5px transparent; }
+    }
+    @keyframes markerPulse {
+      0%   { transform: scale(1); opacity: 0.6; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+    @keyframes youRing {
+      0%, 100% { transform: scale(1); opacity: 0.5; }
+      50%       { transform: scale(1.15); opacity: 0.15; }
+    }
     @keyframes beat-radar {
-      0%   { transform: scale(1);    opacity: 1; }
-      15%  { transform: scale(1.012); opacity: 0.95; }
-      30%  { transform: scale(1);    opacity: 1; }
-      100% { transform: scale(1);    opacity: 1; }
+      0%,100% { transform: scale(1); }
+      10%      { transform: scale(1.008); }
+      20%      { transform: scale(1); }
     }
-    .mini-radar-btn.beating {
-      animation: beat-radar var(--beat-dur, 0.6s) ease-in-out infinite;
-    }
-    @keyframes beat-dot {
-      0%   { box-shadow: 0 0 14px rgba(255,255,255,0.7), 0 0 28px rgba(255,43,43,0.3); }
-      15%  { box-shadow: 0 0 22px rgba(255,255,255,0.95), 0 0 44px rgba(255,43,43,0.6); }
-      30%  { box-shadow: 0 0 14px rgba(255,255,255,0.7), 0 0 28px rgba(255,43,43,0.3); }
-      100% { box-shadow: 0 0 14px rgba(255,255,255,0.7), 0 0 28px rgba(255,43,43,0.3); }
-    }
-    .mini-radar-btn.beating #miniYouDot {
-      animation: beat-dot var(--beat-dur, 0.6s) ease-in-out infinite;
-    }
+    .beating { animation: beat-radar 0.5s ease-in-out infinite; }
   </style>
 </head>
 <body>
-  <div class="bg-glow"></div>
 
-  <div class="page">
+  <!-- Full-screen map -->
+  <div id="map"></div>
 
-    <!-- Header / Identity -->
-    <header class="header">
-      <div class="header-identity">
-        <div class="header-ava">
-          <img id="homeAvatar" src="" alt="" style="display:none;width:100%;height:100%;border-radius:50%;object-fit:cover;" />
-          <div class="header-ava-placeholder" id="homeAvatarPh">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-          </div>
-        </div>
-        <div class="header-text">
-          <div class="header-greeting" id="homeCity">+aura</div>
-          <div class="header-name" id="homeName">Привет</div>
-        </div>
-      </div>
-      <button class="header-logout" id="logoutBtn">Выйти</button>
-    </header>
+  <!-- Logo -->
+  <div class="map-logo">+aura</div>
 
-    <!-- NOW PLAYING -->
-    <div class="now-playing" id="nowPlayingBlock">
-
-      <!-- Empty state -->
-      <div class="np-empty" id="trackEmptyState">
-        <div class="np-empty-label">Музыкальный сигнал</div>
-        <div class="np-empty-title" id="spotifyBlockTitle">Подключи музыку</div>
-        <div class="np-empty-sub" id="spotifyBlockText">Подключи Last.fm или Spotify чтобы транслировать что ты слушаешь.</div>
-        <a class="np-connect-btn" id="spotifyAction" href="/connect-music">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-          Подключить музыку
-        </a>
-      </div>
-
-      <!-- Track -->
-      <div class="np-track" id="trackCard">
-        <div class="np-cover-wrap">
-          <img class="np-cover" id="trackImage" src="" alt="" />
-          <div class="np-playing-dot"></div>
-        </div>
-        <div class="np-info">
-          <div class="np-status">
-            Сейчас играет
-          </div>
-          <div class="np-title" id="trackName">—</div>
-          <div class="np-artist" id="trackArtists">—</div>
-        </div>
-      </div>
-
-      <div class="np-progress-row" id="progressRow">
-        <div class="np-bar-track" id="progressFill">
-          <input type="range" class="np-bar-input" id="trackProgress" min="0" max="100" value="0" disabled />
-        </div>
-        <div class="np-times">
-          <span id="trackCurrentTime">0:00</span>
-          <span id="trackDuration">0:00</span>
-        </div>
-      </div>
-
-      <a class="np-open-link" id="trackLink" href="#" target="_blank" rel="noopener noreferrer">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.435-5.305-1.76-8.786-.963-.335.077-.67-.133-.746-.469-.077-.336.132-.67.469-.746 3.809-.87 7.077-.496 9.713 1.115.293.18.386.563.207.856zm1.223-2.722c-.226.367-.706.482-1.072.257-2.687-1.652-6.785-2.131-9.965-1.166-.413.127-.848-.105-.975-.517-.127-.413.104-.848.517-.975 3.632-1.102 8.147-.568 11.238 1.329.366.226.48.707.257 1.072zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71c-.493.15-1.016-.129-1.165-.623-.148-.495.13-1.016.624-1.165 3.552-1.077 9.457-.869 13.19 1.37.448.267.595.847.328 1.294-.266.448-.846.595-1.293.328z"/></svg>
-        Открыть в Spotify
-      </a>
+  <!-- NOW PLAYING pill -->
+  <div class="now-pill" id="nowPill">
+    <div class="np-cover-ph" id="npCoverPh">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
     </div>
-
-    <div class="track-notice" id="trackNotice"></div>
-
-    <!-- MINI RADAR -->
-    <div class="radar-section" style="margin-top:14px;">
-      <button class="mini-radar-btn" id="miniMapBtn" aria-label="Открыть радар">
-        <div id="miniMap"></div>
-
-        <!-- виньетка по краям -->
-        <div class="radar-vignette"></div>
-
-        <!-- уголок: LIVE + кнопка -->
-        <div class="radar-top-row">
-          <div class="live-badge"><div class="live-badge-dot"></div>live</div>
-          <div class="radar-open-pill">
-            Радар
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </div>
-        </div>
-
-        <!-- нет сигнала -->
-        <div id="noSignalOverlay" style="display:none;position:absolute;inset:0;background:rgba(6,6,8,0.9);backdrop-filter:blur(8px);border-radius:inherit;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px;z-index:10;">
-          <div style="font-size:32px;line-height:1;">📡</div>
-          <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.2px;">Нет сигнала</div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.4);line-height:1.6;">Подключи музыку чтобы<br>появиться на радаре</div>
-          <a href="/profile" style="margin-top:2px;padding:9px 18px;border-radius:10px;background:var(--red);color:#fff;font:700 12px/1 Inter,sans-serif;text-decoration:none;">Подключить</a>
-        </div>
-      </button>
+    <img class="np-cover" id="npCover" src="" alt="" style="display:none;" />
+    <div class="np-dot idle" id="npDot"></div>
+    <div class="np-info">
+      <div class="np-label">сейчас играет</div>
+      <div class="np-title" id="npTitle">Подключи музыку</div>
     </div>
+    <a class="np-connect" id="npConnect" href="/profile" style="display:none;">+</a>
+  </div>
 
-    <!-- ACTIVITY FEED -->
-    <div class="activity-section" id="activitySection">
-      <div class="activity-label">
-        <div class="activity-live-dot"></div>
-        На волне рядом
-      </div>
-      <div class="activity-feed" id="activityFeed">
-        <!-- заполняется JS -->
-        <div class="activity-empty">
-          <strong>Никого рядом</strong>
-          Включи музыку — появишься на радаре других
+  <!-- People count -->
+  <div class="people-chip" id="peopleChip" style="display:none;">
+    <div class="people-dot"></div>
+    <span id="peopleCount">0 рядом</span>
+  </div>
+
+  <!-- Locate me -->
+  <button class="locate-btn" id="locateBtn" aria-label="Моя позиция">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+      <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" style="display:none"/>
+    </svg>
+  </button>
+
+  <!-- Sheet -->
+  <div class="sheet-backdrop" id="sheetBackdrop">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div class="sheet-ava" id="sheetAva"></div>
+        <div>
+          <div class="sheet-name" id="sheetName">—</div>
+          <div class="sheet-city" id="sheetCity"></div>
+          <div class="match-badge" id="sheetBadge"></div>
         </div>
+      </div>
+      <div class="sheet-track" id="sheetTrackBlock">
+        <img class="sheet-track-cover" id="sheetCover" src="" alt="" />
+        <div>
+          <div class="sheet-track-name" id="sheetTrackName">—</div>
+          <div class="sheet-track-artist" id="sheetTrackArtist">—</div>
+        </div>
+      </div>
+      <div class="sheet-actions">
+        <button class="sheet-btn signal" id="sheetSignalBtn">📡 Отправить сигнал</button>
+        <button class="sheet-btn secondary" id="sheetClose">Закрыть</button>
       </div>
     </div>
-
   </div>
 
   <!-- Bottom nav -->
   <nav class="bottom-nav">
     <a class="nav-link active" href="/home">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      <span>Home</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><path d="M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M17.66 6.34l-2.12 2.12M6.34 17.66l-2.12 2.12"/></svg>
+      <span>Радар</span>
     </a>
     <a class="nav-link" href="/chat">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -840,214 +426,5 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="/js/utils.js"></script>
   <script src="/js/home.js"></script>
-  <script>
-    // ── Mini map ──────────────────────────────────────────
-    (function () {
-      const DEFAULT = [59.9343, 30.3351];
-      const miniMap = L.map('miniMap', {
-        zoomControl: false, attributionControl: false,
-        dragging: false, scrollWheelZoom: false,
-        doubleClickZoom: false, touchZoom: false, keyboard: false
-      }).setView(DEFAULT, 13);
-
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-        { maxZoom: 20, subdomains: 'abcd', attribution: '' }).addTo(miniMap);
-
-      // Скрываем всё лишнее у Leaflet
-      miniMap.getContainer().style.background = 'transparent';
-
-      const pin = (type, size) => L.divIcon({
-        className: '',
-        html: `<div class="mini-dot ${type}" style="width:${size}px;height:${size}px;"></div>`,
-        iconSize: [size, size], iconAnchor: [size/2, size/2]
-      });
-
-      // Аватарка пользователя на карте
-      function youIcon(user) {
-        const size = 32;
-        let inner = '';
-        if (user?.avatar) {
-          inner = `<img src="${user.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
-        } else {
-          const init = (user?.name || 'Я')[0].toUpperCase();
-          inner = `<div style="width:100%;height:100%;border-radius:50%;background:#1a1a22;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;">${init}</div>`;
-        }
-        return L.divIcon({
-          className: '',
-          html: `<div id="miniYouDot" style="width:${size}px;height:${size}px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 0 14px rgba(255,255,255,0.7),0 0 28px rgba(255,43,43,0.3);overflow:hidden;position:relative;">${inner}</div>`,
-          iconSize: [size, size], iconAnchor: [size/2, size/2]
-        });
-      }
-
-      // Грузим профиль для аватарки
-      let _user = null;
-      fetch('/api/auth/me').then(r=>r.json()).then(d=>{ if(d.ok) _user = d.user; }).catch(()=>{});
-
-      let youPin = L.marker(DEFAULT, { icon: pin('you', 12), zIndexOffset: 1000 }).addTo(miniMap);
-
-      const MOCKS = [
-        [59.9386, 30.3141], [59.9278, 30.3476],
-        [59.9449, 30.3831], [59.9175, 30.3014],
-        [59.9542, 30.3334], [59.9200, 30.3650],
-      ];
-      let mockPins = [];
-      MOCKS.forEach(([lat, lng]) => {
-        mockPins.push(L.marker([lat, lng], { icon: pin('other', 8) }).addTo(miniMap));
-      });
-
-      // ── Activity feed ──────────────────────────────────
-      function haversineKm(lat1, lon1, lat2, lon2) {
-        const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
-        const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      }
-
-      function fmtDist(km) {
-        if (km < 1) return Math.round(km * 1000) + ' м';
-        return km.toFixed(1) + ' км';
-      }
-
-      function matchType(user, myTrack) {
-        if (!myTrack || !user.track) return 'vibe';
-        const myT = (myTrack.name || '').toLowerCase();
-        const myA = (myTrack.artists || '').toLowerCase();
-        const uT  = (user.track || '').toLowerCase();
-        const uA  = (user.artist || '').toLowerCase();
-        if (myT && uT && myT === uT) return 'track';
-        if (myA && uA && myA.split(',')[0].trim() === uA.split(',')[0].trim()) return 'artist';
-        return 'vibe';
-      }
-
-      function matchLabel(type) {
-        if (type === 'track')  return { text: '🔴 тот же трек', cls: 'tag-track', dotCls: 'match-dot-track' };
-        if (type === 'artist') return { text: '⚪ тот же артист', cls: 'tag-artist', dotCls: 'match-dot-artist' };
-        return { text: '⚫ похожий вайб', cls: 'tag-vibe', dotCls: 'match-dot-vibe' };
-      }
-
-      function initials(name) {
-        if (!name) return '?';
-        return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
-      }
-
-      function renderFeed(users, myLat, myLng, myTrack) {
-        const feed = document.getElementById('activityFeed');
-        if (!feed) return;
-
-        if (!users || !users.length) {
-          feed.innerHTML = `<div class="activity-empty"><strong>Никого рядом</strong>Включи музыку — появишься на радаре других</div>`;
-          return;
-        }
-
-        // Сортируем: сначала совпадения треков
-        const typeOrder = { track: 0, artist: 1, vibe: 2 };
-        const sorted = users.slice().sort((a, b) => {
-          const ta = typeOrder[matchType(a, myTrack)];
-          const tb = typeOrder[matchType(b, myTrack)];
-          return ta - tb;
-        });
-
-        feed.innerHTML = '';
-        sorted.slice(0, 6).forEach((u, i) => {
-          const type  = matchType(u, myTrack);
-          const label = matchLabel(type);
-          const dist  = (myLat && myLng && u.lat && u.lng)
-            ? fmtDist(haversineKm(myLat, myLng, u.lat, u.lng)) : '';
-          const card = document.createElement('a');
-          card.className = `activity-card${type === 'track' ? ' match-track' : ''}`;
-          card.href = '/map';
-          card.style.animationDelay = `${i * 0.05}s`;
-
-          const avaHtml = u.avatar
-            ? `<img src="${u.avatar}" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />`
-            : `<div class="activity-ava-ph">${initials(u.name)}</div>`;
-
-          const coverHtml = u.image
-            ? `<img class="activity-cover" src="${u.image}" alt="" />`
-            : `<div class="activity-cover-ph"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`;
-
-          card.innerHTML = `
-            <div class="activity-ava">
-              ${avaHtml}
-              <div class="activity-match-dot ${label.dotCls}"></div>
-            </div>
-            <div class="activity-info">
-              <div class="activity-user">
-                ${u.name || 'Аноним'}
-                <span class="activity-match-tag ${label.cls}">${label.text}</span>
-              </div>
-              <div class="activity-track">
-                <span class="activity-track-name">${u.track || '—'}</span>
-                ${u.artist ? `· ${u.artist}` : ''}
-              </div>
-            </div>
-            ${coverHtml}
-            ${dist ? `<div class="activity-dist">${dist}</div>` : ''}
-          `;
-          feed.appendChild(card);
-        });
-      }
-
-      // ── Геолокация + реальный радар ──────────────────
-      let myLat = null, myLng = null;
-
-      function loadRadar(myTrack) {
-        if (!myLat || !myLng) return;
-        fetch(`/api/radar/nearby?lat=${myLat}&lng=${myLng}&radius=50`)
-          .then(r => r.json())
-          .then(d => {
-            if (!d.ok) return;
-
-            // Счётчики
-            const count = d.count || 0;
-            document.getElementById('miniMapCount').textContent =
-              `${count} ${count === 1 ? 'человек' : count < 5 ? 'человека' : 'людей'} рядом`;
-            if (d.stats) {
-              document.getElementById('cntTrack').textContent  = d.stats.sameTrack  || 0;
-              document.getElementById('cntArtist').textContent = d.stats.sameArtist || 0;
-              document.getElementById('cntVibe').textContent   = d.stats.sameVibe   || 0;
-            }
-
-            // Убираем моки если есть реальные данные
-            if (d.users && d.users.length) {
-              mockPins.forEach(p => miniMap.removeLayer(p));
-              mockPins = [];
-              d.users.forEach(u => {
-                L.marker([u.lat, u.lng], { icon: pin('other', 8) }).addTo(miniMap);
-              });
-            }
-
-            // Рендер ленты
-            renderFeed(d.users, myLat, myLng, myTrack);
-          }).catch(() => {});
-      }
-
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => {
-          myLat = pos.coords.latitude;
-          myLng = pos.coords.longitude;
-          miniMap.setView([myLat, myLng], 14);
-
-          // Обновляем маркер с аватаркой (к этому моменту _user уже должен загрузиться)
-          miniMap.removeLayer(youPin);
-          youPin = L.marker([myLat, myLng], { icon: youIcon(_user), zIndexOffset: 1000 }).addTo(miniMap);
-
-          // Первая загрузка — без трека (придёт позже из home.js)
-          loadRadar(null);
-
-          // Обновляем каждые 30 сек
-          setInterval(() => {
-            const myTrack = window.__currentTrack || null;
-            loadRadar(myTrack);
-          }, 30000);
-        });
-      }
-
-      // Экспортируем чтобы home.js мог триггернуть обновление ленты после загрузки трека
-      window.__reloadRadarFeed = (track) => {
-        window.__currentTrack = track;
-        loadRadar(track);
-      };
-    })();
-  </script>
 </body>
 </html>
