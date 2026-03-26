@@ -35,13 +35,30 @@
   }
 
   // Пушим трек на сервер + геолокация → появляемся на радаре других
+  // Кэшируем последнюю геопозицию чтобы не запрашивать каждый раз
+  let _lastPos = null;
+
+  function getGeo() {
+    return new Promise((res) => {
+      if (!navigator.geolocation) { res(null); return; }
+      // Сначала отдаём кэш если свежий (< 2 мин)
+      if (_lastPos && Date.now() - _lastPos.ts < 120000) { res(_lastPos); return; }
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          _lastPos = { lat: pos.coords.latitude, lng: pos.coords.longitude, ts: Date.now() };
+          res(_lastPos);
+        },
+        () => res(_lastPos), // при ошибке — отдаём старую если есть
+        { timeout: 8000, maximumAge: 60000, enableHighAccuracy: false }
+      );
+    });
+  }
+
   async function pushNowPlaying(track) {
     if (!track) return;
     try {
-      const pos = await new Promise((res, rej) =>
-        navigator.geolocation?.getCurrentPosition(res, rej, { timeout: 5000 }) || rej()
-      ).catch(() => null);
-      await fetch("/api/now-playing", {
+      const pos = await getGeo();
+      const r = await fetch("/api/now-playing", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -51,10 +68,19 @@
           image:  track.image   || "",
           url:    track.url     || "",
           source: track.source  || "spotify",
-          lat:    pos ? pos.coords.latitude  : null,
-          lng:    pos ? pos.coords.longitude : null,
+          lat:    pos?.lat ?? null,
+          lng:    pos?.lng ?? null,
         })
       });
+      const d = await r.json();
+      // Показываем статус пуша для отладки
+      const notice = document.getElementById("trackNotice");
+      if (!r.ok && notice) {
+        notice.textContent = "Радар: " + (d.error || "не удалось обновить позицию");
+        notice.style.display = "block";
+      } else if (notice) {
+        notice.style.display = "none";
+      }
     } catch (_) {}
   }
 
@@ -110,6 +136,7 @@
     startTimer();
 
     pushNowPlaying(track);
+    window.__currentTrack = track;
 
     // Пульсация радара в бит (120 BPM по умолчанию = 0.5s)
     const bpm = 120;
@@ -208,6 +235,12 @@
 
     // Обновляем трек каждые 30 сек
     setInterval(() => loadTrack(user), 30000);
+
+    // Отдельно пингуем радар каждые 90 сек чтобы позиция не протухла
+    setInterval(() => {
+      const t = window.__currentTrack;
+      if (t) pushNowPlaying(t);
+    }, 90000);
   }
 
   init();
