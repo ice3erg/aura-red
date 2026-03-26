@@ -2,49 +2,532 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Регистрация — +aura</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>+aura</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --red: #ff2b2b;
+      --bg: #060608;
+      --border: rgba(255,255,255,0.08);
+      --muted: rgba(255,255,255,0.45);
+      --surface: rgba(255,255,255,0.05);
+    }
+    html, body {
+      height: 100%; background: var(--bg); color: #fff;
+      font-family: 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+
+    /* ── Background ── */
+    .bg {
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255,43,43,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 50% 110%, rgba(255,43,43,0.06) 0%, transparent 60%);
+    }
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+    }
+
+    /* ── Shell ── */
+    .shell {
+      position: relative; z-index: 1;
+      height: 100%;
+      display: flex; flex-direction: column;
+      padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0);
+      overflow: hidden;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      display: flex; align-items: center;
+      padding: 20px 20px 0;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .logo-small {
+      font-size: 20px; font-weight: 900; letter-spacing: -0.5px;
+      color: #fff;
+      text-shadow: 0 0 12px rgba(255,255,255,0.7), 0 0 30px rgba(255,43,43,0.3);
+      flex-shrink: 0;
+    }
+    .progress-bar-wrap {
+      flex: 1; height: 3px; border-radius: 99px;
+      background: rgba(255,255,255,0.08); overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%; border-radius: 99px;
+      background: linear-gradient(90deg, var(--red), rgba(255,100,100,0.8));
+      transition: width 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .step-counter {
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      flex-shrink: 0; letter-spacing: 0.04em;
+    }
+
+    /* ── Slides container ── */
+    .slides {
+      flex: 1; display: flex;
+      transition: transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      will-change: transform;
+      min-height: 0;
+    }
+    .slide {
+      min-width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 24px 28px;
+      text-align: center;
+    }
+
+    /* ── Slide content ── */
+    .slide-icon {
+      font-size: 56px; line-height: 1;
+      margin-bottom: 20px;
+      animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    .slide-title {
+      font-size: 28px; font-weight: 900; letter-spacing: -0.5px;
+      line-height: 1.15; margin-bottom: 8px;
+    }
+    .slide-sub {
+      font-size: 14px; color: var(--muted); line-height: 1.6;
+      margin-bottom: 32px; max-width: 280px;
+    }
+
+    /* ── Inputs ── */
+    .field-wrap { position: relative; width: 100%; max-width: 320px; margin-bottom: 10px; }
+    .field-label {
+      position: absolute; top: 11px; left: 16px;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--muted); pointer-events: none; transition: color 0.2s;
+    }
+    .field-input {
+      width: 100%; padding: 26px 16px 10px;
+      border-radius: 16px; border: 1px solid var(--border);
+      background: var(--surface); color: #fff;
+      font: 700 16px/1.3 'Inter', system-ui, sans-serif;
+      outline: none; transition: border-color 0.2s, background 0.2s;
+      -webkit-appearance: none; text-align: left;
+    }
+    .field-input:focus { border-color: rgba(255,43,43,0.45); background: rgba(255,43,43,0.05); }
+    .field-input:focus + .field-label { color: var(--red); }
+    .field-input.filled + .field-label { color: rgba(255,255,255,0.25); }
+    .field-row { display: flex; gap: 8px; width: 100%; max-width: 320px; }
+    .field-row .field-wrap { flex: 1; margin-bottom: 0; }
+
+    /* ── Avatar upload ── */
+    .ava-upload {
+      position: relative; width: 120px; height: 120px;
+      border-radius: 50%; cursor: pointer; margin-bottom: 24px;
+      flex-shrink: 0;
+    }
+    .ava-upload-img {
+      width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+      display: none; border: 3px solid rgba(255,255,255,0.15);
+    }
+    .ava-upload-img.visible { display: block; }
+    .ava-upload-ph {
+      width: 100%; height: 100%; border-radius: 50%;
+      background: rgba(255,255,255,0.05);
+      border: 2px dashed rgba(255,255,255,0.15);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 6px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .ava-upload:hover .ava-upload-ph {
+      border-color: rgba(255,43,43,0.4); background: rgba(255,43,43,0.05);
+    }
+    .ava-upload-ph svg { opacity: 0.4; }
+    .ava-upload-ph span { font-size: 11px; font-weight: 600; color: var(--muted); }
+    .ava-edit-badge {
+      position: absolute; bottom: 4px; right: 4px;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--red); border: 2px solid var(--bg);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #avatarFileInput, #coverFileInput { display: none; }
+
+    /* ── Cover upload ── */
+    .cover-upload {
+      width: 100%; max-width: 320px; height: 120px;
+      border-radius: 18px; cursor: pointer; margin-bottom: 12px;
+      overflow: hidden; position: relative;
+      background: rgba(255,255,255,0.04);
+      border: 2px dashed rgba(255,255,255,0.1);
+      transition: border-color 0.2s;
+    }
+    .cover-upload:hover { border-color: rgba(255,43,43,0.3); }
+    .cover-upload-img {
+      width: 100%; height: 100%; object-fit: cover; display: none;
+    }
+    .cover-upload-img.visible { display: block; }
+    .cover-upload-ph {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 6px;
+    }
+    .cover-upload-ph svg { opacity: 0.3; }
+    .cover-upload-ph span { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .cover-upload-img.visible + .cover-upload-ph { display: none; }
+
+    /* ── Buttons ── */
+    .btn-wrap {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      padding: 16px 28px calc(16px + env(safe-area-inset-bottom));
+      background: linear-gradient(to top, rgba(6,6,8,0.98) 60%, transparent);
+      z-index: 50;
+    }
+    .btn-primary {
+      width: 100%; padding: 17px;
+      border-radius: 18px; border: none;
+      background: #fff; color: #111;
+      font: 800 16px/1 'Inter', system-ui, sans-serif;
+      cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+      letter-spacing: -0.1px;
+    }
+    .btn-primary:hover { opacity: 0.92; }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.35; cursor: default; transform: none; }
+    .btn-secondary {
+      display: block; text-align: center; margin-top: 12px;
+      font-size: 13px; font-weight: 600; color: var(--muted);
+      cursor: pointer; text-decoration: none;
+    }
+    .btn-secondary:hover { color: #fff; }
+
+    /* ── Notice ── */
+    .notice {
+      padding: 11px 14px; border-radius: 12px; margin-bottom: 10px;
+      font-size: 13px; font-weight: 600; display: none; width: 100%; max-width: 320px;
+      background: rgba(255,43,43,0.1); border: 1px solid rgba(255,43,43,0.25); color: #ff8080;
+      text-align: left;
+    }
+    .notice.visible { display: block; }
+
+    /* ── Step 0: Credentials ── */
+    .step0-form { display: flex; flex-direction: column; align-items: center; width: 100%; }
+
+    /* ── Animations ── */
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.7) translateY(10px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+  </style>
 </head>
-<body class="red-mode auth-page">
-  <main class="auth-shell">
-    <section class="auth-card">
-      <div class="logo">+aura</div>
-      <h1>Регистрация</h1>
-      <p class="auth-subtitle">Создай свой аккаунт в +aura.</p>
+<body>
+  <div class="bg"></div>
+  <div class="bg-grid"></div>
 
-      <form data-signup-form class="auth-form">
-        <label class="field">
-          <span>Почта</span>
-          <input type="email" name="email" placeholder="Введите почту" required />
-        </label>
+  <div class="shell">
 
-        <label class="field">
-          <span>Пароль</span>
-          <input type="password" name="password" placeholder="Минимум 6 символов" required />
-        </label>
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="logo-small">+aura</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+      </div>
+      <div class="step-counter" id="stepCounter">1 / 5</div>
+    </div>
 
-        <label class="field">
-          <span>Повторите пароль</span>
-          <input type="password" name="confirmPassword" placeholder="Повторите пароль" required />
-        </label>
+    <!-- Slides -->
+    <div class="slides" id="slides">
 
-        <div data-form-notice class="notice hidden"></div>
+      <!-- SLIDE 0: Аккаунт -->
+      <div class="slide" id="slide0">
+        <div class="slide-icon">👋</div>
+        <div class="slide-title">Создай аккаунт</div>
+        <div class="slide-sub">Твоя почта и пароль — больше ничего лишнего</div>
+        <div class="step0-form">
+          <div class="field-wrap">
+            <input class="field-input" id="s0email" type="email" autocomplete="email" autocapitalize="none" inputmode="email" />
+            <span class="field-label">Почта</span>
+          </div>
+          <div class="field-wrap">
+            <input class="field-input" id="s0pass" type="password" autocomplete="new-password" />
+            <span class="field-label">Пароль</span>
+          </div>
+          <div class="field-wrap">
+            <input class="field-input" id="s0pass2" type="password" autocomplete="new-password" />
+            <span class="field-label">Повторить пароль</span>
+          </div>
+          <div class="notice" id="s0notice"></div>
+        </div>
+      </div>
 
-        <button type="submit" class="primary-btn">Продолжить</button>
-      </form>
+      <!-- SLIDE 1: Имя -->
+      <div class="slide" id="slide1">
+        <div class="slide-icon">✌️</div>
+        <div class="slide-title">Как тебя зовут?</div>
+        <div class="slide-sub">Это имя увидят люди на твоей волне</div>
+        <div class="field-wrap">
+          <input class="field-input" id="s1name" type="text" maxlength="40" autocomplete="given-name" autocapitalize="words" />
+          <span class="field-label">Имя</span>
+        </div>
+        <div class="notice" id="s1notice"></div>
+      </div>
 
-      <p class="auth-footer">
-        Уже есть аккаунт?
-        <a href="/login">Войти</a>
-      </p>
-    </section>
-  </main>
+      <!-- SLIDE 2: Возраст + Город -->
+      <div class="slide" id="slide2">
+        <div class="slide-icon">📍</div>
+        <div class="slide-title">Где и сколько?</div>
+        <div class="slide-sub">Поможет найти людей рядом</div>
+        <div class="field-row">
+          <div class="field-wrap">
+            <input class="field-input" id="s2city" type="text" maxlength="40" autocomplete="address-level2" autocapitalize="words" />
+            <span class="field-label">Город</span>
+          </div>
+          <div class="field-wrap" style="max-width:100px;">
+            <input class="field-input" id="s2age" type="number" min="13" max="99" inputmode="numeric" />
+            <span class="field-label">Лет</span>
+          </div>
+        </div>
+        <div class="notice" id="s2notice"></div>
+      </div>
+
+      <!-- SLIDE 3: Фото профиля -->
+      <div class="slide" id="slide3">
+        <div class="slide-icon">📸</div>
+        <div class="slide-title">Добавь фото</div>
+        <div class="slide-sub">Аватар и обложка профиля — можно пропустить</div>
+
+        <div class="ava-upload" id="avaUpload" onclick="document.getElementById('avatarFileInput').click()">
+          <img class="ava-upload-img" id="avaPreview" src="" alt="" />
+          <div class="ava-upload-ph" id="avaPh">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            <span>Аватар</span>
+          </div>
+          <div class="ava-edit-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+          </div>
+        </div>
+        <input type="file" id="avatarFileInput" accept="image/*" />
+
+        <div class="cover-upload" id="coverUpload" onclick="document.getElementById('coverFileInput').click()">
+          <img class="cover-upload-img" id="coverPreview" src="" alt="" />
+          <div class="cover-upload-ph">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            <span>Обложка профиля</span>
+          </div>
+        </div>
+        <input type="file" id="coverFileInput" accept="image/*" />
+      </div>
+
+      <!-- SLIDE 4: О себе (опционально) -->
+      <div class="slide" id="slide4">
+        <div class="slide-icon">🎵</div>
+        <div class="slide-title">Пару слов о себе</div>
+        <div class="slide-sub">Что слушаешь, кто ты — необязательно</div>
+        <div class="field-wrap" style="max-width:320px;">
+          <textarea class="field-input" id="s4bio" maxlength="200" rows="4"
+            style="padding-top:28px;min-height:100px;resize:none;"></textarea>
+          <span class="field-label">О себе</span>
+        </div>
+      </div>
+
+    </div><!-- /slides -->
+
+    <!-- Bottom buttons -->
+    <div class="btn-wrap">
+      <button class="btn-primary" id="nextBtn">Продолжить</button>
+      <span class="btn-secondary" id="skipBtn" style="display:none;">Пропустить</span>
+      <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--muted);">
+        Уже есть аккаунт? <a href="/login" style="color:#fff;font-weight:700;text-decoration:none;">Войти</a>
+      </div>
+    </div>
+
+  </div><!-- /shell -->
 
   <script src="/js/utils.js"></script>
-  <script src="/js/auth.js"></script>
+  <script>
+  (function() {
+    const U = window.AuraUtils;
+    const TOTAL = 5;
+    let currentStep = 0;
+    let registeredUserId = null;
+
+    // State
+    const state = {
+      email: '', password: '', name: '', city: '', age: '',
+      avatar: null, cover: null, bio: ''
+    };
+
+    // Check if already logged in and start from profile step
+    const urlStep = new URLSearchParams(location.search).get('step');
+    if (urlStep === 'name') {
+      U.fetchMe().then(u => {
+        if (u) { registeredUserId = u.id; goTo(1); }
+      }).catch(()=>{});
+    } else {
+      U.fetchMe().then(u => {
+        if (u && u.name && u.city) U.go('/home');
+      }).catch(()=>{});
+    }
+
+    // ── Navigation ────────────────────────────────────────
+    const slidesEl    = document.getElementById('slides');
+    const progressEl  = document.getElementById('progressFill');
+    const counterEl   = document.getElementById('stepCounter');
+    const nextBtn     = document.getElementById('nextBtn');
+    const skipBtn     = document.getElementById('skipBtn');
+
+    function goTo(step) {
+      currentStep = step;
+      slidesEl.style.transform = `translateX(-${step * 100}%)`;
+      progressEl.style.width = `${((step + 1) / TOTAL) * 100}%`;
+      counterEl.textContent = `${step + 1} / ${TOTAL}`;
+
+      // Кнопки
+      if (step === TOTAL - 1) {
+        nextBtn.textContent = 'Готово 🚀';
+        skipBtn.style.display = 'block';
+      } else if (step >= 3) {
+        skipBtn.style.display = 'block';
+        nextBtn.textContent = 'Продолжить';
+      } else {
+        skipBtn.style.display = 'none';
+        nextBtn.textContent = 'Продолжить';
+      }
+
+      // Фокус на инпут
+      setTimeout(() => {
+        const inputs = {
+          0: 's0email', 1: 's1name', 2: 's2city', 4: 's4bio'
+        };
+        if (inputs[step]) document.getElementById(inputs[step])?.focus();
+      }, 450);
+    }
+
+    skipBtn.addEventListener('click', () => {
+      if (currentStep < TOTAL - 1) goTo(currentStep + 1);
+      else finish();
+    });
+
+    nextBtn.addEventListener('click', () => handleNext());
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') handleNext();
+    });
+
+    // ── File helpers ─────────────────────────────────────
+    function fileToBase64(file) {
+      return new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = e => res(e.target.result);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+    }
+
+    document.getElementById('avatarFileInput').addEventListener('change', async e => {
+      const file = e.target.files[0]; if (!file) return;
+      if (file.size > 5*1024*1024) return;
+      state.avatar = await fileToBase64(file);
+      const img = document.getElementById('avaPreview');
+      const ph  = document.getElementById('avaPh');
+      img.src = state.avatar; img.classList.add('visible');
+      ph.style.display = 'none';
+    });
+
+    document.getElementById('coverFileInput').addEventListener('change', async e => {
+      const file = e.target.files[0]; if (!file) return;
+      if (file.size > 8*1024*1024) return;
+      state.cover = await fileToBase64(file);
+      const img = document.getElementById('coverPreview');
+      img.src = state.cover; img.classList.add('visible');
+    });
+
+    // Filled label
+    document.querySelectorAll('.field-input').forEach(el => {
+      el.addEventListener('input', () => el.classList.toggle('filled', !!el.value));
+    });
+
+    // ── Step handlers ─────────────────────────────────────
+    async function handleNext() {
+      if (nextBtn.disabled) return;
+      if (currentStep === 0) await step0();
+      else if (currentStep === 1) step1();
+      else if (currentStep === 2) step2();
+      else if (currentStep === 3) goTo(4);
+      else finish();
+    }
+
+    function notice(id, text) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = text;
+      el.className = text ? 'notice visible' : 'notice';
+    }
+
+    // Step 0: Register
+    async function step0() {
+      const email = document.getElementById('s0email').value.trim();
+      const pass  = document.getElementById('s0pass').value;
+      const pass2 = document.getElementById('s0pass2').value;
+      notice('s0notice', '');
+      if (!email) { notice('s0notice', 'Введи почту'); return; }
+      if (pass.length < 6) { notice('s0notice', 'Пароль минимум 6 символов'); return; }
+      if (pass !== pass2) { notice('s0notice', 'Пароли не совпадают'); return; }
+      state.email = email; state.password = pass;
+      nextBtn.disabled = true; nextBtn.textContent = 'Создаём...';
+      try {
+        const r = await fetch('/api/auth/signup', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ email, password: pass })
+        });
+        const d = await r.json();
+        if (!r.ok || !d.ok) { notice('s0notice', d.error || 'Ошибка регистрации'); return; }
+        goTo(1);
+      } catch { notice('s0notice', 'Ошибка сети. Попробуй ещё раз.'); }
+      finally { nextBtn.disabled = false; nextBtn.textContent = 'Продолжить'; }
+    }
+
+    // Step 1: Name
+    function step1() {
+      const name = document.getElementById('s1name').value.trim();
+      notice('s1notice', '');
+      if (!name) { notice('s1notice', 'Введи имя'); return; }
+      state.name = name;
+      goTo(2);
+    }
+
+    // Step 2: City + Age
+    function step2() {
+      const city = document.getElementById('s2city').value.trim();
+      const age  = document.getElementById('s2age').value.trim();
+      notice('s2notice', '');
+      if (!city) { notice('s2notice', 'Введи город'); return; }
+      state.city = city; state.age = age;
+      goTo(3);
+    }
+
+    // Final: save profile and go home
+    async function finish() {
+      state.bio = document.getElementById('s4bio').value.trim();
+      nextBtn.disabled = true; nextBtn.textContent = 'Сохраняем...';
+      try {
+        const payload = {
+          name: state.name, city: state.city, age: state.age, bio: state.bio
+        };
+        if (state.avatar) payload.avatar = state.avatar;
+        if (state.cover)  payload.cover  = state.cover;
+        await U.updateCurrentUser(payload);
+        U.go('/home');
+      } catch { nextBtn.disabled = false; nextBtn.textContent = 'Готово 🚀'; }
+    }
+
+  })();
+  </script>
 </body>
 </html>

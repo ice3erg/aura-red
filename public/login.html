@@ -2,48 +2,255 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Вход — +aura</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>+aura</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css" />
-</head>
-<body class="red-mode auth-page">
-  <main class="auth-shell">
-    <section class="auth-card">
-      <div class="logo">+aura</div>
-      <h1>Вход</h1>
-      <p class="auth-subtitle">Вернись в свой радар.</p>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --red: #ff2b2b;
+      --bg: #060608;
+      --border: rgba(255,255,255,0.08);
+      --muted: rgba(255,255,255,0.45);
+      --surface: rgba(255,255,255,0.05);
+    }
+    html, body {
+      height: 100%; background: var(--bg); color: #fff;
+      font-family: 'Inter', system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
 
-      <div class="demo-box">
-        Тестовый вход: <strong>max@aura.app</strong> / <strong>123456</strong>
+    /* ── Background ── */
+    .bg {
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255,43,43,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 50% 110%, rgba(255,43,43,0.07) 0%, transparent 60%);
+    }
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+    }
+
+    /* ── Shell ── */
+    .shell {
+      position: relative; z-index: 1;
+      height: 100%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 24px 24px calc(24px + env(safe-area-inset-bottom));
+    }
+
+    /* ── Logo ── */
+    .logo-wrap {
+      text-align: center;
+      margin-bottom: 48px;
+      animation: fadeInDown 0.6s ease both;
+    }
+    .logo {
+      font-size: 48px; font-weight: 900; letter-spacing: -2px;
+      color: #fff;
+      text-shadow:
+        0 0 20px rgba(255,255,255,0.9),
+        0 0 60px rgba(255,255,255,0.4),
+        0 0 120px rgba(255,43,43,0.3);
+    }
+    .logo-sub {
+      font-size: 13px; font-weight: 500;
+      color: var(--muted); letter-spacing: 0.08em;
+      margin-top: 6px;
+    }
+
+    /* ── Card ── */
+    .card {
+      width: 100%; max-width: 380px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 28px 24px 24px;
+      backdrop-filter: blur(20px);
+      animation: fadeInUp 0.5s 0.1s ease both;
+    }
+    .card-title {
+      font-size: 22px; font-weight: 800; letter-spacing: -0.3px;
+      margin-bottom: 20px;
+    }
+
+    /* ── Fields ── */
+    .field-wrap { position: relative; margin-bottom: 10px; }
+    .field-label {
+      position: absolute; top: 11px; left: 15px;
+      font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--muted); pointer-events: none; transition: color 0.2s;
+    }
+    .field-input {
+      width: 100%; padding: 26px 15px 10px;
+      border-radius: 14px; border: 1px solid var(--border);
+      background: var(--surface); color: #fff;
+      font: 700 15px/1.3 'Inter', system-ui, sans-serif;
+      outline: none; transition: border-color 0.2s, background 0.2s;
+      -webkit-appearance: none;
+    }
+    .field-input:focus { border-color: rgba(255,43,43,0.4); background: rgba(255,43,43,0.05); }
+    .field-input:focus + .field-label { color: var(--red); }
+    .field-input.filled + .field-label { color: rgba(255,255,255,0.3); }
+
+    /* ── Button ── */
+    .btn-primary {
+      width: 100%; padding: 16px;
+      border-radius: 16px; border: none;
+      background: #fff; color: #111;
+      font: 800 15px/1 'Inter', system-ui, sans-serif;
+      cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+      margin-top: 6px; letter-spacing: -0.1px;
+    }
+    .btn-primary:hover { opacity: 0.92; }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.4; cursor: default; transform: none; }
+
+    /* ── Notice ── */
+    .notice {
+      padding: 11px 14px; border-radius: 12px; margin-bottom: 10px;
+      font-size: 13px; font-weight: 600; display: none;
+      background: rgba(255,43,43,0.1); border: 1px solid rgba(255,43,43,0.25); color: #ff8080;
+    }
+    .notice.visible { display: block; }
+
+    /* ── Footer ── */
+    .card-footer {
+      text-align: center; margin-top: 16px;
+      font-size: 13px; color: var(--muted);
+    }
+    .card-footer a { color: #fff; font-weight: 700; text-decoration: none; }
+
+    /* ── App badges ── */
+    .badges {
+      display: flex; gap: 10px; justify-content: center;
+      margin-top: 32px;
+      animation: fadeInUp 0.5s 0.25s ease both;
+    }
+    .badge {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 16px; border-radius: 12px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.5);
+      font-size: 11px; font-weight: 600;
+      text-decoration: none; transition: color 0.2s, border-color 0.2s;
+      cursor: default;
+    }
+    .badge svg { opacity: 0.5; }
+    .badge-label { display: flex; flex-direction: column; gap: 1px; }
+    .badge-sub { font-size: 9px; font-weight: 500; opacity: 0.7; }
+    .badge-name { font-size: 12px; font-weight: 700; }
+
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="bg-grid"></div>
+
+  <div class="shell">
+    <div class="logo-wrap">
+      <div class="logo">+aura</div>
+      <div class="logo-sub">найди людей на своей волне</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Войти</div>
+
+      <div class="notice" id="notice"></div>
+
+      <div class="field-wrap">
+        <input class="field-input" id="email" type="email" autocomplete="email" autocapitalize="none" />
+        <span class="field-label">Почта</span>
+      </div>
+      <div class="field-wrap">
+        <input class="field-input" id="password" type="password" autocomplete="current-password" />
+        <span class="field-label">Пароль</span>
       </div>
 
-      <form data-login-form class="auth-form">
-        <label class="field">
-          <span>Почта</span>
-          <input type="email" name="email" placeholder="Введите почту" required />
-        </label>
+      <button class="btn-primary" id="loginBtn">Войти</button>
 
-        <label class="field">
-          <span>Пароль</span>
-          <input type="password" name="password" placeholder="Введите пароль" required />
-        </label>
+      <div class="card-footer">
+        Нет аккаунта? <a href="/signup">Создать</a>
+      </div>
+    </div>
 
-        <div data-form-notice class="notice hidden"></div>
-
-        <button type="submit" class="primary-btn">Войти</button>
-      </form>
-
-      <p class="auth-footer">
-        Нет аккаунта?
-        <a href="/signup">Зарегистрироваться</a>
-      </p>
-    </section>
-  </main>
+    <div class="badges">
+      <div class="badge">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+        <div class="badge-label">
+          <span class="badge-sub">Скоро в</span>
+          <span class="badge-name">App Store</span>
+        </div>
+      </div>
+      <div class="badge">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M3.18 23.76c.3.17.65.19.98.08l12.49-7.17-2.88-2.89-10.59 9.98zM.94 2.12C.36 2.5 0 3.14 0 3.9v16.21c0 .76.36 1.4.94 1.78l.1.06 9.08-9.08v-.21L1.04 2.06l-.1.06zM20.07 9.66L17.1 7.96l-3.17 3.17 3.17 3.17 3-1.72c.85-.49.85-1.29 0-1.92zM4.16.23L16.65 7.4l-2.88 2.88L3.18.23c.33-.11.68-.09.98.09l.1.06z" opacity=".4"/><path d="M4.16.23C3.83.05 3.48.03 3.18.23L14.06 11.1l2.88-2.88L4.16.23z" opacity=".8"/></svg>
+        <div class="badge-label">
+          <span class="badge-sub">Скоро в</span>
+          <span class="badge-name">Google Play</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="/js/utils.js"></script>
-  <script src="/js/auth.js"></script>
+  <script>
+    (function() {
+      const U = window.AuraUtils;
+
+      // Редирект если уже залогинен
+      U.fetchMe().then(u => { if (u) U.go(u.name && u.city ? '/home' : '/signup?step=name'); }).catch(()=>{});
+
+      // Filled label
+      ['email','password'].forEach(id => {
+        const el = document.getElementById(id);
+        el.addEventListener('input', () => el.classList.toggle('filled', !!el.value));
+      });
+
+      document.getElementById('loginBtn').addEventListener('click', async () => {
+        const email    = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const notice   = document.getElementById('notice');
+        const btn      = document.getElementById('loginBtn');
+        notice.className = 'notice';
+
+        if (!email || !password) { notice.textContent = 'Заполни все поля'; notice.className = 'notice visible'; return; }
+        btn.disabled = true; btn.textContent = 'Входим...';
+        try {
+          const r = await fetch('/api/auth/login', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ email, password })
+          });
+          const d = await r.json();
+          if (!r.ok || !d.ok) { notice.textContent = d.error || 'Неверная почта или пароль'; notice.className = 'notice visible'; }
+          else U.go(d.needsOnboarding ? '/signup?step=name' : '/home');
+        } catch { notice.textContent = 'Ошибка сети'; notice.className = 'notice visible'; }
+        finally { btn.disabled = false; btn.textContent = 'Войти'; }
+      });
+
+      // Enter to submit
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('loginBtn').click();
+      });
+    })();
+  </script>
 </body>
 </html>
