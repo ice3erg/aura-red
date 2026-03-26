@@ -369,26 +369,25 @@
     loadNotifications();
 
     // Polling every 8 sec
-    setInterval(async () => {
-      await Promise.all([loadSignals(), loadSentSignals(), loadNotifications()]);
-      if (_activeChatId) {
-        const r = await fetch(`/api/chats/${_activeChatId}/messages`).then(r=>r.json());
-        if (r.ok) {
-        const msgs = r.messages||[];
-        const lastMsg = msgs[msgs.length-1];
-        // Показываем typing если последнее сообщение от собеседника < 15 сек назад
-        if (lastMsg && lastMsg.fromId !== _me?.id && lastMsg.fromId !== 'system') {
-          const age = Date.now() - lastMsg.createdAt;
-          if (age < 15000) showTyping();
-          else hideTyping();
+    const _pollInterval = setInterval(async () => {
+      if (document.hidden) return; // не поллим когда вкладка скрыта
+      try {
+        await Promise.all([loadSignals(), loadSentSignals(), loadNotifications()]);
+        if (_activeChatId) {
+          const r = await fetch(`/api/chats/${_activeChatId}/messages`).then(r=>r.json());
+          if (r.ok) {
+            const msgs = r.messages||[];
+            const lastMsg = msgs[msgs.length-1];
+            if (lastMsg && lastMsg.fromId !== _me?.id && lastMsg.fromId !== 'system') {
+              const age = Date.now() - lastMsg.createdAt;
+              if (age < 15000) showTyping(); else hideTyping();
+            } else { hideTyping(); }
+            renderMessages(msgs);
+          }
         } else {
-          hideTyping();
+          loadChats();
         }
-        renderMessages(msgs);
-      }
-      } else {
-        loadChats();
-      }
+      } catch(_) {}
     }, 8000);
   }
 
