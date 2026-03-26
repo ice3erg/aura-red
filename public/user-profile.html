@@ -90,6 +90,12 @@
     @keyframes fadeInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
     .info,.now-playing,.signal-section,.section{animation:fadeInUp 0.35s ease both}
   </style>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#060608">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="+aura">
+  <link rel="apple-touch-icon" href="/icon-192.png">
 </head>
 <body>
   <div class="bg-glow"></div>
@@ -357,6 +363,11 @@
 
     init();
   })();
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
   </script>
 </body>
 </html>
