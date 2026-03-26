@@ -178,8 +178,23 @@
       U.go("/login");
     });
 
-    // Mini radar → полная карта
-    document.getElementById("miniMapBtn")?.addEventListener("click", () => U.go("/map"));
+    // Mini radar → полная карта (только если подключена музыка)
+    document.getElementById("miniMapBtn")?.addEventListener("click", () => {
+      const hasMusic = user.lastfmConnected || user.spotifyConnected;
+      if (hasMusic) U.go("/map");
+    });
+
+    // Показываем/скрываем no-signal overlay на радаре
+    const hasMusic = user.lastfmConnected || user.spotifyConnected;
+    const noSignalOverlay = document.getElementById("noSignalOverlay");
+    const activitySection = document.getElementById("activitySection");
+    if (!hasMusic) {
+      if (noSignalOverlay) noSignalOverlay.style.display = "flex";
+      if (activitySection) activitySection.style.display = "none";
+    } else {
+      if (noSignalOverlay) noSignalOverlay.style.display = "none";
+      if (activitySection) activitySection.style.display = "";
+    }
 
     // Загружаем трек
     loadTrack(user);

@@ -116,27 +116,93 @@
       showCover(_coverData);
     });
 
-    // ── Music status ─────────────────────────────────────
-    const lastfmCard   = document.getElementById('lastfmCard');
-    const lastfmStatus = document.getElementById('lastfmStatus');
-    const lastfmBtn    = document.getElementById('lastfmBtn');
+    // ── Music connect/disconnect ──────────────────────────
+    const lastfmCard    = document.getElementById('lastfmCard');
+    const lastfmStatus  = document.getElementById('lastfmStatus');
+    const lastfmBtn     = document.getElementById('lastfmBtn');
+    const lastfmInput   = document.getElementById('lastfmInputWrap');
     const spotifyCard   = document.getElementById('spotifyCard');
     const spotifyStatus = document.getElementById('spotifyStatus');
     const spotifyBtn    = document.getElementById('spotifyBtn');
-    const musicLinkBtn  = document.getElementById('musicLinkBtn');
 
-    if (user.lastfmConnected && user.lastfmUsername) {
-      if (lastfmCard)   lastfmCard.classList.add('connected');
-      if (lastfmStatus) { lastfmStatus.textContent = `@${user.lastfmUsername}`; lastfmStatus.classList.add('connected'); }
-      if (lastfmBtn)    { lastfmBtn.textContent = 'Настроить'; lastfmBtn.className = 'music-action disconnect'; }
-      if (musicLinkBtn) musicLinkBtn.classList.add('connected');
+    // Рисуем состояние Last.fm
+    function renderLastfm(connected, username) {
+      if (connected && username) {
+        lastfmCard?.classList.add('connected');
+        if (lastfmStatus) { lastfmStatus.textContent = `@${username}`; lastfmStatus.classList.add('connected'); }
+        if (lastfmBtn)    { lastfmBtn.textContent = 'Отключить'; lastfmBtn.className = 'music-action disconnect'; }
+        if (lastfmInput)  lastfmInput.style.display = 'none';
+      } else {
+        lastfmCard?.classList.remove('connected');
+        if (lastfmStatus) { lastfmStatus.textContent = 'Не подключено'; lastfmStatus.classList.remove('connected'); }
+        if (lastfmBtn)    { lastfmBtn.textContent = 'Подключить'; lastfmBtn.className = 'music-action connect'; }
+        if (lastfmInput)  lastfmInput.style.display = '';
+      }
     }
-    if (user.spotifyConnected) {
-      if (spotifyCard)   spotifyCard.classList.add('connected');
-      if (spotifyStatus) { spotifyStatus.textContent = 'Подключено'; spotifyStatus.classList.add('connected'); }
-      if (spotifyBtn)    { spotifyBtn.textContent = 'Настроить'; spotifyBtn.className = 'music-action disconnect'; }
-      if (musicLinkBtn && !user.lastfmConnected) musicLinkBtn.classList.add('connected');
+
+    // Рисуем состояние Spotify
+    function renderSpotify(connected) {
+      if (connected) {
+        spotifyCard?.classList.add('connected');
+        if (spotifyStatus) { spotifyStatus.textContent = 'Подключено'; spotifyStatus.classList.add('connected'); }
+        if (spotifyBtn)    { spotifyBtn.textContent = 'Отключить'; spotifyBtn.className = 'music-action disconnect'; }
+      } else {
+        spotifyCard?.classList.remove('connected');
+        if (spotifyStatus) { spotifyStatus.textContent = 'Не подключено'; spotifyStatus.classList.remove('connected'); }
+        if (spotifyBtn)    { spotifyBtn.textContent = 'Подключить'; spotifyBtn.className = 'music-action connect'; }
+      }
     }
+
+    renderLastfm(user.lastfmConnected, user.lastfmUsername);
+    renderSpotify(user.spotifyConnected);
+
+    // Last.fm: подключить (из инпута) или отключить
+    lastfmBtn?.addEventListener('click', async () => {
+      if (user.lastfmConnected) {
+        // Отключить
+        lastfmBtn.disabled = true; lastfmBtn.textContent = '...';
+        await U.updateCurrentUser({ lastfmConnected: false, lastfmUsername: '' });
+        user.lastfmConnected = false; user.lastfmUsername = '';
+        renderLastfm(false, '');
+        lastfmBtn.disabled = false;
+      } else {
+        // Показываем инпут — кнопка "Сохранить" в инпуте сделает подключение
+        if (lastfmInput) lastfmInput.style.display = '';
+        document.getElementById('lastfmUsernameField')?.focus();
+      }
+    });
+
+    // Last.fm: сохранить username из инпута
+    document.getElementById('lastfmSaveBtn')?.addEventListener('click', async () => {
+      const input = document.getElementById('lastfmUsernameField');
+      const username = (input?.value || '').trim().toLowerCase();
+      if (!username) { showNotice('Введи Last.fm username'); return; }
+      const saveBtn = document.getElementById('lastfmSaveBtn');
+      saveBtn.disabled = true; saveBtn.textContent = 'Проверяем...';
+      try {
+        const r = await fetch(`/api/lastfm/current-track?username=${encodeURIComponent(username)}`);
+        const d = await r.json();
+        if (!d.ok) { showNotice('Пользователь Last.fm не найден'); saveBtn.disabled = false; saveBtn.textContent = 'Сохранить'; return; }
+        await U.updateCurrentUser({ lastfmConnected: true, lastfmUsername: username });
+        user.lastfmConnected = true; user.lastfmUsername = username;
+        renderLastfm(true, username);
+        showNotice('Last.fm подключён!', 'success');
+      } catch { showNotice('Ошибка сети'); }
+      saveBtn.disabled = false; saveBtn.textContent = 'Сохранить';
+    });
+
+    // Spotify: подключить (OAuth) или отключить
+    spotifyBtn?.addEventListener('click', async () => {
+      if (user.spotifyConnected) {
+        spotifyBtn.disabled = true; spotifyBtn.textContent = '...';
+        await U.updateCurrentUser({ spotifyConnected: false, spotifyAccessToken: '', spotifyRefreshToken: '' });
+        user.spotifyConnected = false;
+        renderSpotify(false);
+        spotifyBtn.disabled = false;
+      } else {
+        location.href = '/spotify/login';
+      }
+    });
 
     // ── Stats ────────────────────────────────────────────
     async function loadStats() {
