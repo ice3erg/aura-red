@@ -169,6 +169,10 @@
       border-color: #fff;
       box-shadow: 0 0 0 2px rgba(255,255,255,0.2), 0 0 12px rgba(255,255,255,0.4);
     }
+    .ava-marker.same-vibe {
+      border-color: rgba(255,255,255,0.3);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
     .ava-marker img { width:100%;height:100%;border-radius:50%;object-fit:cover; }
     .ava-init {
       width:100%;height:100%;border-radius:50%;
@@ -181,6 +185,7 @@
     }
     .same-track .ava-pulse { animation: markerPulse 2s ease-out infinite; background: rgba(255,43,43,0.25); }
     .same-artist .ava-pulse { animation: markerPulse 2.5s ease-out infinite; background: rgba(255,255,255,0.15); }
+    .same-vibe .ava-pulse { display: none; }
 
     /* You marker */
     .you-marker {
@@ -386,6 +391,19 @@
       <path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" style="display:none"/>
     </svg>
   </button>
+
+  <!-- Легенда -->
+  <div style="position:fixed;bottom:calc(72px + env(safe-area-inset-bottom) + 68px);right:16px;z-index:50;display:flex;flex-direction:column;gap:5px;animation:fadeIn 0.4s 0.3s ease both;">
+    <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:8px;background:rgba(10,10,16,0.75);backdrop-filter:blur(12px);font-size:10px;font-weight:700;color:rgba(255,255,255,0.55);">
+      <div style="width:8px;height:8px;border-radius:50%;background:#ff2b2b;box-shadow:0 0 6px #ff2b2b;flex-shrink:0;"></div> тот же трек
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:8px;background:rgba(10,10,16,0.75);backdrop-filter:blur(12px);font-size:10px;font-weight:700;color:rgba(255,255,255,0.55);">
+      <div style="width:8px;height:8px;border-radius:50%;background:#fff;box-shadow:0 0 6px rgba(255,255,255,0.6);flex-shrink:0;"></div> тот же артист
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:8px;background:rgba(10,10,16,0.75);backdrop-filter:blur(12px);font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);">
+      <div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.25);flex-shrink:0;"></div> рядом слушает
+    </div>
+  </div>
 
   <!-- Sheet -->
   <div class="sheet-backdrop" id="sheetBackdrop">
