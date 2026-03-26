@@ -445,14 +445,19 @@
   <div class="sheet-backdrop" id="sheetBackdrop">
     <div class="sheet">
       <div class="sheet-handle"></div>
-      <div class="sheet-header">
+      <div class="sheet-header" id="sheetHeaderLink" style="cursor:pointer;" onclick="openUserProfile()">
         <div class="sheet-ava" id="sheetAva"></div>
-        <div>
+        <div style="flex:1;min-width:0;">
           <div class="sheet-name" id="sheetName">—</div>
           <div class="sheet-city" id="sheetCity"></div>
           <div class="match-badge" id="sheetBadge"></div>
         </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
       </div>
+
+      <!-- Mini photo collage в шторке -->
+      <div id="sheetPhotos" style="display:none;margin-bottom:12px;"></div>
+
       <div class="sheet-track" id="sheetTrackBlock">
         <img class="sheet-track-cover" id="sheetCover" src="" alt="" />
         <div>
@@ -462,7 +467,10 @@
       </div>
       <div class="sheet-actions">
         <button class="sheet-btn signal" id="sheetSignalBtn">📡 Отправить сигнал</button>
-        <button class="sheet-btn secondary" id="sheetClose">Закрыть</button>
+        <button class="sheet-btn secondary" id="sheetProfileBtn">👤 Профиль</button>
+      </div>
+      <div style="margin-top:8px;">
+        <button class="sheet-btn secondary" id="sheetClose" style="width:100%;background:transparent;border:none;color:rgba(255,255,255,0.3);font-size:13px;padding:10px;">Закрыть</button>
       </div>
     </div>
   </div>
