@@ -272,6 +272,7 @@ app.get("/api/lastfm/current-track", async (req, res) => {
 
 // ── Radar ──────────────────────────────────────────────────
 app.post("/api/now-playing", requireAuth, async (req, res) => {
+  try {
   const { track, artist, album, image, url, source, lat, lng } = req.body;
   if (!track || !artist) return res.status(400).json({ ok:false, error:"Нужны track и artist" });
   const data = {
@@ -304,6 +305,7 @@ app.post("/api/now-playing", requireAuth, async (req, res) => {
 
   await db.updateUser(req.user.id, { currentTrack: data, trackHistory: newHistory });
   res.json({ ok:true });
+  } catch(e) { console.error("[now-playing]", e.message); res.status(500).json({ ok:false, error: e.message }); }
 });
 
 app.get("/api/radar/nearby", requireAuth, async (req, res) => {
@@ -369,6 +371,7 @@ app.get("/api/signals", requireAuth, async (req, res) => {
 });
 
 app.post("/api/signals/:id/accept", requireAuth, async (req, res) => {
+  try {
   const signal = await db.getSignalById(req.params.id);
   if (!signal) return res.status(404).json({ ok:false, error:"Сигнал не найден" });
   if (signal.toId !== req.user.id) return res.status(403).json({ ok:false, error:"Нет доступа" });
@@ -380,6 +383,7 @@ app.post("/api/signals/:id/accept", requireAuth, async (req, res) => {
   const fromUser = await db.findById(signal.fromId);
   if (fromUser) await db.updateUser(signal.fromId, { auraPoints: (fromUser.auraPoints || 0) + 5 });
   res.json({ ok:true, chatId:updated.chatId });
+  } catch(e) { console.error("[accept-signal]", e.message); res.status(500).json({ ok:false, error: e.message }); }
 });
 
 app.post("/api/signals/:id/ignore", requireAuth, async (req, res) => {
@@ -409,6 +413,7 @@ app.post("/api/notifications/seen", requireAuth, async (req, res) => {
 });
 
 app.get("/api/unread", requireAuth, async (req, res) => {
+  try {
   const [rawChats, rawSignals, sentSignals] = await Promise.all([
     db.getChatsForUser(req.user.id),
     db.getSignalsForUser(req.user.id),
@@ -428,6 +433,7 @@ app.get("/api/unread", requireAuth, async (req, res) => {
   }
   const total = unreadMessages + pendingSignals + unseenAccepted;
   res.json({ ok:true, total, unreadMessages, pendingSignals, unseenAccepted });
+  } catch(e) { console.error("[unread]", e.message); res.json({ ok:true, total:0, unreadMessages:0, pendingSignals:0, unseenAccepted:0 }); }
 });
 
 app.get("/api/chats", requireAuth, async (req, res) => {
@@ -490,6 +496,13 @@ if (process.env.RENDER_EXTERNAL_URL) {
 
 // ── 404 ───────────────────────────────────────────────────
 app.use((_,res) => res.status(404).sendFile(path.join(publicDir,"index.html")));
+
+// ── Global error handler ──────────────────────────────────
+app.use((err, req, res, next) => {
+  console.error("[server error]", err.message, err.stack?.split("
+")[1]);
+  res.status(500).json({ ok: false, error: "Внутренняя ошибка сервера" });
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`+aura запущен на http://127.0.0.1:${PORT}`));
