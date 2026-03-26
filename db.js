@@ -32,6 +32,7 @@ if (USE_PG) {
       bio TEXT DEFAULT '',
       avatar TEXT,
       cover TEXT,
+      photos JSONB DEFAULT '[]',
       spotify_connected BOOLEAN DEFAULT false,
       spotify_name TEXT DEFAULT '',
       spotify_id TEXT DEFAULT '',
@@ -44,7 +45,8 @@ if (USE_PG) {
     )
   `).then(() => {
     // Добавляем cover для существующих БД (безопасно — IF NOT EXISTS)
-    return pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS cover TEXT`);
+    return pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS cover TEXT`)
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS photos JSONB DEFAULT '[]'`));
   }).then(() => console.log("[db] PostgreSQL ready"))
     .catch(e => console.error("[db] PG init error:", e.message));
 }
@@ -62,6 +64,7 @@ function rowToUser(row) {
     bio:                 row.bio  || "",
     avatar:              row.avatar || null,
     cover:               row.cover  || null,
+    photos:              row.photos  || [],
     spotifyConnected:    row.spotify_connected || false,
     spotifyName:         row.spotify_name || "",
     spotifyId:           row.spotify_id || "",
@@ -99,7 +102,7 @@ async function pgUpdateUser(id, patch) {
   let i = 1;
 
   const map = {
-    name: "name", age: "age", city: "city", bio: "bio", avatar: "avatar", cover: "cover",
+    name: "name", age: "age", city: "city", bio: "bio", avatar: "avatar", cover: "cover", photos: "photos",
     spotifyConnected: "spotify_connected", spotifyName: "spotify_name",
     spotifyId: "spotify_id", spotifyAccessToken: "spotify_access_token",
     spotifyRefreshToken: "spotify_refresh_token",
@@ -252,55 +255,157 @@ async function getNearbyUsers(lat, lng, radiusKm, excludeUserId) {
 }
 
 // ═══════════════════════════════════════════════════
-// Signals & Chats (in-memory — reset on restart ok)
 // ═══════════════════════════════════════════════════
+// Signals & Chats — PostgreSQL + in-memory fallback
+// ═══════════════════════════════════════════════════
+
+// Создаём таблицы если используем PG
+if (USE_PG) {
+  pgPool.query(`
+    CREATE TABLE IF NOT EXISTS signals (
+      id TEXT PRIMARY KEY,
+      from_id TEXT NOT NULL,
+      to_id TEXT NOT NULL,
+      type TEXT DEFAULT 'wave',
+      track TEXT DEFAULT '',
+      artist TEXT DEFAULT '',
+      match_type TEXT DEFAULT 'same-vibe',
+      status TEXT DEFAULT 'pending',
+      chat_id TEXT,
+      created_at BIGINT DEFAULT extract(epoch from now())*1000
+    )
+  `).catch(e => console.error('[db] signals table error:', e.message));
+
+  pgPool.query(`
+    CREATE TABLE IF NOT EXISTS chats (
+      id TEXT PRIMARY KEY,
+      user_ids TEXT[] NOT NULL,
+      created_at BIGINT DEFAULT extract(epoch from now())*1000
+    )
+  `).catch(e => console.error('[db] chats table error:', e.message));
+
+  pgPool.query(`
+    CREATE TABLE IF NOT EXISTS messages (
+      id TEXT PRIMARY KEY,
+      chat_id TEXT NOT NULL,
+      from_id TEXT DEFAULT 'system',
+      text TEXT NOT NULL,
+      created_at BIGINT DEFAULT extract(epoch from now())*1000
+    )
+  `).catch(e => console.error('[db] messages table error:', e.message));
+}
+
+// ── In-memory fallback ────────────────────────────
 const _signals = new Map();
 let _sigCounter = 0;
-
-function createSignal({ fromId, toId, type, track, artist, matchType }) {
-  const id = "sig_" + (++_sigCounter) + "_" + Date.now();
-  const signal = { id, fromId, toId, type, track, artist, matchType, status:"pending", createdAt:Date.now() };
-  _signals.set(id, signal);
-  return signal;
-}
-
-function getSignalsForUser(userId) {
-  return [..._signals.values()].filter(s => s.toId===userId).sort((a,b) => b.createdAt-a.createdAt);
-}
-
-function getSentSignalsForUser(userId) {
-  return [..._signals.values()].filter(s => s.fromId===userId).sort((a,b) => b.createdAt-a.createdAt);
-}
-
-function getSignalById(id) { return _signals.get(id)||null; }
-
-function acceptSignal(id) {
-  const s = _signals.get(id);
-  if (!s) return null;
-  s.status = "accepted";
-  s.chatId = createOrGetChat(s.fromId, s.toId);
-  return s;
-}
-
-function ignoreSignal(id) {
-  const s = _signals.get(id);
-  if (s) s.status = "ignored";
-  return s;
-}
-
 const _chats = new Map();
 let _chatCounter = 0;
 
-function createOrGetChat(userIdA, userIdB) {
+// ── Signals ───────────────────────────────────────
+async function createSignal({ fromId, toId, type, track, artist, matchType }) {
+  const id = 'sig_' + (++_sigCounter) + '_' + Date.now();
+  const sig = { id, fromId, toId, type: type||'wave', track: track||'', artist: artist||'', matchType: matchType||'same-vibe', status: 'pending', createdAt: Date.now() };
+  if (USE_PG) {
+    await pgPool.query(
+      `INSERT INTO signals(id,from_id,to_id,type,track,artist,match_type,status,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,'pending',$8) ON CONFLICT DO NOTHING`,
+      [id, fromId, toId, sig.type, sig.track, sig.artist, sig.matchType, sig.createdAt]
+    );
+  } else {
+    _signals.set(id, sig);
+  }
+  return sig;
+}
+
+function pgRowToSignal(r) {
+  return { id: r.id, fromId: r.from_id, toId: r.to_id, type: r.type, track: r.track, artist: r.artist, matchType: r.match_type, status: r.status, chatId: r.chat_id, createdAt: Number(r.created_at) };
+}
+
+async function getSignalsForUser(userId) {
+  if (USE_PG) {
+    const r = await pgPool.query(`SELECT * FROM signals WHERE to_id=$1 ORDER BY created_at DESC`, [userId]);
+    return r.rows.map(pgRowToSignal);
+  }
+  return [..._signals.values()].filter(s => s.toId===userId).sort((a,b) => b.createdAt-a.createdAt);
+}
+
+async function getSentSignalsForUser(userId) {
+  if (USE_PG) {
+    const r = await pgPool.query(`SELECT * FROM signals WHERE from_id=$1 ORDER BY created_at DESC`, [userId]);
+    return r.rows.map(pgRowToSignal);
+  }
+  return [..._signals.values()].filter(s => s.fromId===userId).sort((a,b) => b.createdAt-a.createdAt);
+}
+
+async function getSignalById(id) {
+  if (USE_PG) {
+    const r = await pgPool.query(`SELECT * FROM signals WHERE id=$1`, [id]);
+    return r.rows[0] ? pgRowToSignal(r.rows[0]) : null;
+  }
+  return _signals.get(id)||null;
+}
+
+async function acceptSignal(id) {
+  const s = await getSignalById(id);
+  if (!s) return null;
+  const chatId = await createOrGetChat(s.fromId, s.toId);
+  if (USE_PG) {
+    await pgPool.query(`UPDATE signals SET status='accepted', chat_id=$1 WHERE id=$2`, [chatId, id]);
+  } else {
+    const ms = _signals.get(id);
+    if (ms) { ms.status = 'accepted'; ms.chatId = chatId; }
+  }
+  return { ...s, status: 'accepted', chatId };
+}
+
+async function ignoreSignal(id) {
+  if (USE_PG) {
+    await pgPool.query(`UPDATE signals SET status='ignored' WHERE id=$1`, [id]);
+  } else {
+    const s = _signals.get(id);
+    if (s) s.status = 'ignored';
+  }
+}
+
+// ── Chats ─────────────────────────────────────────
+async function createOrGetChat(userIdA, userIdB) {
+  if (USE_PG) {
+    // Ищем существующий
+    const existing = await pgPool.query(
+      `SELECT id FROM chats WHERE user_ids @> ARRAY[$1,$2]::TEXT[] AND cardinality(user_ids)=2`,
+      [userIdA, userIdB]
+    );
+    if (existing.rows[0]) return existing.rows[0].id;
+    const id = 'chat_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+    await pgPool.query(`INSERT INTO chats(id,user_ids,created_at) VALUES($1,$2,$3)`, [id, [userIdA,userIdB], Date.now()]);
+    return id;
+  }
   for (const [id, chat] of _chats) {
     if (chat.userIds.includes(userIdA) && chat.userIds.includes(userIdB)) return id;
   }
-  const id = "chat_" + (++_chatCounter) + "_" + Date.now();
-  _chats.set(id, { id, userIds:[userIdA, userIdB], messages:[], createdAt:Date.now() });
+  const id = 'chat_' + (++_chatCounter) + '_' + Date.now();
+  _chats.set(id, { id, userIds:[userIdA,userIdB], messages:[], createdAt:Date.now() });
   return id;
 }
 
-function getChatsForUser(userId) {
+async function getChatsForUser(userId) {
+  if (USE_PG) {
+    const r = await pgPool.query(
+      `SELECT c.*, array_agg(m.id ORDER BY m.created_at) as msg_ids FROM chats c
+       LEFT JOIN messages m ON m.chat_id=c.id
+       WHERE $1=ANY(c.user_ids) GROUP BY c.id ORDER BY MAX(m.created_at) DESC NULLS LAST`,
+      [userId]
+    );
+    // Загружаем сообщения отдельно для каждого чата
+    return Promise.all(r.rows.map(async row => {
+      const msgs = await pgPool.query(`SELECT * FROM messages WHERE chat_id=$1 ORDER BY created_at ASC`, [row.id]);
+      return {
+        id: row.id,
+        userIds: row.user_ids,
+        createdAt: Number(row.created_at),
+        messages: msgs.rows.map(m => ({ id:m.id, fromId:m.from_id, text:m.text, createdAt:Number(m.created_at) }))
+      };
+    }));
+  }
   return [..._chats.values()].filter(c => c.userIds.includes(userId)).sort((a,b) => {
     const lastA = a.messages[a.messages.length-1]?.createdAt || a.createdAt;
     const lastB = b.messages[b.messages.length-1]?.createdAt || b.createdAt;
@@ -308,13 +413,33 @@ function getChatsForUser(userId) {
   });
 }
 
-function getChatById(id) { return _chats.get(id)||null; }
+async function getChatById(id) {
+  if (USE_PG) {
+    const r = await pgPool.query(`SELECT * FROM chats WHERE id=$1`, [id]);
+    if (!r.rows[0]) return null;
+    const msgs = await pgPool.query(`SELECT * FROM messages WHERE chat_id=$1 ORDER BY created_at ASC`, [id]);
+    return {
+      id: r.rows[0].id,
+      userIds: r.rows[0].user_ids,
+      createdAt: Number(r.rows[0].created_at),
+      messages: msgs.rows.map(m => ({ id:m.id, fromId:m.from_id, text:m.text, createdAt:Number(m.created_at) }))
+    };
+  }
+  return _chats.get(id)||null;
+}
 
-function sendMessage(chatId, fromId, text) {
-  const chat = _chats.get(chatId);
-  if (!chat) return null;
-  const msg = { id:"msg_"+Date.now(), fromId, text:String(text).slice(0,1000), createdAt:Date.now() };
-  chat.messages.push(msg);
+async function sendMessage(chatId, fromId, text) {
+  const id = 'msg_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+  const msg = { id, fromId, text: String(text).slice(0,1000), createdAt: Date.now() };
+  if (USE_PG) {
+    await pgPool.query(
+      `INSERT INTO messages(id,chat_id,from_id,text,created_at) VALUES($1,$2,$3,$4,$5)`,
+      [id, chatId, fromId, msg.text, msg.createdAt]
+    );
+  } else {
+    const chat = _chats.get(chatId);
+    if (chat) chat.messages.push(msg);
+  }
   return msg;
 }
 

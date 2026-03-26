@@ -78,7 +78,7 @@ app.get("/api/auth/me", requireAuth, (req, res) => res.json({ ok:true, user:db.p
 
 // ── Profile API ────────────────────────────────────────────
 app.patch("/api/profile", requireAuth, async (req, res) => {
-  const { name, age, city, bio, avatar, cover, spotifyConnected, spotifyName, spotifyId,
+  const { name, age, city, bio, avatar, cover, photos, spotifyConnected, spotifyName, spotifyId,
     spotifyAccessToken, spotifyRefreshToken, lastfmUsername, lastfmConnected } = req.body;
   const u = req.user;
   const updated = await db.updateUser(u.id, {
@@ -88,6 +88,7 @@ app.patch("/api/profile", requireAuth, async (req, res) => {
     bio:    bio    !== undefined ? String(bio).trim().slice(0,300)  : u.bio,
     avatar: avatar !== undefined ? avatar                            : u.avatar,
     cover:  cover  !== undefined ? cover                             : u.cover,
+    photos: photos !== undefined ? photos                            : (u.photos || []),
     ...(spotifyConnected    !== undefined && { spotifyConnected }),
     ...(spotifyName         !== undefined && { spotifyName }),
     ...(spotifyId           !== undefined && { spotifyId }),
@@ -310,22 +311,22 @@ app.post("/api/signals", requireAuth, async (req, res) => {
   if (!toId) return res.status(400).json({ ok:false, error:"Нет toId" });
   if (!await db.findById(toId)) return res.status(404).json({ ok:false, error:"Пользователь не найден" });
   if (toId === req.user.id) return res.status(400).json({ ok:false, error:"Нельзя отправить себе" });
-  const existing = db.getSignalsForUser(toId).find(s => s.fromId===req.user.id && s.status==="pending");
+  const existing = (await db.getSignalsForUser(toId)).find(s => s.fromId===req.user.id && s.status==="pending");
   if (existing) return res.status(409).json({ ok:false, error:"Сигнал уже отправлен", signal:existing });
-  const signal = db.createSignal({ fromId:req.user.id, toId, type:type||"wave", track:track||"", artist:artist||"", matchType:matchType||"same-vibe" });
+  const signal = await db.createSignal({ fromId:req.user.id, toId, type:type||"wave", track:track||"", artist:artist||"", matchType:matchType||"same-vibe" });
   res.json({ ok:true, signal });
 });
 
 app.get("/api/signals", requireAuth, async (req, res) => {
   const direction = req.query.direction;
   if (direction === "sent") {
-    const rawSigs = db.getSentSignalsForUser(req.user.id);
+    const rawSigs = await db.getSentSignalsForUser(req.user.id);
     const signals = await Promise.all(rawSigs.map(async s => ({
       ...s, to: s.toId ? db.publicProfile(await db.findById(s.toId)) : null
     })));
     return res.json({ ok:true, sentSignals: signals });
   }
-  const rawSigs = db.getSignalsForUser(req.user.id);
+  const rawSigs = await db.getSignalsForUser(req.user.id);
   const signals = await Promise.all(rawSigs.map(async s => ({
     ...s, from: s.fromId ? db.publicProfile(await db.findById(s.fromId)) : null
   })));
@@ -333,55 +334,45 @@ app.get("/api/signals", requireAuth, async (req, res) => {
 });
 
 app.post("/api/signals/:id/accept", requireAuth, async (req, res) => {
-  const signal = db.getSignalById(req.params.id);
+  const signal = await db.getSignalById(req.params.id);
   if (!signal) return res.status(404).json({ ok:false, error:"Сигнал не найден" });
   if (signal.toId !== req.user.id) return res.status(403).json({ ok:false, error:"Нет доступа" });
-  const updated = db.acceptSignal(req.params.id);
+  const updated = await db.acceptSignal(req.params.id);
   const from = await db.findById(signal.fromId);
   const emoji = signal.matchType==="same-track" ? "🔴" : signal.matchType==="same-artist" ? "⚪" : "⚫";
-  db.sendMessage(updated.chatId, "system", `${emoji} ${from?.name||"Кто-то"} слушал ${signal.artist} — ${signal.track}`);
+  await db.sendMessage(updated.chatId, "system", `${emoji} ${from?.name||"Кто-то"} слушал ${signal.artist} — ${signal.track}`);
   res.json({ ok:true, chatId:updated.chatId });
 });
 
-app.post("/api/signals/:id/ignore", requireAuth, (req, res) => {
-  const signal = db.getSignalById(req.params.id);
+app.post("/api/signals/:id/ignore", requireAuth, async (req, res) => {
+  const signal = await db.getSignalById(req.params.id);
   if (!signal) return res.status(404).json({ ok:false, error:"Сигнал не найден" });
   if (signal.toId !== req.user.id) return res.status(403).json({ ok:false, error:"Нет доступа" });
-  db.ignoreSignal(req.params.id);
+  await db.ignoreSignal(req.params.id);
   res.json({ ok:true });
 });
 
-// ── Chats ──────────────────────────────────────────────────
-// ── Unread badge counts ────────────────────────────────────
 app.get("/api/unread", requireAuth, async (req, res) => {
-  const rawChats   = db.getChatsForUser(req.user.id);
-  const rawSignals = db.getSignalsForUser(req.user.id).filter(s => s.status === "pending");
-
-  // Считаем непрочитанные сообщения по всем чатам
-  // "непрочитанные" = сообщения не от меня после моего последнего сообщения
+  const [rawChats, rawSignals] = await Promise.all([
+    db.getChatsForUser(req.user.id),
+    db.getSignalsForUser(req.user.id),
+  ]);
+  const pendingSignals = rawSignals.filter(s => s.status === "pending").length;
   let unreadMessages = 0;
   for (const chat of rawChats) {
     const msgs = chat.messages || [];
-    // Находим индекс последнего моего сообщения
     let lastMyIdx = -1;
     for (let i = msgs.length - 1; i >= 0; i--) {
       if (msgs[i].fromId === req.user.id) { lastMyIdx = i; break; }
     }
-    // Считаем чужие сообщения после него
-    const newMsgs = msgs.slice(lastMyIdx + 1).filter(
-      m => m.fromId !== req.user.id && m.fromId !== "system"
-    );
+    const newMsgs = msgs.slice(lastMyIdx + 1).filter(m => m.fromId !== req.user.id && m.fromId !== "system");
     if (newMsgs.length > 0) unreadMessages++;
   }
-
-  const pendingSignals = rawSignals.length;
-  const total = unreadMessages + pendingSignals;
-
-  res.json({ ok: true, total, unreadMessages, pendingSignals });
+  res.json({ ok:true, total: unreadMessages + pendingSignals, unreadMessages, pendingSignals });
 });
 
 app.get("/api/chats", requireAuth, async (req, res) => {
-  const rawChats = db.getChatsForUser(req.user.id);
+  const rawChats = await db.getChatsForUser(req.user.id);
   const chats = await Promise.all(rawChats.map(async chat => {
     const otherId = chat.userIds.find(id => id !== req.user.id);
     const other   = otherId ? await db.findById(otherId) : null;
@@ -394,20 +385,20 @@ app.get("/api/chats", requireAuth, async (req, res) => {
   res.json({ ok:true, chats });
 });
 
-app.get("/api/chats/:id/messages", requireAuth, (req, res) => {
-  const chat = db.getChatById(req.params.id);
+app.get("/api/chats/:id/messages", requireAuth, async (req, res) => {
+  const chat = await db.getChatById(req.params.id);
   if (!chat) return res.status(404).json({ ok:false, error:"Чат не найден" });
   if (!chat.userIds.includes(req.user.id)) return res.status(403).json({ ok:false, error:"Нет доступа" });
   res.json({ ok:true, messages:chat.messages });
 });
 
-app.post("/api/chats/:id/messages", requireAuth, (req, res) => {
-  const chat = db.getChatById(req.params.id);
+app.post("/api/chats/:id/messages", requireAuth, async (req, res) => {
+  const chat = await db.getChatById(req.params.id);
   if (!chat) return res.status(404).json({ ok:false, error:"Чат не найден" });
   if (!chat.userIds.includes(req.user.id)) return res.status(403).json({ ok:false, error:"Нет доступа" });
   const { text } = req.body;
   if (!text?.trim()) return res.status(400).json({ ok:false, error:"Пустое сообщение" });
-  const msg = db.sendMessage(req.params.id, req.user.id, text.trim());
+  const msg = await db.sendMessage(req.params.id, req.user.id, text.trim());
   res.json({ ok:true, message:msg });
 });
 
