@@ -18,6 +18,7 @@
   let _youMarker = null;
   let _radarMarkers = [];
   let _sentSignalTo = new Set();
+  let _acceptedSignalTo = new Set();
   let _lastPos = null;
   let _currentTrack = null;
 
@@ -547,6 +548,17 @@
       _sentSignalTo = new Set(
         sigs.filter(s => s.status === 'pending').map(s => String(s.toId || s.to?.id))
       );
+      _acceptedSignalTo = new Set(
+        sigs.filter(s => s.status === 'accepted').map(s => String(s.toId || s.to?.id))
+      );
+      // Входящие принятые сигналы (те кто принял наш — или мы приняли их)
+      const ri = await fetch('/api/signals');
+      const di = await ri.json();
+      if (di.ok) {
+        (di.signals || []).filter(s => s.status === 'accepted').forEach(s => {
+          _acceptedSignalTo.add(String(s.fromId));
+        });
+      }
     } catch {}
   }
 
