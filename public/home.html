@@ -686,6 +686,26 @@
     .header      { animation: fadeInUp 0.4s ease both; }
     .now-playing { animation: fadeInUp 0.4s 0.08s ease both; }
     .radar-section { animation: fadeInUp 0.4s 0.16s ease both; }
+
+    /* ── Beat pulse ── */
+    @keyframes beat-radar {
+      0%   { transform: scale(1);    opacity: 1; }
+      15%  { transform: scale(1.012); opacity: 0.95; }
+      30%  { transform: scale(1);    opacity: 1; }
+      100% { transform: scale(1);    opacity: 1; }
+    }
+    .mini-radar-btn.beating {
+      animation: beat-radar var(--beat-dur, 0.6s) ease-in-out infinite;
+    }
+    @keyframes beat-dot {
+      0%   { box-shadow: 0 0 14px rgba(255,255,255,0.7), 0 0 28px rgba(255,43,43,0.3); }
+      15%  { box-shadow: 0 0 22px rgba(255,255,255,0.95), 0 0 44px rgba(255,43,43,0.6); }
+      30%  { box-shadow: 0 0 14px rgba(255,255,255,0.7), 0 0 28px rgba(255,43,43,0.3); }
+      100% { box-shadow: 0 0 14px rgba(255,255,255,0.7), 0 0 28px rgba(255,43,43,0.3); }
+    }
+    .mini-radar-btn.beating #miniYouDot {
+      animation: beat-dot var(--beat-dur, 0.6s) ease-in-out infinite;
+    }
   </style>
 </head>
 <body>
@@ -831,13 +851,37 @@
       }).setView(DEFAULT, 13);
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-        { maxZoom: 20, subdomains: 'abcd' }).addTo(miniMap);
+        { maxZoom: 20, subdomains: 'abcd', attribution: '' }).addTo(miniMap);
+
+      // Скрываем всё лишнее у Leaflet
+      miniMap.getContainer().style.background = 'transparent';
 
       const pin = (type, size) => L.divIcon({
         className: '',
         html: `<div class="mini-dot ${type}" style="width:${size}px;height:${size}px;"></div>`,
         iconSize: [size, size], iconAnchor: [size/2, size/2]
       });
+
+      // Аватарка пользователя на карте
+      function youIcon(user) {
+        const size = 32;
+        let inner = '';
+        if (user?.avatar) {
+          inner = `<img src="${user.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
+        } else {
+          const init = (user?.name || 'Я')[0].toUpperCase();
+          inner = `<div style="width:100%;height:100%;border-radius:50%;background:#1a1a22;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff;">${init}</div>`;
+        }
+        return L.divIcon({
+          className: '',
+          html: `<div id="miniYouDot" style="width:${size}px;height:${size}px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 0 14px rgba(255,255,255,0.7),0 0 28px rgba(255,43,43,0.3);overflow:hidden;position:relative;">${inner}</div>`,
+          iconSize: [size, size], iconAnchor: [size/2, size/2]
+        });
+      }
+
+      // Грузим профиль для аватарки
+      let _user = null;
+      fetch('/api/auth/me').then(r=>r.json()).then(d=>{ if(d.ok) _user = d.user; }).catch(()=>{});
 
       let youPin = L.marker(DEFAULT, { icon: pin('you', 12), zIndexOffset: 1000 }).addTo(miniMap);
 
@@ -982,7 +1026,10 @@
           myLat = pos.coords.latitude;
           myLng = pos.coords.longitude;
           miniMap.setView([myLat, myLng], 14);
-          youPin.setLatLng([myLat, myLng]);
+
+          // Обновляем маркер с аватаркой (к этому моменту _user уже должен загрузиться)
+          miniMap.removeLayer(youPin);
+          youPin = L.marker([myLat, myLng], { icon: youIcon(_user), zIndexOffset: 1000 }).addTo(miniMap);
 
           // Первая загрузка — без трека (придёт позже из home.js)
           loadRadar(null);
