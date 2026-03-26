@@ -97,6 +97,8 @@
     // Показываем ВСЕХ — track/artist/vibe, с разными размерами
     const relevant = users; // все пользователи
 
+    window._radarData = relevant; // для подсказок в ручном вводе
+
     relevant.forEach(u => {
       const sent = _sentSignalTo.has(String(u.id || u.userId));
       const m = L.marker([u.lat, u.lng], { icon: makeIcon(u, sent) }).addTo(map);
@@ -222,7 +224,7 @@
     const coverPh = document.getElementById('npCoverPh');
     const dot     = document.getElementById('npDot');
     const title   = document.getElementById('npTitle');
-    const connect = document.getElementById('npConnect');
+    const connect = document.getElementById('npConnect'); // legacy
 
     if (track) {
       _currentTrack = track;
@@ -364,6 +366,113 @@
   document.getElementById('locateBtn').addEventListener('click', async () => {
     const pos = await getGeo();
     if (pos) map.flyTo([pos.lat, pos.lng], 15, { duration: 0.8 });
+  });
+
+  // ── Manual track sheet ───────────────────────────────────
+  function openManualSheet() {
+    const backdrop = document.getElementById('manualSheetBackdrop');
+    backdrop.style.display = 'flex';
+    // Подставляем текущий трек если есть
+    if (_currentTrack) {
+      const ti = document.getElementById('manualTrackInput');
+      const ai = document.getElementById('manualArtistInput');
+      if (ti && !ti.value) ti.value = _currentTrack.name || '';
+      if (ai && !ai.value) ai.value = _currentTrack.artists || '';
+    }
+    // Быстрые подсказки из радара
+    const sugg = document.getElementById('manualSuggestions');
+    if (sugg && _radarMarkers.length > 0) {
+      // Собираем треки с карты (реальные)
+      const seen = new Set();
+      const chips = [];
+      for (const m of window._radarData || []) {
+        const key = m.track + '::' + m.artist;
+        if (seen.has(key) || m.isDemo) continue;
+        seen.add(key);
+        chips.push(m);
+        if (chips.length >= 4) break;
+      }
+      sugg.innerHTML = chips.map(m =>
+        `<button onclick="fillManual('${m.track.replace(/'/g,"\'")}','${m.artist.replace(/'/g,"\'")}') "
+          style="padding:7px 12px;border-radius:99px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.65);font:600 12px/1 Inter,sans-serif;cursor:pointer;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;">
+          ${m.track}
+        </button>`
+      ).join('');
+    }
+    setTimeout(() => document.getElementById('manualTrackInput')?.focus(), 350);
+  }
+
+  window.closeManualSheet = function() {
+    document.getElementById('manualSheetBackdrop').style.display = 'none';
+  };
+
+  window.fillManual = function(track, artist) {
+    document.getElementById('manualTrackInput').value = track;
+    document.getElementById('manualArtistInput').value = artist;
+  };
+
+  // Тап на пилюлю или кнопку редактирования
+  document.getElementById('nowPill').addEventListener('click', (e) => {
+    if (e.target.closest('#npEditBtn')) openManualSheet();
+  });
+  document.getElementById('npEditBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    openManualSheet();
+  });
+
+  // Закрытие по backdrop
+  document.getElementById('manualSheetBackdrop').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('manualSheetBackdrop')) window.closeManualSheet();
+  });
+
+  // Публикация
+  document.getElementById('manualPublishBtn').addEventListener('click', async () => {
+    const track  = document.getElementById('manualTrackInput').value.trim();
+    const artist = document.getElementById('manualArtistInput').value.trim();
+    if (!track) { document.getElementById('manualTrackInput').focus(); return; }
+    if (!artist) { document.getElementById('manualArtistInput').focus(); return; }
+
+    const btn = document.getElementById('manualPublishBtn');
+    btn.disabled = true; btn.textContent = 'Публикуем...';
+
+    const pos = await getGeo();
+    try {
+      const r = await fetch('/api/now-playing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          track, artist, source: 'manual',
+          lat: pos?.lat ?? null, lng: pos?.lng ?? null,
+        })
+      });
+      const d = await r.json();
+      if (d.ok) {
+        // Обновляем пилюлю
+        _currentTrack = { name: track, artists: artist, source: 'manual', image: '' };
+        const pill  = document.getElementById('nowPill');
+        const dot   = document.getElementById('npDot');
+        const title = document.getElementById('npTitle');
+        const cover = document.getElementById('npCover');
+        const ph    = document.getElementById('npCoverPh');
+        pill.classList.add('has-track');
+        dot.classList.remove('idle');
+        cover.style.display = 'none';
+        ph.style.display = 'flex';
+        title.textContent = `${track} · ${artist}`;
+        pill.classList.add('beating');
+        window.closeManualSheet();
+        // Обновляем радар
+        if (pos) loadRadar(pos.lat, pos.lng);
+      }
+    } catch (_) {}
+    btn.disabled = false; btn.textContent = 'Опубликовать 📡';
+  });
+
+  // Enter в инпутах
+  ['manualTrackInput', 'manualArtistInput'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('manualPublishBtn').click();
+    });
   });
 
   // ── Sent signals ─────────────────────────────────────────
