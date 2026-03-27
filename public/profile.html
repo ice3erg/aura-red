@@ -301,8 +301,33 @@
     <!-- Music -->
     <div class="section">
       <div class="section-title">Музыка</div>
+      <!-- Яндекс Музыка -->
+      <div class="music-card" id="yandexCard">
+        <div class="music-icon" style="background:rgba(255,60,0,0.12);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#FF3C00"><path d="M12.87 3H15v18h-2.13v-7.77H11.5L8.13 21H5.87l3.5-7.96C7.5 12.4 6.5 10.85 6.5 9c0-3.31 2.5-6 5.5-6h.87zm0 2H12c-1.93 0-3.5 1.79-3.5 4s1.57 4 3.5 4h.87V5z"/></svg>
+        </div>
+        <div class="music-info">
+          <div class="music-name">Яндекс Музыка</div>
+          <div class="music-status" id="yandexStatus">Не подключено</div>
+        </div>
+        <button class="music-action connect" id="yandexBtn">Подключить</button>
+      </div>
+      <!-- Yandex token input -->
+      <div id="yandexInputWrap" style="display:none;margin-top:-2px;margin-bottom:8px;padding:14px;border-radius:14px;background:rgba(255,60,0,0.05);border:1px solid rgba(255,60,0,0.2);">
+        <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.7);margin-bottom:10px;line-height:1.5;">
+          1. Открой в браузере:<br>
+          <a href="https://oauth.yandex.ru/authorize?response_type=token&client_id=23cabbbdc6cd418abb4b39c32c41195d" target="_blank" style="color:#FF3C00;word-break:break-all;font-size:11px;">oauth.yandex.ru/authorize?...</a><br><br>
+          2. Войди в Яндекс → разреши доступ<br>
+          3. Скопируй токен из адресной строки (после <code style="background:rgba(255,255,255,0.1);padding:1px 4px;border-radius:4px;">access_token=</code>)
+        </div>
+        <div style="display:flex;gap:8px;">
+          <input id="yandexTokenField" type="text" placeholder="Вставь токен сюда" autocomplete="off"
+            style="flex:1;padding:10px 13px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#fff;font:600 13px/1 Inter,sans-serif;outline:none;" />
+          <button id="yandexSaveBtn" style="padding:10px 14px;border-radius:10px;background:#FF3C00;color:#fff;border:none;font:700 12px/1 Inter,sans-serif;cursor:pointer;white-space:nowrap;">Сохранить</button>
+        </div>
+      </div>
+
       <div class="music-card" id="lastfmCard">
-        <div class="music-icon lastfm">🎵</div>
         <div class="music-info">
           <div class="music-name">Last.fm</div>
           <div class="music-status" id="lastfmStatus">Не подключено</div>
