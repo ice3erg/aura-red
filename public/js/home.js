@@ -220,6 +220,14 @@
       } catch (_) {}
     }
 
+    if (!track && user.yandexToken) {
+      try {
+        const r = await fetch('/api/yandex/current-track');
+        const d = await r.json();
+        if (d.ok && d.isPlaying && d.track) track = d.track;
+      } catch (_) {}
+    }
+
     const pill    = document.getElementById('nowPill');
     const cover   = document.getElementById('npCover');
     const coverPh = document.getElementById('npCoverPh');

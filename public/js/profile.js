@@ -224,7 +224,61 @@
       }
     });
 
-    // ── Music ────────────────────────────────────────────────
+    // ── Яндекс Музыка ─────────────────────────────────────
+    const yandexCard   = document.getElementById('yandexCard');
+    const yandexStatus = document.getElementById('yandexStatus');
+    const yandexBtn    = document.getElementById('yandexBtn');
+    const yandexWrap   = document.getElementById('yandexInputWrap');
+
+    function renderYandex(connected) {
+      if (connected) {
+        yandexCard?.classList.add('connected');
+        if (yandexStatus) { yandexStatus.textContent = 'Подключено'; yandexStatus.classList.add('connected'); }
+        if (yandexBtn)    { yandexBtn.textContent = 'Отключить'; yandexBtn.className = 'music-action disconnect'; }
+        if (yandexWrap)   yandexWrap.style.display = 'none';
+      } else {
+        yandexCard?.classList.remove('connected');
+        if (yandexStatus) { yandexStatus.textContent = 'Не подключено'; yandexStatus.classList.remove('connected'); }
+        if (yandexBtn)    { yandexBtn.textContent = 'Подключить'; yandexBtn.className = 'music-action connect'; }
+      }
+    }
+    renderYandex(!!user.yandexToken);
+
+    yandexBtn?.addEventListener('click', async () => {
+      if (user.yandexToken) {
+        yandexBtn.disabled = true; yandexBtn.textContent = '...';
+        await fetch('/api/yandex/disconnect', { method: 'POST' });
+        user.yandexToken = '';
+        renderYandex(false); yandexBtn.disabled = false;
+      } else {
+        if (yandexWrap) yandexWrap.style.display = '';
+        document.getElementById('yandexTokenField')?.focus();
+      }
+    });
+
+    document.getElementById('yandexSaveBtn')?.addEventListener('click', async () => {
+      const token = document.getElementById('yandexTokenField')?.value.trim();
+      if (!token) { showNotice('Вставь токен'); return; }
+      const btn = document.getElementById('yandexSaveBtn');
+      btn.disabled = true; btn.textContent = 'Проверяем...';
+      try {
+        const r = await fetch('/api/yandex/connect', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token })
+        });
+        const d = await r.json();
+        if (d.ok) {
+          user.yandexToken = token;
+          renderYandex(true);
+          showNotice('Яндекс Музыка подключена!', 'success');
+        } else {
+          showNotice(d.error || 'Неверный токен');
+        }
+      } catch { showNotice('Ошибка сети'); }
+      btn.disabled = false; btn.textContent = 'Сохранить';
+    });
+
+    // ── Last.fm ───────────────────────────────────────────
     const lastfmCard    = document.getElementById('lastfmCard');
     const lastfmStatus  = document.getElementById('lastfmStatus');
     const lastfmBtn     = document.getElementById('lastfmBtn');
