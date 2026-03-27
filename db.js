@@ -42,6 +42,7 @@ if (USE_PG) {
       spotify_refresh_token TEXT DEFAULT '',
       lastfm_connected BOOLEAN DEFAULT false,
       lastfm_username TEXT DEFAULT '',
+      yandex_token TEXT DEFAULT '',
       current_track JSONB,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
@@ -51,7 +52,8 @@ if (USE_PG) {
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS photos JSONB DEFAULT '[]'`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS track_history JSONB DEFAULT '[]'`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS aura_points INTEGER DEFAULT 0`))
-      .then(() => pgPool.query(`ALTER TABLE signals ADD COLUMN IF NOT EXISTS seen_by_from BOOLEAN DEFAULT false`));
+      .then(() => pgPool.query(`ALTER TABLE signals ADD COLUMN IF NOT EXISTS seen_by_from BOOLEAN DEFAULT false`))
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS yandex_token TEXT DEFAULT ''`));
   }).then(() => console.log("[db] PostgreSQL ready"))
     .catch(e => console.error("[db] PG init error:", e.message));
 }
@@ -78,6 +80,7 @@ function rowToUser(row) {
     spotifyAccessToken:  row.spotify_access_token || "",
     spotifyRefreshToken: row.spotify_refresh_token || "",
     lastfmConnected:     row.lastfm_connected || false,
+    yandexToken:         row.yandex_token || '',
     lastfmUsername:      row.lastfm_username || "",
     currentTrack:        row.current_track || null,
     createdAt:           row.created_at,
@@ -113,7 +116,7 @@ async function pgUpdateUser(id, patch) {
     spotifyConnected: "spotify_connected", spotifyName: "spotify_name",
     spotifyId: "spotify_id", spotifyAccessToken: "spotify_access_token",
     spotifyRefreshToken: "spotify_refresh_token",
-    lastfmConnected: "lastfm_connected", lastfmUsername: "lastfm_username",
+    lastfmConnected: "lastfm_connected", lastfmUsername: "lastfm_username", yandexToken: "yandex_token",
     currentTrack: "current_track",
   };
 
@@ -188,7 +191,7 @@ async function createUser(data) {
     avatar: null,
     spotifyConnected: false, spotifyName: "", spotifyId: "",
     spotifyAccessToken: "", spotifyRefreshToken: "",
-    lastfmConnected: false, lastfmUsername: "",
+    lastfmConnected: false, lastfmUsername: "", yandexToken: "",
     currentTrack: null, createdAt: new Date().toISOString()
   };
   _users.push(user);

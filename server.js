@@ -270,7 +270,86 @@ app.get("/api/lastfm/current-track", async (req, res) => {
   }
 });
 
-// ── Radar ──────────────────────────────────────────────────
+// ── Yandex Music ───────────────────────────────────────────
+app.get("/api/yandex/current-track", requireAuth, async (req, res) => {
+  try {
+    const user = await db.findById(req.user.id);
+    const token = user?.yandexToken;
+    if (!token) return res.json({ ok: false, error: "Яндекс Музыка не подключена" });
+
+    // Получаем список очередей — первая = текущая
+    const queuesResp = await axios.get("https://api.music.yandex.net/queues", {
+      headers: { "Authorization": `OAuth ${token}`, "X-Yandex-Music-Client": "WindowsPhone/3.20" }
+    });
+
+    const queues = queuesResp.data?.result?.queues;
+    if (!queues?.length) return res.json({ ok: true, isPlaying: false });
+
+    // Берём последнюю активную очередь
+    const queueId = queues[0].id;
+    const queueResp = await axios.get(`https://api.music.yandex.net/queues/${queueId}`, {
+      headers: { "Authorization": `OAuth ${token}`, "X-Yandex-Music-Client": "WindowsPhone/3.20" }
+    });
+
+    const queue = queueResp.data?.result;
+    if (!queue) return res.json({ ok: true, isPlaying: false });
+
+    const currentIdx = queue.currentIndex ?? 0;
+    const trackId = queue.tracks?.[currentIdx]?.id;
+    if (!trackId) return res.json({ ok: true, isPlaying: false });
+
+    // Получаем инфу о треке
+    const trackResp = await axios.get(`https://api.music.yandex.net/tracks/${trackId}`, {
+      headers: { "Authorization": `OAuth ${token}`, "X-Yandex-Music-Client": "WindowsPhone/3.20" }
+    });
+
+    const track = trackResp.data?.result?.[0];
+    if (!track) return res.json({ ok: true, isPlaying: false });
+
+    const artists = (track.artists || []).map(a => a.name).join(", ");
+    const album   = track.albums?.[0];
+    const image   = album?.coverUri
+      ? "https://" + album.coverUri.replace("%%", "400x400")
+      : "";
+
+    res.json({ ok: true, isPlaying: true, track: {
+      name: track.title || "",
+      artists: artists,
+      album: album?.title || "",
+      image,
+      url: `https://music.yandex.ru/track/${trackId}`,
+      source: "yandex"
+    }});
+  } catch(e) {
+    const status = e.response?.status;
+    if (status === 401) return res.json({ ok: false, error: "Токен недействителен" });
+    console.error("[yandex]", e.message);
+    res.json({ ok: false, error: "Ошибка Яндекс Музыки" });
+  }
+});
+
+// Сохранить токен Яндекс Музыки
+app.post("/api/yandex/connect", requireAuth, async (req, res) => {
+  const { token } = req.body;
+  if (!token?.trim()) return res.status(400).json({ ok: false, error: "Нет токена" });
+  try {
+    // Проверяем токен
+    await axios.get("https://api.music.yandex.net/account/status", {
+      headers: { "Authorization": `OAuth ${token.trim()}`, "X-Yandex-Music-Client": "WindowsPhone/3.20" }
+    });
+    await db.updateUser(req.user.id, { yandexToken: token.trim() });
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(400).json({ ok: false, error: "Токен недействителен — попробуй другой способ получения" });
+  }
+});
+
+app.post("/api/yandex/disconnect", requireAuth, async (req, res) => {
+  await db.updateUser(req.user.id, { yandexToken: "" });
+  res.json({ ok: true });
+});
+
+
 app.post("/api/now-playing", requireAuth, async (req, res) => {
   try {
   const { track, artist, album, image, url, source, lat, lng } = req.body;
