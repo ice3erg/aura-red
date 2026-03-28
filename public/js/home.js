@@ -504,8 +504,16 @@
 
     const q = encodeURIComponent(query);
 
-    const [deezerRes, itunesRes, mbRes] = await Promise.allSettled([
-      // Deezer — лучше всего знает СНГ
+    const [lastfmRes, deezerRes, itunesRes] = await Promise.allSettled([
+      // Last.fm — знает ВСЮ русскую музыку включая андерграунд
+      fetch(`/api/lastfm/search?q=${q}`)
+        .then(r => r.json()).then(d => (d.tracks || []).map(t => ({
+          name: t.name, artist: t.artist, image: t.image || '',
+          album: '', url: t.url || '',
+          key: (t.name + t.artist).toLowerCase()
+        }))).catch(() => []),
+
+      // Deezer — обложки для СНГ треков
       fetch(`https://api.deezer.com/search?q=${q}&limit=8&output=json`)
         .then(r => r.json()).then(d => (d.data || []).map(t => ({
           name: t.title, artist: t.artist.name,
@@ -514,36 +522,34 @@
           key: (t.title + t.artist.name).toLowerCase()
         }))).catch(() => []),
 
-      // iTunes — широкая база
-      fetch(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=8`)
+      // iTunes — западная музыка
+      fetch(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=6`)
         .then(r => r.json()).then(d => (d.results || []).map(t => ({
           name: t.trackName, artist: t.artistName,
           image: t.artworkUrl100 || t.artworkUrl60 || '',
           album: t.collectionName || '', url: t.trackViewUrl || '',
           key: (t.trackName + t.artistName).toLowerCase()
         }))).catch(() => []),
-
-      // MusicBrainz — андерграунд и редкие треки
-      fetch(`https://musicbrainz.org/ws/2/recording/?query=${q}&limit=6&fmt=json`, {
-        headers: { 'User-Agent': 'aura-app/1.0 (aura-red.onrender.com)' }
-      }).then(r => r.json()).then(d => (d.recordings || []).map(t => ({
-        name: t.title,
-        artist: t['artist-credit']?.[0]?.artist?.name || t['artist-credit']?.[0]?.name || '',
-        image: '', album: t.releases?.[0]?.title || '', url: '',
-        key: (t.title + (t['artist-credit']?.[0]?.artist?.name || '')).toLowerCase()
-      })).filter(t => t.artist)).catch(() => []),
     ]);
 
+    const lastfm = lastfmRes.value || [];
     const deezer = deezerRes.value || [];
     const itunes = itunesRes.value || [];
-    const mb     = mbRes.value     || [];
 
-    // Объединяем без дублей, Deezer приоритетом
+    // Строим карту обложек из Deezer и iTunes по ключу
+    const coverMap = {};
+    for (const t of [...deezer, ...itunes]) {
+      if (t.image) coverMap[t.key] = t.image;
+    }
+
+    // Last.fm первым — знает всё, добиваем обложками из Deezer/iTunes
     const seen = new Set();
     const combined = [];
-    for (const t of [...deezer, ...itunes, ...mb]) {
+    for (const t of [...lastfm, ...deezer, ...itunes]) {
       if (!seen.has(t.key) && t.name && t.artist) {
         seen.add(t.key);
+        // Если у Last.fm нет обложки — берём из Deezer/iTunes
+        if (!t.image && coverMap[t.key]) t.image = coverMap[t.key];
         combined.push(t);
       }
       if (combined.length >= 12) break;
