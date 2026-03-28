@@ -548,11 +548,21 @@
     for (const t of [...lastfm, ...deezer, ...itunes]) {
       if (!seen.has(t.key) && t.name && t.artist) {
         seen.add(t.key);
-        // Если у Last.fm нет обложки — берём из Deezer/iTunes
         if (!t.image && coverMap[t.key]) t.image = coverMap[t.key];
         combined.push(t);
       }
       if (combined.length >= 12) break;
+    }
+
+    // Для треков без обложки — пробуем получить через Last.fm track.getInfo (батч)
+    const nocover = combined.filter(t => !t.image).slice(0, 4);
+    if (nocover.length) {
+      await Promise.allSettled(nocover.map(t =>
+        fetch(`/api/lastfm/cover?track=${encodeURIComponent(t.name)}&artist=${encodeURIComponent(t.artist)}`)
+          .then(r => r.json())
+          .then(d => { if (d.image) t.image = d.image; })
+          .catch(() => {})
+      ));
     }
 
     if (spinner) spinner.style.display = 'none';
