@@ -433,47 +433,159 @@
   });
 
   // ── Manual track sheet ───────────────────────────────────
+  let _selectedTrack = null;
+  let _searchTimer   = null;
+
+  // MediaSession — читаем что играет в браузере/системе
+  function checkMediaSession() {
+    const ms = navigator.mediaSession;
+    if (!ms || !ms.metadata) return;
+    const { title, artist, artwork } = ms.metadata;
+    if (title && artist) {
+      const img = artwork?.[0]?.src || '';
+      document.getElementById('mediaSessionBtn').style.display = '';
+      document.getElementById('mediaSessionBtn').dataset.track  = title;
+      document.getElementById('mediaSessionBtn').dataset.artist = artist;
+      document.getElementById('mediaSessionBtn').dataset.image  = img;
+      // Обновляем текст кнопки
+      const btn = document.getElementById('mediaSessionBtn').querySelector('button');
+      if (btn) btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10,8 16,12 10,16"/></svg> ${title} — ${artist}`;
+    }
+  }
+
+  window.detectFromMediaSession = function() {
+    const btn = document.getElementById('mediaSessionBtn');
+    if (!btn) return;
+    selectTrack({
+      name:   btn.dataset.track,
+      artist: btn.dataset.artist,
+      image:  btn.dataset.image,
+      url:    '',
+      album:  ''
+    });
+  };
+
+  function selectTrack(t) {
+    _selectedTrack = t;
+    const el    = document.getElementById('selectedTrack');
+    const cover = document.getElementById('selectedCover');
+    const name  = document.getElementById('selectedName');
+    const art   = document.getElementById('selectedArtist');
+    const pub   = document.getElementById('manualPublishBtn');
+    const res   = document.getElementById('searchResults');
+
+    if (cover) { cover.src = t.image || ''; cover.style.display = t.image ? '' : 'none'; }
+    if (name)    name.textContent   = t.name;
+    if (art)     art.textContent    = t.artist;
+    if (el) { el.style.display = 'flex'; }
+    if (res)     res.innerHTML = '';
+    if (pub) { pub.disabled = false; pub.style.opacity = '1'; }
+
+    const inp = document.getElementById('smartSearchInput');
+    if (inp) inp.value = '';
+  }
+
+  window.clearSelected = function() {
+    _selectedTrack = null;
+    const el  = document.getElementById('selectedTrack');
+    const pub = document.getElementById('manualPublishBtn');
+    if (el)  el.style.display = 'none';
+    if (pub) { pub.disabled = true; pub.style.opacity = '0.4'; }
+  };
+
+  // Поиск через iTunes Search API (бесплатно, без ключа)
+  async function searchTracks(query) {
+    if (query.length < 2) {
+      document.getElementById('searchResults').innerHTML = '';
+      return;
+    }
+    const spinner = document.getElementById('searchSpinner');
+    if (spinner) spinner.style.display = '';
+    try {
+      const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&entity=song&limit=8&lang=ru_ru`;
+      const r = await fetch(url);
+      const d = await r.json();
+      renderSearchResults(d.results || []);
+    } catch { renderSearchResults([]); }
+    if (spinner) spinner.style.display = 'none';
+  }
+
+  function renderSearchResults(results) {
+    const el = document.getElementById('searchResults');
+    if (!el) return;
+    if (!results.length) {
+      el.innerHTML = '<div style="padding:14px;text-align:center;color:rgba(255,255,255,0.3);font-size:13px;">Ничего не найдено</div>';
+      return;
+    }
+    el.innerHTML = results.map((t, i) => `
+      <div onclick="window._pickTrack(${i})" data-idx="${i}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;transition:background 0.15s;border-bottom:1px solid rgba(255,255,255,0.04);" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background=''">
+        <img src="${t.artworkUrl60 || ''}" style="width:42px;height:42px;border-radius:8px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,0.08);" />
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.trackName}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.45);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.artistName}</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    `).join('');
+
+    // Сохраняем данные для picker
+    window._searchData = results;
+  }
+
+  window._pickTrack = function(i) {
+    const t = window._searchData?.[i];
+    if (!t) return;
+    selectTrack({
+      name:   t.trackName,
+      artist: t.artistName,
+      image:  t.artworkUrl100 || t.artworkUrl60 || '',
+      album:  t.collectionName || '',
+      url:    t.trackViewUrl || ''
+    });
+  };
+
   function openManualSheet() {
     const backdrop = document.getElementById('manualSheetBackdrop');
     backdrop.style.display = 'flex';
-    // Подставляем текущий трек если есть
-    if (_currentTrack) {
-      const ti = document.getElementById('manualTrackInput');
-      const ai = document.getElementById('manualArtistInput');
-      if (ti && !ti.value) ti.value = _currentTrack.name || '';
-      if (ai && !ai.value) ai.value = _currentTrack.artists || '';
+    window.clearSelected();
+    document.getElementById('searchResults').innerHTML = '';
+    document.getElementById('smartSearchInput').value = '';
+
+    // Проверяем MediaSession
+    checkMediaSession();
+
+    // Если уже играет трек — подставляем
+    if (_currentTrack?.name) {
+      const inp = document.getElementById('smartSearchInput');
+      if (inp) inp.value = _currentTrack.name + ' ' + (_currentTrack.artists || '');
     }
-    // Быстрые подсказки из радара
-    const sugg = document.getElementById('manualSuggestions');
-    if (sugg && _radarMarkers.length > 0) {
-      // Собираем треки с карты (реальные)
-      const seen = new Set();
-      const chips = [];
-      for (const m of window._radarData || []) {
-        const key = m.track + '::' + m.artist;
-        if (seen.has(key) || m.isDemo) continue;
-        seen.add(key);
-        chips.push(m);
-        if (chips.length >= 4) break;
-      }
-      sugg.innerHTML = chips.map(m =>
-        `<button onclick="fillManual('${m.track.replace(/'/g,"\'")}','${m.artist.replace(/'/g,"\'")}') "
-          style="padding:7px 12px;border-radius:99px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.65);font:600 12px/1 Inter,sans-serif;cursor:pointer;white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;">
-          ${m.track}
-        </button>`
-      ).join('');
-    }
-    setTimeout(() => document.getElementById('manualTrackInput')?.focus(), 350);
+
+    setTimeout(() => {
+      const inp = document.getElementById('smartSearchInput');
+      inp?.focus();
+      if (inp?.value) searchTracks(inp.value);
+    }, 350);
   }
 
   window.closeManualSheet = function() {
     document.getElementById('manualSheetBackdrop').style.display = 'none';
   };
 
-  window.fillManual = function(track, artist) {
-    document.getElementById('manualTrackInput').value = track;
-    document.getElementById('manualArtistInput').value = artist;
-  };
+  // Дебаунс поиска при вводе
+  document.getElementById('smartSearchInput')?.addEventListener('input', e => {
+    const q = e.target.value.trim();
+    clearTimeout(_searchTimer);
+    if (!q) { document.getElementById('searchResults').innerHTML = ''; return; }
+    _searchTimer = setTimeout(() => searchTracks(q), 350);
+  });
+
+  // Enter = поиск сразу
+  document.getElementById('smartSearchInput')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      clearTimeout(_searchTimer);
+      searchTracks(e.target.value.trim());
+    }
+  });
 
   // Тап на пилюлю или кнопку редактирования
   document.getElementById('nowPill').addEventListener('click', (e) => {
@@ -491,11 +603,7 @@
 
   // Публикация
   document.getElementById('manualPublishBtn').addEventListener('click', async () => {
-    const track  = document.getElementById('manualTrackInput').value.trim();
-    const artist = document.getElementById('manualArtistInput').value.trim();
-    if (!track) { document.getElementById('manualTrackInput').focus(); return; }
-    if (!artist) { document.getElementById('manualArtistInput').focus(); return; }
-
+    if (!_selectedTrack) return;
     const btn = document.getElementById('manualPublishBtn');
     btn.disabled = true; btn.textContent = 'Публикуем...';
 
@@ -505,13 +613,19 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          track, artist, source: 'manual',
-          lat: pos?.lat ?? null, lng: pos?.lng ?? null,
+          track:  _selectedTrack.name,
+          artist: _selectedTrack.artist,
+          album:  _selectedTrack.album  || '',
+          image:  _selectedTrack.image  || '',
+          url:    _selectedTrack.url    || '',
+          source: 'manual',
+          lat: pos?.lat ?? null,
+          lng: pos?.lng ?? null,
         })
       });
       const d = await r.json();
       if (d.ok) {
-        _currentTrack = { name: track, artists: artist, source: 'manual', image: '' };
+        _currentTrack = { name: _selectedTrack.name, artists: _selectedTrack.artist, image: _selectedTrack.image, source: 'manual' };
         const pill  = document.getElementById('nowPill');
         const dot   = document.getElementById('npDot');
         const title = document.getElementById('npTitle');
@@ -519,32 +633,23 @@
         const ph    = document.getElementById('npCoverPh');
         pill.classList.add('has-track');
         dot.classList.remove('idle');
-        cover.style.display = 'none';
-        ph.style.display = 'flex';
-        title.textContent = `${track} · ${artist}`;
+        if (_selectedTrack.image) {
+          cover.src = _selectedTrack.image; cover.style.display = 'block';
+          if (ph) ph.style.display = 'none';
+        }
+        title.textContent = `${_selectedTrack.name} · ${_selectedTrack.artist}`;
         pill.classList.add('beating');
         window.closeManualSheet();
         if (pos) loadRadar(pos.lat, pos.lng);
       } else {
-        // Показываем ошибку
-        btn.textContent = d.error || 'Ошибка — попробуй снова';
-        btn.style.background = 'rgba(255,43,43,0.3)';
-        setTimeout(() => { btn.style.background = ''; btn.textContent = 'Опубликовать 📡'; btn.disabled = false; }, 2500);
+        btn.textContent = d.error || 'Ошибка';
+        setTimeout(() => { btn.textContent = 'Опубликовать 📡'; btn.disabled = false; }, 2000);
         return;
       }
-    } catch (_) {
-      btn.textContent = 'Ошибка сети';
-      setTimeout(() => { btn.textContent = 'Опубликовать 📡'; }, 2000);
-    }
+    } catch { btn.textContent = 'Ошибка сети'; setTimeout(() => { btn.textContent = 'Опубликовать 📡'; }, 2000); }
     btn.disabled = false; btn.textContent = 'Опубликовать 📡';
   });
 
-  // Enter в инпутах
-  ['manualTrackInput', 'manualArtistInput'].forEach(id => {
-    document.getElementById(id)?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') document.getElementById('manualPublishBtn').click();
-    });
-  });
 
   // ── Sent signals ─────────────────────────────────────────
   async function loadSentSignalIds() {
