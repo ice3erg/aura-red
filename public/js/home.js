@@ -493,7 +493,7 @@
     if (pub) { pub.disabled = true; pub.style.opacity = '0.4'; }
   };
 
-  // Поиск через iTunes Search API (бесплатно, без ключа)
+  // Поиск: Deezer (русская музыка) + iTunes (всё остальное)
   async function searchTracks(query) {
     if (query.length < 2) {
       document.getElementById('searchResults').innerHTML = '';
@@ -501,13 +501,44 @@
     }
     const spinner = document.getElementById('searchSpinner');
     if (spinner) spinner.style.display = '';
-    try {
-      const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=music&entity=song&limit=8&lang=ru_ru`;
-      const r = await fetch(url);
-      const d = await r.json();
-      renderSearchResults(d.results || []);
-    } catch { renderSearchResults([]); }
+
+    const q = encodeURIComponent(query);
+    // Параллельно запрашиваем оба источника
+    const [deezerRes, itunesRes] = await Promise.allSettled([
+      fetch(`https://api.deezer.com/search?q=${q}&limit=8&output=json`)
+        .then(r => r.json()).then(d => (d.data || []).map(t => ({
+          _src:   'deezer',
+          name:   t.title,
+          artist: t.artist.name,
+          image:  t.album?.cover_medium || t.album?.cover || '',
+          album:  t.album?.title || '',
+          url:    t.link || '',
+          key:    t.title + '::' + t.artist.name,
+        }))).catch(() => []),
+      fetch(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=8&lang=ru_ru`)
+        .then(r => r.json()).then(d => (d.results || []).map(t => ({
+          _src:   'itunes',
+          name:   t.trackName,
+          artist: t.artistName,
+          image:  t.artworkUrl100 || t.artworkUrl60 || '',
+          album:  t.collectionName || '',
+          url:    t.trackViewUrl || '',
+          key:    t.trackName + '::' + t.artistName,
+        }))).catch(() => []),
+    ]);
+
+    const deezer = deezerRes.status === 'fulfilled' ? deezerRes.value : [];
+    const itunes = itunesRes.status === 'fulfilled' ? itunesRes.value : [];
+
+    // Объединяем: Deezer первый (лучше знает СНГ), потом уникальные из iTunes
+    const seen = new Set(deezer.map(t => t.key));
+    const combined = [
+      ...deezer,
+      ...itunes.filter(t => !seen.has(t.key))
+    ].slice(0, 10);
+
     if (spinner) spinner.style.display = 'none';
+    renderSearchResults(combined);
   }
 
   function renderSearchResults(results) {
@@ -517,31 +548,22 @@
       el.innerHTML = '<div style="padding:14px;text-align:center;color:rgba(255,255,255,0.3);font-size:13px;">Ничего не найдено</div>';
       return;
     }
+    window._searchData = results;
     el.innerHTML = results.map((t, i) => `
-      <div onclick="window._pickTrack(${i})" data-idx="${i}" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;transition:background 0.15s;border-bottom:1px solid rgba(255,255,255,0.04);" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background=''">
-        <img src="${t.artworkUrl60 || ''}" style="width:42px;height:42px;border-radius:8px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,0.08);" />
+      <div onclick="window._pickTrack(${i})" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;transition:background 0.15s;border-bottom:1px solid rgba(255,255,255,0.04);" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background=''">
+        ${t.image ? `<img src="${t.image}" style="width:42px;height:42px;border-radius:8px;object-fit:cover;flex-shrink:0;" />` : `<div style="width:42px;height:42px;border-radius:8px;background:rgba(255,255,255,0.08);flex-shrink:0;"></div>`}
         <div style="flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.trackName}</div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.45);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.artistName}</div>
+          <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.name}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.45);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.artist}</div>
         </div>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
     `).join('');
-
-    // Сохраняем данные для picker
-    window._searchData = results;
   }
 
   window._pickTrack = function(i) {
     const t = window._searchData?.[i];
-    if (!t) return;
-    selectTrack({
-      name:   t.trackName,
-      artist: t.artistName,
-      image:  t.artworkUrl100 || t.artworkUrl60 || '',
-      album:  t.collectionName || '',
-      url:    t.trackViewUrl || ''
-    });
+    if (t) selectTrack(t);
   };
 
   function openManualSheet() {
