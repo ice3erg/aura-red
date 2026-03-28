@@ -711,6 +711,7 @@
       const d = await r.json();
       if (d.ok) {
         _currentTrack = { name: _selectedTrack.name, artists: _selectedTrack.artist, image: _selectedTrack.image, source: 'manual' };
+        try { localStorage.setItem('aura_last_track', JSON.stringify(_currentTrack)); } catch(_) {}
         const pill  = document.getElementById('nowPill');
         const dot   = document.getElementById('npDot');
         const title = document.getElementById('npTitle');
@@ -764,6 +765,27 @@
   async function init() {
     _user = await U.requireAuth();
     if (!_user) return;
+
+    // Восстанавливаем последний трек из localStorage
+    try {
+      const saved = localStorage.getItem('aura_last_track');
+      if (saved) {
+        const t = JSON.parse(saved);
+        if (t?.name) {
+          _currentTrack = t;
+          const pill  = document.getElementById('nowPill');
+          const dot   = document.getElementById('npDot');
+          const title = document.getElementById('npTitle');
+          const cover = document.getElementById('npCover');
+          const ph    = document.getElementById('npCoverPh');
+          if (pill)  pill.classList.add('has-track');
+          if (dot)   dot.classList.remove('idle');
+          if (title) title.textContent = `${t.name} · ${t.artists}`;
+          if (t.image && cover) { cover.src = t.image; cover.style.display = 'block'; if (ph) ph.style.display = 'none'; }
+          if (pill)  pill.classList.add('beating');
+        }
+      }
+    } catch(_) {}
 
     // You marker
     _youMarker = L.marker(DEFAULT, { icon: makeYouIcon(_user), zIndexOffset: 1000 }).addTo(map);
