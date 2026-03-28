@@ -270,22 +270,47 @@ app.get("/api/lastfm/current-track", async (req, res) => {
   }
 });
 
-// Last.fm обложка для конкретного трека
+// Last.fm обложка для конкретного трека + MusicBrainz fallback
 app.get("/api/lastfm/cover", async (req, res) => {
   const { track, artist } = req.query;
-  if (!track || !artist) return res.json({ ok: false });
+  if (!track || !artist) return res.json({ ok: false, image: "" });
   const apiKey = process.env.LASTFM_API_KEY;
-  if (!apiKey) return res.json({ ok: false });
+  const placeholder = "2a96cbd8b46e442fc41c2b86b821562f";
+
+  // Попытка 1 — Last.fm track.getInfo
   try {
-    const r = await axios.get("https://ws.audioscrobbler.com/2.0/", {
-      params: { method: "track.getInfo", track, artist, api_key: apiKey, format: "json" }
-    });
-    const images = r.data?.track?.album?.image || [];
-    const img = images.find(i => i.size === "extralarge")?.["#text"]
-             || images.find(i => i.size === "large")?.["#text"] || "";
-    const placeholder = "2a96cbd8b46e442fc41c2b86b821562f";
-    res.json({ ok: true, image: (img && !img.includes(placeholder)) ? img : "" });
-  } catch { res.json({ ok: false, image: "" }); }
+    if (apiKey) {
+      const r = await axios.get("https://ws.audioscrobbler.com/2.0/", {
+        params: { method: "track.getInfo", track, artist, api_key: apiKey, format: "json" },
+        timeout: 3000
+      });
+      const images = r.data?.track?.album?.image || [];
+      const img = images.find(i => i.size === "extralarge")?.["#text"]
+               || images.find(i => i.size === "large")?.["#text"] || "";
+      if (img && !img.includes(placeholder)) {
+        return res.json({ ok: true, image: img });
+      }
+    }
+  } catch(_) {}
+
+  // Попытка 2 — MusicBrainz Cover Art Archive
+  try {
+    const mbSearch = await axios.get(
+      `https://musicbrainz.org/ws/2/recording/?query=recording:"${encodeURIComponent(track)}" AND artist:"${encodeURIComponent(artist)}"&limit=1&fmt=json`,
+      { headers: { "User-Agent": "aura-app/1.0 (aura-red.onrender.com)" }, timeout: 4000 }
+    );
+    const releaseId = mbSearch.data?.recordings?.[0]?.releases?.[0]?.id;
+    if (releaseId) {
+      const coverR = await axios.get(
+        `https://coverartarchive.org/release/${releaseId}`,
+        { timeout: 3000 }
+      );
+      const img = coverR.data?.images?.[0]?.thumbnails?.["500"] || coverR.data?.images?.[0]?.image || "";
+      if (img) return res.json({ ok: true, image: img });
+    }
+  } catch(_) {}
+
+  res.json({ ok: false, image: "" });
 });
 
 
