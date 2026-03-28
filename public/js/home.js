@@ -493,7 +493,7 @@
     if (pub) { pub.disabled = true; pub.style.opacity = '0.4'; }
   };
 
-  // Поиск: Deezer (русская музыка) + iTunes (всё остальное)
+  // Поиск: Deezer + iTunes + MusicBrainz + ручной ввод
   async function searchTracks(query) {
     if (query.length < 2) {
       document.getElementById('searchResults').innerHTML = '';
@@ -503,63 +503,110 @@
     if (spinner) spinner.style.display = '';
 
     const q = encodeURIComponent(query);
-    // Параллельно запрашиваем оба источника
-    const [deezerRes, itunesRes] = await Promise.allSettled([
+
+    const [deezerRes, itunesRes, mbRes] = await Promise.allSettled([
+      // Deezer — лучше всего знает СНГ
       fetch(`https://api.deezer.com/search?q=${q}&limit=8&output=json`)
         .then(r => r.json()).then(d => (d.data || []).map(t => ({
-          _src:   'deezer',
-          name:   t.title,
-          artist: t.artist.name,
-          image:  t.album?.cover_medium || t.album?.cover || '',
-          album:  t.album?.title || '',
-          url:    t.link || '',
-          key:    t.title + '::' + t.artist.name,
+          name: t.title, artist: t.artist.name,
+          image: t.album?.cover_medium || '',
+          album: t.album?.title || '', url: t.link || '',
+          key: (t.title + t.artist.name).toLowerCase()
         }))).catch(() => []),
-      fetch(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=8&lang=ru_ru`)
+
+      // iTunes — широкая база
+      fetch(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=8`)
         .then(r => r.json()).then(d => (d.results || []).map(t => ({
-          _src:   'itunes',
-          name:   t.trackName,
-          artist: t.artistName,
-          image:  t.artworkUrl100 || t.artworkUrl60 || '',
-          album:  t.collectionName || '',
-          url:    t.trackViewUrl || '',
-          key:    t.trackName + '::' + t.artistName,
+          name: t.trackName, artist: t.artistName,
+          image: t.artworkUrl100 || t.artworkUrl60 || '',
+          album: t.collectionName || '', url: t.trackViewUrl || '',
+          key: (t.trackName + t.artistName).toLowerCase()
         }))).catch(() => []),
+
+      // MusicBrainz — андерграунд и редкие треки
+      fetch(`https://musicbrainz.org/ws/2/recording/?query=${q}&limit=6&fmt=json`, {
+        headers: { 'User-Agent': 'aura-app/1.0 (aura-red.onrender.com)' }
+      }).then(r => r.json()).then(d => (d.recordings || []).map(t => ({
+        name: t.title,
+        artist: t['artist-credit']?.[0]?.artist?.name || t['artist-credit']?.[0]?.name || '',
+        image: '', album: t.releases?.[0]?.title || '', url: '',
+        key: (t.title + (t['artist-credit']?.[0]?.artist?.name || '')).toLowerCase()
+      })).filter(t => t.artist)).catch(() => []),
     ]);
 
-    const deezer = deezerRes.status === 'fulfilled' ? deezerRes.value : [];
-    const itunes = itunesRes.status === 'fulfilled' ? itunesRes.value : [];
+    const deezer = deezerRes.value || [];
+    const itunes = itunesRes.value || [];
+    const mb     = mbRes.value     || [];
 
-    // Объединяем: Deezer первый (лучше знает СНГ), потом уникальные из iTunes
-    const seen = new Set(deezer.map(t => t.key));
-    const combined = [
-      ...deezer,
-      ...itunes.filter(t => !seen.has(t.key))
-    ].slice(0, 10);
+    // Объединяем без дублей, Deezer приоритетом
+    const seen = new Set();
+    const combined = [];
+    for (const t of [...deezer, ...itunes, ...mb]) {
+      if (!seen.has(t.key) && t.name && t.artist) {
+        seen.add(t.key);
+        combined.push(t);
+      }
+      if (combined.length >= 12) break;
+    }
 
     if (spinner) spinner.style.display = 'none';
-    renderSearchResults(combined);
+    renderSearchResults(combined, query);
   }
 
-  function renderSearchResults(results) {
+  function renderSearchResults(results, query) {
     const el = document.getElementById('searchResults');
     if (!el) return;
-    if (!results.length) {
-      el.innerHTML = '<div style="padding:14px;text-align:center;color:rgba(255,255,255,0.3);font-size:13px;">Ничего не найдено</div>';
-      return;
-    }
     window._searchData = results;
-    el.innerHTML = results.map((t, i) => `
+
+    const items = results.map((t, i) => `
       <div onclick="window._pickTrack(${i})" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;transition:background 0.15s;border-bottom:1px solid rgba(255,255,255,0.04);" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background=''">
-        ${t.image ? `<img src="${t.image}" style="width:42px;height:42px;border-radius:8px;object-fit:cover;flex-shrink:0;" />` : `<div style="width:42px;height:42px;border-radius:8px;background:rgba(255,255,255,0.08);flex-shrink:0;"></div>`}
+        ${t.image ? `<img src="${t.image}" style="width:42px;height:42px;border-radius:8px;object-fit:cover;flex-shrink:0;" />` : `<div style="width:42px;height:42px;border-radius:8px;background:rgba(255,255,255,0.08);flex-shrink:0;display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`}
         <div style="flex:1;min-width:0;">
           <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.name}</div>
           <div style="font-size:12px;color:rgba(255,255,255,0.45);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.artist}</div>
         </div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
     `).join('');
+
+    // Кнопка ручного ввода всегда внизу
+    const manualBtn = `
+      <div onclick="window._enterManually()" style="display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;border-top:1px solid rgba(255,255,255,0.06);margin-top:2px;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''">
+        <div style="width:42px;height:42px;border-radius:8px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.6);">Ввести вручную</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:1px;">Не нашёл нужный трек?</div>
+        </div>
+      </div>`;
+
+    el.innerHTML = (results.length ? items : '<div style="padding:12px 14px;text-align:center;color:rgba(255,255,255,0.3);font-size:13px;">Ничего не найдено в базах</div>') + manualBtn;
   }
+
+  // Ручной ввод — показываем два поля прямо в шторке
+  window._enterManually = function() {
+    const el = document.getElementById('searchResults');
+    if (!el) return;
+    el.innerHTML = `
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:8px;">
+        <input id="manualTrackFallback" type="text" placeholder="Название трека" autocomplete="off"
+          style="width:100%;padding:11px 13px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;font:700 14px/1 Inter,sans-serif;outline:none;" />
+        <input id="manualArtistFallback" type="text" placeholder="Исполнитель" autocomplete="off"
+          style="width:100%;padding:11px 13px;border-radius:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;font:700 14px/1 Inter,sans-serif;outline:none;" />
+        <button onclick="window._confirmManual()" style="padding:11px;border-radius:10px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);color:#fff;font:700 13px/1 Inter,sans-serif;cursor:pointer;">
+          Подтвердить
+        </button>
+      </div>`;
+    document.getElementById('manualTrackFallback')?.focus();
+  };
+
+  window._confirmManual = function() {
+    const name   = document.getElementById('manualTrackFallback')?.value.trim();
+    const artist = document.getElementById('manualArtistFallback')?.value.trim();
+    if (!name || !artist) return;
+    selectTrack({ name, artist, image: '', album: '', url: '' });
+  };
 
   window._pickTrack = function(i) {
     const t = window._searchData?.[i];
