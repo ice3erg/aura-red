@@ -270,7 +270,25 @@ app.get("/api/lastfm/current-track", async (req, res) => {
   }
 });
 
-// Last.fm поиск треков (знает русскую музыку)
+// Last.fm обложка для конкретного трека
+app.get("/api/lastfm/cover", async (req, res) => {
+  const { track, artist } = req.query;
+  if (!track || !artist) return res.json({ ok: false });
+  const apiKey = process.env.LASTFM_API_KEY;
+  if (!apiKey) return res.json({ ok: false });
+  try {
+    const r = await axios.get("https://ws.audioscrobbler.com/2.0/", {
+      params: { method: "track.getInfo", track, artist, api_key: apiKey, format: "json" }
+    });
+    const images = r.data?.track?.album?.image || [];
+    const img = images.find(i => i.size === "extralarge")?.["#text"]
+             || images.find(i => i.size === "large")?.["#text"] || "";
+    const placeholder = "2a96cbd8b46e442fc41c2b86b821562f";
+    res.json({ ok: true, image: (img && !img.includes(placeholder)) ? img : "" });
+  } catch { res.json({ ok: false, image: "" }); }
+});
+
+
 app.get("/api/lastfm/search", async (req, res) => {
   const q = req.query.q?.trim();
   if (!q) return res.json({ ok: true, tracks: [] });
@@ -281,13 +299,21 @@ app.get("/api/lastfm/search", async (req, res) => {
       params: { method: "track.search", track: q, api_key: apiKey, format: "json", limit: 8 }
     });
     const raw = r.data?.results?.trackmatches?.track || [];
-    const tracks = (Array.isArray(raw) ? raw : [raw]).map(t => ({
-      name:   t.name   || "",
-      artist: t.artist || "",
-      image:  t.image?.find(i => i.size === "large")?.["#text"] || t.image?.[1]?.["#text"] || "",
-      url:    t.url    || "",
-      album:  "",
-    })).filter(t => t.name && t.artist && t.artist !== "(null)");
+    const tracks = (Array.isArray(raw) ? raw : [raw]).map(t => {
+      // Last.fm возвращает обложки треков — берём наибольший размер
+      const images = Array.isArray(t.image) ? t.image : [];
+      const img = images.find(i => i.size === "extralarge")?.["#text"]
+               || images.find(i => i.size === "large")?.["#text"]
+               || images.find(i => i.size === "medium")?.["#text"]
+               || "";
+      return {
+        name:   t.name   || "",
+        artist: t.artist || "",
+        image:  (img && !img.includes("2a96cbd8b46e442fc41c2b86b821562f")) ? img : "",
+        url:    t.url    || "",
+        album:  "",
+      };
+    }).filter(t => t.name && t.artist && t.artist !== "(null)");
     res.json({ ok: true, tracks });
   } catch(e) {
     res.json({ ok: true, tracks: [] });
