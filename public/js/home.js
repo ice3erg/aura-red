@@ -573,31 +573,55 @@
     const el = document.getElementById('searchResults');
     if (!el) return;
     window._searchData = results;
+    if (!results.length) {
+      el.innerHTML = `<div style="padding:12px;text-align:center;color:rgba(255,255,255,0.3);font-size:13px;">Ничего не найдено</div>${manualBtnHTML()}`;
+      return;
+    }
 
-    const items = results.map((t, i) => `
-      <div onclick="window._pickTrack(${i})" style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;transition:background 0.15s;border-bottom:1px solid rgba(255,255,255,0.04);" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background=''">
-        ${t.image ? `<img src="${t.image}" style="width:42px;height:42px;border-radius:8px;object-fit:cover;flex-shrink:0;" />` : `<div style="width:42px;height:42px;border-radius:8px;background:rgba(255,255,255,0.08);flex-shrink:0;display:flex;align-items:center;justify-content:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`}
+    // Топ-1 — крупная карточка
+    const top = results[0];
+    const topCard = `
+      <div onclick="window._pickTrack(0)" style="display:flex;align-items:center;gap:14px;padding:12px 14px;cursor:pointer;background:rgba(255,43,43,0.06);border-bottom:1px solid rgba(255,255,255,0.06);" onmouseover="this.style.background='rgba(255,43,43,0.1)'" onmouseout="this.style.background='rgba(255,43,43,0.06)'">
+        <div style="position:relative;flex-shrink:0;">
+          ${top.image
+            ? `<img src="${top.image}" style="width:52px;height:52px;border-radius:10px;object-fit:cover;display:block;" onerror="this.style.display='none';this.nextSibling.style.display='flex'" /><div style="display:none;width:52px;height:52px;border-radius:10px;background:rgba(255,255,255,0.08);align-items:center;justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`
+            : `<div style="width:52px;height:52px;border-radius:10px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`
+          }
+        </div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.name}</div>
-          <div style="font-size:12px;color:rgba(255,255,255,0.45);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.artist}</div>
+          <div style="font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${top.name}</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:3px;">${top.artist}</div>
         </div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
-      </div>
-    `).join('');
-
-    // Кнопка ручного ввода всегда внизу
-    const manualBtn = `
-      <div onclick="window._enterManually()" style="display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;border-top:1px solid rgba(255,255,255,0.06);margin-top:2px;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''">
-        <div style="width:42px;height:42px;border-radius:8px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-        </div>
-        <div style="flex:1;">
-          <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.6);">Ввести вручную</div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:1px;">Не нашёл нужный трек?</div>
+        <div style="flex-shrink:0;padding:7px 14px;border-radius:99px;background:rgba(255,43,43,0.2);border:1px solid rgba(255,43,43,0.3);color:#ff6b6b;font:700 12px/1 Inter,sans-serif;">
+          Выбрать
         </div>
       </div>`;
 
-    el.innerHTML = (results.length ? items : '<div style="padding:12px 14px;text-align:center;color:rgba(255,255,255,0.3);font-size:13px;">Ничего не найдено в базах</div>') + manualBtn;
+    // Остальные — компактный список
+    const rest = results.slice(1, 6).map((t, i) => `
+      <div onclick="window._pickTrack(${i+1})" style="display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''">
+        ${t.image
+          ? `<img src="${t.image}" style="width:36px;height:36px;border-radius:7px;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'" />`
+          : `<div style="width:36px;height:36px;border-radius:7px;background:rgba(255,255,255,0.07);flex-shrink:0;"></div>`
+        }
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.name}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px;">${t.artist}</div>
+        </div>
+      </div>`).join('');
+
+    el.innerHTML = topCard + rest + manualBtnHTML();
+  }
+
+  function manualBtnHTML() {
+    return `<div onclick="window._enterManually()" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background=''">
+      <div style="width:36px;height:36px;border-radius:7px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.5);">Нет нужного? Ввести вручную</div>
+      </div>
+    </div>`;
   }
 
   // Ручной ввод — показываем два поля прямо в шторке
