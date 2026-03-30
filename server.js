@@ -1,7 +1,8 @@
 require("dotenv").config();
 
 const express = require("express");
-const session = require("express-session");
+const session   = require("express-session");
+const PgSession = require("connect-pg-simple")(session);
 const bcrypt  = require("bcryptjs");
 const axios   = require("axios");
 const path    = require("path");
@@ -16,10 +17,13 @@ app.use(express.json({ limit: "5mb" }));
 
 const isProd = process.env.NODE_ENV === "production";
 
+// PostgreSQL persistent sessions — переживают рестарт
+const pgPool = db.pgPool();
 app.use(session({
+  store: pgPool ? new PgSession({ pool: pgPool, tableName: "sessions", createTableIfMissing: true }) : undefined,
   secret: process.env.SESSION_SECRET || "aura-dev-secret-change-in-prod",
   resave: false, saveUninitialized: false,
-  cookie: { httpOnly: true, secure: isProd, sameSite: "lax", maxAge: 7*24*60*60*1000 }
+  cookie: { httpOnly: true, secure: isProd, sameSite: "lax", maxAge: 30*24*60*60*1000 }
 }));
 
 const CLIENT_ID     = process.env.SPOTIFY_CLIENT_ID;
@@ -457,8 +461,16 @@ app.post("/api/now-playing", requireAuth, async (req, res) => {
     ? history
     : [entry, ...history].slice(0, 10);
 
-  await db.updateUser(req.user.id, { currentTrack: data, trackHistory: newHistory });
-  res.json({ ok:true });
+  // Обновляем стрик
+  const today = new Date().toISOString().slice(0,10);
+  const lastDay = user?.streakLast ? String(user.streakLast).slice(0,10) : null;
+  let newStreak = user?.streakDays || 0;
+  if (lastDay !== today) {
+    const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+    newStreak = lastDay === yesterday ? newStreak + 1 : 1;
+  }
+  await db.updateUser(req.user.id, { currentTrack: data, trackHistory: newHistory, streakDays: newStreak, streakLast: today });
+  res.json({ ok:true, streak: newStreak });
   } catch(e) { console.error("[now-playing]", e.message); res.status(500).json({ ok:false, error: e.message }); }
 });
 
@@ -667,3 +679,78 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`+aura запущен на http://127.0.0.1:${PORT}`));
+
+// ── Reactions ──────────────────────────────────────────────
+app.post("/api/reactions", requireAuth, async (req, res) => {
+  const { toId, track, artist, emoji } = req.body;
+  if (!toId || !emoji) return res.status(400).json({ ok: false });
+  try {
+    const pool = db.pgPool();
+    if (pool) {
+      const id = 'rxn_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+      await pool.query(
+        `INSERT INTO reactions(id,from_id,to_id,track,artist,emoji,created_at) VALUES($1,$2,$3,$4,$5,$6,$7)`,
+        [id, req.user.id, toId, track||'', artist||'', emoji, Date.now()]
+      );
+    }
+    res.json({ ok: true });
+  } catch(e) { console.error('[reactions]', e.message); res.status(500).json({ ok: false }); }
+});
+
+app.get("/api/reactions", requireAuth, async (req, res) => {
+  try {
+    const pool = db.pgPool();
+    if (!pool) return res.json({ ok: true, reactions: [] });
+    const r = await pool.query(
+      `SELECT rx.*, u.name as from_name, u.avatar as from_avatar
+       FROM reactions rx JOIN users u ON u.id = rx.from_id
+       WHERE rx.to_id = $1 AND rx.created_at > $2
+       ORDER BY rx.created_at DESC LIMIT 20`,
+      [req.user.id, Date.now() - 7*24*60*60*1000]
+    );
+    res.json({ ok: true, reactions: r.rows.map(r => ({
+      id: r.id, fromId: r.from_id, fromName: r.from_name, fromAvatar: r.from_avatar,
+      track: r.track, artist: r.artist, emoji: r.emoji, createdAt: Number(r.created_at)
+    }))});
+  } catch(e) { res.json({ ok: true, reactions: [] }); }
+});
+
+// ── Referral ───────────────────────────────────────────────
+app.post("/api/referral/use", requireAuth, async (req, res) => {
+  const { code } = req.body;
+  if (!code) return res.status(400).json({ ok: false });
+  try {
+    const all = await db.getAllUsers();
+    const referrer = all.find(u => u.name?.toLowerCase() === code.trim().toLowerCase() && u.id !== req.user.id);
+    if (!referrer) return res.status(404).json({ ok: false, error: "Пользователь не найден" });
+    const me = await db.findById(req.user.id);
+    await Promise.all([
+      db.updateUser(req.user.id, { auraPoints: (me?.auraPoints || 0) + 50 }),
+      db.updateUser(referrer.id, { auraPoints: (referrer.auraPoints || 0) + 50 }),
+    ]);
+    res.json({ ok: true, referrerName: referrer.name });
+  } catch(e) { res.status(500).json({ ok: false }); }
+});
+
+// ── Weekly recap ───────────────────────────────────────────
+app.get("/api/weekly-recap", requireAuth, async (req, res) => {
+  try {
+    const user = await db.findById(req.user.id);
+    const history = user?.trackHistory || [];
+    const weekAgo = Date.now() - 7*24*60*60*1000;
+    const week = history.filter(t => (t.ts||0) > weekAgo);
+    const artistCount = {}, trackCount = {};
+    week.forEach(t => {
+      if (t.artist) artistCount[t.artist] = (artistCount[t.artist]||0) + 1;
+      const key = (t.track||'') + '::' + (t.artist||'');
+      if (!trackCount[key]) trackCount[key] = { track: t.track, artist: t.artist, image: t.image||'', count: 0 };
+      trackCount[key].count++;
+    });
+    res.json({ ok: true, recap: {
+      totalTracks: week.length,
+      topArtists: Object.entries(artistCount).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([name,count])=>({name,count})),
+      topTracks:  Object.values(trackCount).sort((a,b)=>b.count-a.count).slice(0,5),
+      streak: user?.streakDays || 0
+    }});
+  } catch(e) { res.status(500).json({ ok: false }); }
+});

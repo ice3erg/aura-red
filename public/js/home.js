@@ -336,6 +336,12 @@
     // Профиль — только после принятого сигнала
     const uid = u.id || u.userId;
     const canSeeProfile = uid && _acceptedSignalTo.has(String(uid));
+
+    // Реакции — показываем если у пользователя есть трек
+    const reactEl = document.getElementById('sheetReactions');
+    if (reactEl) reactEl.style.display = (u.track && !u.isDemo) ? '' : 'none';
+    window._reactionTarget = { toId: uid, track: u.track, artist: u.artist };
+
     const profileBtn = document.getElementById('sheetProfileBtn');
     if (profileBtn) {
       if (canSeeProfile) {
@@ -786,6 +792,31 @@
   }
 
   // ── Init ─────────────────────────────────────────────────
+  // ── Reactions ────────────────────────────────────────────
+  window.sendReaction = async function(emoji) {
+    const t = window._reactionTarget;
+    if (!t?.toId) return;
+    const btns = document.querySelectorAll('#sheetReactions button');
+    btns.forEach(b => b.disabled = true);
+    try {
+      const r = await fetch('/api/reactions', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ toId: t.toId, track: t.track||'', artist: t.artist||'', emoji })
+      });
+      const d = await r.json();
+      if (d.ok) {
+        const btn = [...btns].find(b => b.textContent.trim() === emoji);
+        if (btn) {
+          const orig = btn.style.background;
+          btn.style.background = 'rgba(255,43,43,0.25)';
+          btn.style.transform = 'scale(1.3)';
+          setTimeout(() => { btn.style.background = orig; btn.style.transform = ''; }, 400);
+        }
+      }
+    } catch(_) {}
+    setTimeout(() => btns.forEach(b => b.disabled = false), 500);
+  };
+
   async function init() {
     _user = await U.requireAuth();
     if (!_user) return;

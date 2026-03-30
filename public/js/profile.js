@@ -203,6 +203,44 @@
       if (chEl) chEl.textContent = (chatsR.chats || []).length;
     } catch {}
 
+    // Стрик
+    const streakEl = document.getElementById('statStreak');
+    if (streakEl) {
+      const s = user.streakDays || 0;
+      streakEl.textContent = s;
+      if (s >= 7)  streakEl.style.color = '#ff8c00';
+      if (s >= 30) streakEl.style.color = '#ff2b2b';
+    }
+
+    // Реферальный код = имя пользователя
+    const refEl = document.getElementById('refCodeText');
+    if (refEl) refEl.textContent = user.name || '—';
+
+    // Реакции на мои треки
+    try {
+      const rxR = await fetch('/api/reactions').then(r => r.json());
+      const reactions = rxR.reactions || [];
+      if (reactions.length) {
+        const sec  = document.getElementById('reactionsSection');
+        const list = document.getElementById('reactionsList');
+        if (sec)  sec.style.display = '';
+        if (list) {
+          list.innerHTML = reactions.slice(0, 5).map(r => `
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,0.04);">
+              <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.1);overflow:hidden;flex-shrink:0;">
+                ${r.fromAvatar ? `<img src="${r.fromAvatar}" style="width:100%;height:100%;object-fit:cover;" />` : ''}
+              </div>
+              <div style="flex:1;min-width:0;">
+                <span style="font-weight:700;font-size:13px;">${r.fromName}</span>
+                <span style="color:rgba(255,255,255,0.4);font-size:12px;"> реагировал на </span>
+                <span style="font-size:13px;font-weight:600;">${r.track}</span>
+              </div>
+              <div style="font-size:22px;">${r.emoji}</div>
+            </div>`).join('');
+        }
+      }
+    } catch(_) {}
+
     // Дни с регистрации
     if (user.createdAt) {
       const days = Math.max(1, Math.floor((Date.now() - new Date(user.createdAt).getTime()) / 86400000));
@@ -388,3 +426,12 @@
 
   init();
 })();
+
+window.copyRefCode = function() {
+  const el = document.getElementById('refCodeText');
+  if (!el) return;
+  navigator.clipboard?.writeText(el.textContent).then(() => {
+    el.style.color = '#4ade80';
+    setTimeout(() => el.style.color = '', 1500);
+  }).catch(() => {});
+};

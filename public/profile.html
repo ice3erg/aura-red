@@ -260,8 +260,28 @@
         <div class="stat-lbl">Чаты</div>
       </div>
       <div class="stat-item">
+        <div class="stat-val" id="statStreak">0</div>
+        <div class="stat-lbl">🔥 Стрик</div>
+      </div>
+      <div class="stat-item">
         <div class="stat-val" id="statDays">0</div>
         <div class="stat-lbl">Дней</div>
+      </div>
+    </div>
+
+    <!-- Реакции на мои треки -->
+    <div id="reactionsSection" style="display:none;margin-bottom:16px;">
+      <div class="section-title">Реакции на треки</div>
+      <div id="reactionsList" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+
+    <!-- Реферальный код -->
+    <div class="section" style="margin-bottom:0;">
+      <div class="section-title">Пригласить друга</div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:10px;">Друг вводит твоё имя — вы оба получаете +50 ауры</div>
+      <div id="refCodeBlock" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">
+        <div style="flex:1;font-size:15px;font-weight:800;" id="refCodeText">—</div>
+        <button onclick="copyRefCode()" style="padding:8px 14px;border-radius:10px;background:rgba(255,43,43,0.15);border:1px solid rgba(255,43,43,0.25);color:#ff6b6b;font:700 12px/1 Inter,sans-serif;cursor:pointer;">Скопировать</button>
       </div>
     </div>
 

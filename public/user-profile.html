@@ -141,6 +141,22 @@
 
     <!-- Signal button (скрыт для себя) -->
     <div class="signal-section" id="signalSection" style="display:none">
+      <!-- Совместимость вкусов -->
+      <div id="compatBlock" style="display:none;margin-bottom:12px;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.35);margin-bottom:10px;">Совместимость вкусов</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="text-align:center;flex-shrink:0;">
+            <div id="compatPct" style="font-size:34px;font-weight:900;letter-spacing:-1px;color:#ff2b2b;">—</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.35);font-weight:600;margin-top:2px;">совпадение</div>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="height:5px;border-radius:99px;background:rgba(255,255,255,0.08);overflow:hidden;margin-bottom:8px;">
+              <div id="compatFill" style="height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,#ff2b2b,#ff8c00);transition:width 1s cubic-bezier(0.34,1.56,0.64,1);"></div>
+            </div>
+            <div id="compatLabel" style="font-size:12px;color:rgba(255,255,255,0.5);line-height:1.5;"></div>
+          </div>
+        </div>
+      </div>
       <button class="signal-btn" id="signalBtn">📡 Отправить сигнал</button>
     </div>
 
@@ -270,6 +286,35 @@
 
       // Signal button (не показываем себе)
       const isMe = me && me.id === profileUser.id;
+
+      // Совместимость вкусов
+      if (!isMe && me) {
+        const myH    = Array.isArray(me.trackHistory)          ? me.trackHistory          : [];
+        const theirH = Array.isArray(profileUser.trackHistory) ? profileUser.trackHistory : [];
+        if (myH.length && theirH.length) {
+          const myArt    = new Set(myH.map(t => t.artist?.toLowerCase()).filter(Boolean));
+          const theirArt = new Set(theirH.map(t => t.artist?.toLowerCase()).filter(Boolean));
+          const common   = [...myArt].filter(a => theirArt.has(a));
+          const total    = new Set([...myArt, ...theirArt]).size;
+          const pct      = total > 0 ? Math.round(common.length / total * 100) : 0;
+
+          if (pct > 0 || myH.length > 2) {
+            document.getElementById('compatBlock').style.display = '';
+            document.getElementById('compatPct').textContent = pct + '%';
+            setTimeout(() => {
+              document.getElementById('compatFill').style.width = pct + '%';
+            }, 400);
+            const label = pct >= 70 ? '🔥 Очень похожие вкусы!' :
+                          pct >= 40 ? '✨ Много общего' :
+                          pct >= 15 ? '🎵 Есть пересечения' : '🌍 Разные вкусы';
+            const commonNames = common.slice(0,3).map(a =>
+              myH.find(t => t.artist?.toLowerCase() === a)?.artist || a
+            );
+            document.getElementById('compatLabel').innerHTML =
+              `<b style="color:#fff">${label}</b>${common.length ? '<br>Оба слушают: ' + commonNames.join(', ') + (common.length > 3 ? ` +${common.length-3}` : '') : ''}`;
+          }
+        }
+      }
       if (!isMe && me) {
         const section = document.getElementById('signalSection');
         const btn = document.getElementById('signalBtn');

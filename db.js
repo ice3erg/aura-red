@@ -53,7 +53,20 @@ if (USE_PG) {
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS track_history JSONB DEFAULT '[]'`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS aura_points INTEGER DEFAULT 0`))
       .then(() => pgPool.query(`ALTER TABLE signals ADD COLUMN IF NOT EXISTS seen_by_from BOOLEAN DEFAULT false`))
-      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS yandex_token TEXT DEFAULT ''`));
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS yandex_token TEXT DEFAULT ''`))
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_days INTEGER DEFAULT 0`))
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_last DATE`))
+      .then(() => pgPool.query(`
+        CREATE TABLE IF NOT EXISTS reactions (
+          id TEXT PRIMARY KEY,
+          from_id TEXT NOT NULL,
+          to_id TEXT NOT NULL,
+          track TEXT DEFAULT '',
+          artist TEXT DEFAULT '',
+          emoji TEXT NOT NULL,
+          created_at BIGINT DEFAULT extract(epoch from now())*1000
+        )
+      `));
   }).then(() => console.log("[db] PostgreSQL ready"))
     .catch(e => console.error("[db] PG init error:", e.message));
 }
@@ -74,6 +87,8 @@ function rowToUser(row) {
     photos:              row.photos  || [],
     trackHistory:        row.track_history || [],
     auraPoints:          row.aura_points || 0,
+    streakDays:          row.streak_days  || 0,
+    streakLast:          row.streak_last  || null,
     spotifyConnected:    row.spotify_connected || false,
     spotifyName:         row.spotify_name || "",
     spotifyId:           row.spotify_id || "",
@@ -489,6 +504,7 @@ async function sendMessage(chatId, fromId, text) {
 }
 
 module.exports = {
+  pgPool: () => pgPool,
   findById, findByEmail, getAllUsers, createUser, updateUser, publicProfile,
   setNowPlaying, getMyNowPlaying, getAllNowPlaying, getNearbyUsers,
   createSignal, getSignalsForUser, getSentSignalsForUser, getSignalById, acceptSignal, ignoreSignal, markSignalsSeenByFrom,
