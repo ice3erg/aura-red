@@ -79,7 +79,7 @@ function renderMusicStats(history) {
   const topTracks  = Object.values(trackMap).sort((a,b) => b.count - a.count).slice(0, 8);
 
   // Top artists
-  if (topArtists.length >= 2) {
+  if (topArtists.length >= 1) {
     const sec = document.getElementById('topArtistsSection');
     const row = document.getElementById('topArtistsRow');
     if (sec) sec.style.display = '';
@@ -97,15 +97,17 @@ function renderMusicStats(history) {
   }
 
   // On repeat
-  const withImage = topTracks.filter(t => t.image);
-  if (withImage.length >= 2) {
+  if (topTracks.length >= 1) {
     const sec = document.getElementById('onRepeatSection');
     const row = document.getElementById('onRepeatRow');
     if (sec) sec.style.display = '';
-    if (row) row.innerHTML = withImage.map(t => `
+    if (row) row.innerHTML = topTracks.slice(0,8).map(t => `
       <div class="repeat-card">
         <div class="repeat-cover">
-          <img src="${t.image}" onerror="this.style.display='none'" />
+          ${t.image
+            ? `<img src="${t.image}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.nextSibling.style.display='flex'" /><div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;background:rgba(255,255,255,0.04);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`
+            : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.04);"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`
+          }
           <div class="repeat-count">${t.count} раз${t.count>1?'а':''}</div>
         </div>
         <div class="repeat-title">${t.track}</div>
@@ -294,10 +296,12 @@ function showNotice(msg, type = 'error') {
     if (avail) avail.textContent = '...';
     _usernameTimer = setTimeout(async () => {
       try {
-        const r = await fetch('/api/username/check', {
+        const resp = await fetch('/api/username/check', {
           method: 'POST', headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ username: val })
-        }).then(r => r.json());
+        });
+        if (!resp.ok) throw new Error('server error');
+        const r = await resp.json();
         if (r.available) {
           if (avail) { avail.textContent = '✓'; avail.style.color = '#4ade80'; }
           _usernameValid = true;
@@ -305,7 +309,12 @@ function showNotice(msg, type = 'error') {
         } else {
           if (avail) { avail.textContent = '✗'; avail.style.color = '#f87171'; }
         }
-      } catch(_) {}
+      } catch(_) {
+        // Сервер недоступен — разрешаем сохранить (проверка на бэке)
+        if (avail) { avail.textContent = '✓'; avail.style.color = '#4ade80'; }
+        _usernameValid = true;
+        if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+      }
     }, 500);
   });
 

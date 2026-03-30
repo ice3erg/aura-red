@@ -139,7 +139,8 @@ app.patch("/api/profile", requireAuth, async (req, res) => {
 // ── Debug ──────────────────────────────────────────────────
 app.get("/debug/env", (req, res) => res.json({
   hasClientId:!!CLIENT_ID, hasClientSecret:!!CLIENT_SECRET, redirectUri:REDIRECT_URI||null,
-  isProd, hasSession:!!req.session?.userId, sessionId: req.sessionID
+  isProd, hasSession:!!req.session?.userId, sessionId: req.sessionID,
+  version: "2026-03-30-v2", usernameRoute: true, reactionsRoute: true
 }));
 
 // Диагностика текущего пользователя
