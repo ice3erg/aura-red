@@ -91,6 +91,8 @@ function rowToUser(row) {
     streakDays:          row.streak_days  || 0,
     streakLast:          row.streak_last  || null,
     username:            row.username     || null,
+    vkConnected:         row.vk_connected || false,
+    vkUsername:          row.vk_username  || '',
     spotifyConnected:    row.spotify_connected || false,
     spotifyName:         row.spotify_name || "",
     spotifyId:           row.spotify_id || "",
@@ -137,6 +139,7 @@ async function pgUpdateUser(id, patch) {
     currentTrack: "current_track",
     username: "username",
     streakDays: "streak_days", streakLast: "streak_last",
+    vkConnected: "vk_connected", vkUsername: "vk_username",
   };
 
   for (const [key, col] of Object.entries(map)) {
