@@ -144,6 +144,7 @@ function showNotice(msg, type = 'error') {
 
 // ── MAIN ───────────────────────────────────────────────────
 (async () => {
+  try {
   const user = await U.requireAuth();
   if (!user) return;
 
@@ -437,21 +438,23 @@ function showNotice(msg, type = 'error') {
   // ── Save profile ──────────────────────────────────────────
   document.getElementById('saveBtn')?.addEventListener('click', async () => {
     const btn = document.getElementById('saveBtn');
+    if (!btn) return;
     btn.disabled = true; btn.textContent = 'Сохраняем...';
-    const name = document.getElementById('fieldName')?.value.trim();
-    const age  = document.getElementById('fieldAge')?.value;
-    const city = document.getElementById('fieldCity')?.value.trim();
-    const bio  = document.getElementById('fieldBio')?.value.trim();
+    const name = (document.getElementById('fieldName')?.value || '').trim();
+    const age  = document.getElementById('fieldAge')?.value || '';
+    const city = (document.getElementById('fieldCity')?.value || '').trim();
+    const bio  = (document.getElementById('fieldBio')?.value || '').trim();
     try {
       const r = await fetch('/api/profile', {
         method:'PATCH', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ name, age: age?Number(age):null, city, bio })
+        body: JSON.stringify({ name, age: age ? Number(age) : undefined, city, bio })
       }).then(r => r.json());
       if (r.ok) {
-        if (nameEl) nameEl.textContent = name;
+        const nd = document.getElementById('nameDisplay');
+        if (nd && name) nd.textContent = name;
         showNotice('Сохранено!', 'success');
       } else showNotice(r.error || 'Ошибка');
-    } catch { showNotice('Ошибка сети'); }
+    } catch(err) { console.error(err); showNotice('Ошибка сети'); }
     btn.disabled = false; btn.textContent = 'Сохранить профиль';
   });
 
@@ -462,6 +465,7 @@ function showNotice(msg, type = 'error') {
     window.location.href = '/login';
   });
 
+  } catch(e) { console.error('[profile] init error:', e); }
 })();
 
 window.copyRefCode = function() {};
