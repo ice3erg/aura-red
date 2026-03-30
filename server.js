@@ -291,6 +291,60 @@ app.get("/api/lastfm/current-track", async (req, res) => {
   }
 });
 
+// Last.fm sync — импортируем последние треки в trackHistory
+app.post("/api/lastfm/sync", requireAuth, async (req, res) => {
+  try {
+    const user = await db.findById(req.user.id);
+    const username = user?.lastfmUsername;
+    if (!username) return res.status(400).json({ ok: false, error: "Last.fm не подключён" });
+
+    const apiKey = process.env.LASTFM_API_KEY;
+    if (!apiKey) return res.status(500).json({ ok: false, error: "Нет ключа Last.fm" });
+
+    const r = await axios.get("https://ws.audioscrobbler.com/2.0/", {
+      params: { method: "user.getRecentTracks", user: username, api_key: apiKey, format: "json", limit: 50 },
+      timeout: 10000
+    });
+
+    const raw = r.data?.recenttracks?.track || [];
+    const tracks = Array.isArray(raw) ? raw : [raw];
+    const placeholder = "2a96cbd8b46e442fc41c2b86b821562f";
+
+    const newEntries = tracks
+      .filter(t => t.name && (t.artist?.name || t.artist?.["#text"]))
+      .map(t => {
+        const images = t.image || [];
+        const img = images.find(i => i.size === "extralarge")?.[["#text"]] ||
+                    images.find(i => i.size === "large")?.[["#text"]] || "";
+        return {
+          track:  t.name || "",
+          artist: t.artist?.name || t.artist?.["#text"] || "",
+          album:  t.album?.["#text"] || "",
+          image:  (img && img.startsWith("https://") && !img.includes(placeholder)) ? img : "",
+          ts:     t.date?.uts ? Number(t.date.uts) * 1000 : Date.now(),
+          source: "lastfm"
+        };
+      });
+
+    if (!newEntries.length) return res.json({ ok: true, synced: 0 });
+
+    // Мёрджим с текущей историей — убираем дубли по track+artist
+    const existing = Array.isArray(user.trackHistory) ? user.trackHistory : [];
+    const existingKeys = new Set(existing.map(t => t.track + "::" + t.artist));
+    const toAdd = newEntries.filter(t => !existingKeys.has(t.track + "::" + t.artist));
+
+    const merged = [...toAdd, ...existing]
+      .sort((a, b) => (b.ts || 0) - (a.ts || 0))
+      .slice(0, 200); // храним до 200 треков
+
+    await db.updateUser(req.user.id, { trackHistory: merged });
+    res.json({ ok: true, synced: toAdd.length, total: merged.length });
+  } catch(e) {
+    console.error("[lastfm/sync]", e.message);
+    res.status(500).json({ ok: false, error: "Ошибка Last.fm" });
+  }
+});
+
 // Last.fm обложка для конкретного трека + MusicBrainz fallback
 app.get("/api/lastfm/cover", async (req, res) => {
   const { track, artist } = req.query;
@@ -476,7 +530,7 @@ app.post("/api/now-playing", requireAuth, async (req, res) => {
   const last = history[0];
   const newHistory = (last?.track === entry.track && last?.artist === entry.artist)
     ? history
-    : [entry, ...history].slice(0, 10);
+    : [entry, ...history].slice(0, 200);
 
   // Обновляем стрик
   const today = new Date().toISOString().slice(0,10);

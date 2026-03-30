@@ -232,9 +232,30 @@ function showNotice(msg, type = 'error') {
     if (el) el.textContent = days;
   }
 
-  // Music stats
+  // Music stats — сначала рендерим что есть, потом синкаем с Last.fm
   renderMusicStats(user.trackHistory || []);
   renderTicker(user.trackHistory || []);
+
+  // Если Last.fm подключён — синкаем последние треки в фоне
+  if (user.lastfmConnected && user.lastfmUsername) {
+    fetch('/api/lastfm/sync', { method: 'POST' })
+      .then(r => r.json())
+      .then(async d => {
+        if (d.ok && d.synced > 0) {
+          // Перезагружаем данные и обновляем статистику
+          const fresh = await fetch('/api/auth/me').then(r => r.json());
+          if (fresh.ok && fresh.user) {
+            user.trackHistory = fresh.user.trackHistory || [];
+            window._profileUser = user;
+            renderMusicStats(user.trackHistory);
+            renderTicker(user.trackHistory);
+            const tracksEl = document.getElementById('statTracks');
+            if (tracksEl) tracksEl.textContent = user.trackHistory.length;
+          }
+        }
+      })
+      .catch(() => {});
+  }
 
   // Реакции на мои треки
   try {
