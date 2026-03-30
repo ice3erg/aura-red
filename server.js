@@ -693,9 +693,6 @@ app.use((err, req, res, next) => {
   res.status(500).json({ ok: false, error: "Внутренняя ошибка сервера" });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`+aura запущен на http://127.0.0.1:${PORT}`));
-
 // ── Username ──────────────────────────────────────────────
 app.post("/api/username/check", requireAuth, async (req, res) => {
   const { username } = req.body;
@@ -788,3 +785,7 @@ app.get("/api/weekly-recap", requireAuth, async (req, res) => {
     }});
   } catch(e) { res.status(500).json({ ok: false }); }
 });
+
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`+aura запущен на http://127.0.0.1:${PORT}`));
