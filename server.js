@@ -788,5 +788,7 @@ app.get("/api/weekly-recap", requireAuth, async (req, res) => {
 });
 
 
+app.get('/ping', (req, res) => res.json({ ok:true, v:'2026-03-30-v3', routes:['username','reactions','referral'] }));
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`+aura запущен на http://127.0.0.1:${PORT}`));

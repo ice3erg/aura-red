@@ -135,6 +135,8 @@ async function pgUpdateUser(id, patch) {
     spotifyRefreshToken: "spotify_refresh_token",
     lastfmConnected: "lastfm_connected", lastfmUsername: "lastfm_username", yandexToken: "yandex_token",
     currentTrack: "current_track",
+    username: "username",
+    streakDays: "streak_days", streakLast: "streak_last",
   };
 
   for (const [key, col] of Object.entries(map)) {
