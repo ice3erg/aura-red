@@ -98,25 +98,41 @@ app.get("/api/auth/me", requireAuth, (req, res) => res.json({ ok:true, user:db.p
 
 // ── Profile API ────────────────────────────────────────────
 app.patch("/api/profile", requireAuth, async (req, res) => {
-  const { name, age, city, bio, avatar, cover, photos, spotifyConnected, spotifyName, spotifyId,
+  const { name, age, city, bio, avatar, cover, photos, username,
+    spotifyConnected, spotifyName, spotifyId,
     spotifyAccessToken, spotifyRefreshToken, lastfmUsername, lastfmConnected } = req.body;
   const u = req.user;
-  const updated = await db.updateUser(u.id, {
-    name:   name   !== undefined ? String(name).trim().slice(0,40)  : u.name,
-    age:    age    !== undefined ? String(age).trim()                : u.age,
-    city:   city   !== undefined ? String(city).trim().slice(0,60)  : u.city,
-    bio:    bio    !== undefined ? String(bio).trim().slice(0,300)  : u.bio,
-    avatar: avatar !== undefined ? avatar                            : u.avatar,
-    cover:  cover  !== undefined ? cover                             : u.cover,
-    photos: photos !== undefined ? photos                            : (u.photos || []),
-    ...(spotifyConnected    !== undefined && { spotifyConnected }),
-    ...(spotifyName         !== undefined && { spotifyName }),
-    ...(spotifyId           !== undefined && { spotifyId }),
-    ...(spotifyAccessToken  !== undefined && { spotifyAccessToken }),
-    ...(spotifyRefreshToken !== undefined && { spotifyRefreshToken }),
-    ...(lastfmUsername      !== undefined && { lastfmUsername: String(lastfmUsername).trim().toLowerCase() }),
-    ...(lastfmConnected     !== undefined && { lastfmConnected: !!lastfmConnected }),
-  });
+
+  // Проверка уникальности username
+  if (username !== undefined) {
+    const clean = String(username).toLowerCase().replace(/[^a-z0-9_.]/g,'').slice(0,24);
+    if (clean.length >= 3) {
+      const pool = db.pgPool();
+      if (pool) {
+        const exists = await pool.query('SELECT id FROM users WHERE username=$1 AND id!=$2', [clean, u.id]);
+        if (exists.rows.length > 0) return res.status(409).json({ ok:false, error:'Юзернейм занят' });
+      }
+    }
+  }
+
+  const patch = {};
+  if (name    !== undefined) patch.name    = String(name).trim().slice(0,40);
+  if (age     !== undefined) patch.age     = String(age).trim();
+  if (city    !== undefined) patch.city    = String(city).trim().slice(0,60);
+  if (bio     !== undefined) patch.bio     = String(bio).trim().slice(0,300);
+  if (avatar  !== undefined) patch.avatar  = avatar;
+  if (cover   !== undefined) patch.cover   = cover;
+  if (photos  !== undefined) patch.photos  = photos;
+  if (username !== undefined) patch.username = String(username).toLowerCase().replace(/[^a-z0-9_.]/g,'').slice(0,24);
+  if (spotifyConnected    !== undefined) patch.spotifyConnected    = spotifyConnected;
+  if (spotifyName         !== undefined) patch.spotifyName         = spotifyName;
+  if (spotifyId           !== undefined) patch.spotifyId           = spotifyId;
+  if (spotifyAccessToken  !== undefined) patch.spotifyAccessToken  = spotifyAccessToken;
+  if (spotifyRefreshToken !== undefined) patch.spotifyRefreshToken = spotifyRefreshToken;
+  if (lastfmUsername      !== undefined) patch.lastfmUsername      = String(lastfmUsername).trim().toLowerCase();
+  if (lastfmConnected     !== undefined) patch.lastfmConnected     = !!lastfmConnected;
+
+  const updated = await db.updateUser(u.id, patch);
   res.json({ ok:true, user:db.publicProfile(updated) });
 });
 

@@ -1,3 +1,4 @@
+const U = window.AuraUtils;
 
 "use strict";
 
