@@ -56,6 +56,7 @@ if (USE_PG) {
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS yandex_token TEXT DEFAULT ''`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_days INTEGER DEFAULT 0`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_last DATE`))
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT UNIQUE`))
       .then(() => pgPool.query(`
         CREATE TABLE IF NOT EXISTS reactions (
           id TEXT PRIMARY KEY,
@@ -89,6 +90,7 @@ function rowToUser(row) {
     auraPoints:          row.aura_points || 0,
     streakDays:          row.streak_days  || 0,
     streakLast:          row.streak_last  || null,
+    username:            row.username     || null,
     spotifyConnected:    row.spotify_connected || false,
     spotifyName:         row.spotify_name || "",
     spotifyId:           row.spotify_id || "",

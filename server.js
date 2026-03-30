@@ -680,6 +680,24 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`+aura запущен на http://127.0.0.1:${PORT}`));
 
+// ── Username ──────────────────────────────────────────────
+app.post("/api/username/check", requireAuth, async (req, res) => {
+  const { username } = req.body;
+  if (!username) return res.status(400).json({ ok: false });
+  const clean = username.toLowerCase().replace(/[^a-z0-9_.]/g, '');
+  if (clean.length < 3) return res.json({ ok: false, error: "Минимум 3 символа" });
+  if (clean.length > 24) return res.json({ ok: false, error: "Максимум 24 символа" });
+  try {
+    const pool = db.pgPool();
+    if (!pool) return res.json({ ok: true, available: true });
+    const r = await pool.query(
+      `SELECT id FROM users WHERE username = $1 AND id != $2`,
+      [clean, req.user.id]
+    );
+    res.json({ ok: true, available: r.rows.length === 0, username: clean });
+  } catch(e) { res.status(500).json({ ok: false }); }
+});
+
 // ── Reactions ──────────────────────────────────────────────
 app.post("/api/reactions", requireAuth, async (req, res) => {
   const { toId, track, artist, emoji } = req.body;
