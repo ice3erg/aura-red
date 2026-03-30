@@ -289,8 +289,9 @@ async function getNearbyUsers(lat, lng, radiusKm, excludeUserId) {
         userId, name: user.name||"Аноним", avatar: user.avatar||null,
         city: user.city||"", track: data.track||"", artist: data.artist||"",
         album: data.album||"", image: data.image||"", url: data.url||"",
-        source: data.source||"", lat: lat, lng: lng, // показываем рядом с текущим пользователем
-        distKm: null, noGeo: true, updatedAt: data.updatedAt
+        source: data.source||"", lat: lat, lng: lng,
+        distKm: null, noGeo: true, updatedAt: data.updatedAt,
+        auraPoints: user.auraPoints||0
       });
       continue;
     }
@@ -303,7 +304,8 @@ async function getNearbyUsers(lat, lng, radiusKm, excludeUserId) {
         city: user.city||"", track: data.track||"", artist: data.artist||"",
         album: data.album||"", image: data.image||"", url: data.url||"",
         source: data.source||"", lat: data.lat, lng: data.lng,
-        distKm: Math.round(dist*10)/10, updatedAt: data.updatedAt
+        distKm: Math.round(dist*10)/10, updatedAt: data.updatedAt,
+        auraPoints: user.auraPoints||0
       });
     }
   }

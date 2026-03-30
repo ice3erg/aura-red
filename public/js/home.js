@@ -78,9 +78,14 @@
     // Демо-маркер полупрозрачный
     const opacity = u.isDemo ? '0.45' : '1';
 
+    // Кольцо цвета ауры
+    const ac = getAuraColor(u.auraPoints || 0);
+    const auraRing = `<div style="position:absolute;inset:-3px;border-radius:50%;border:2.5px solid ${ac.color};box-shadow:0 0 8px ${ac.glow};pointer-events:none;z-index:0;"></div>`;
+
     return L.divIcon({
       className: '',
       html: `<div class="ava-marker ${mt}" style="width:${size}px;height:${size}px;position:relative;opacity:${opacity};">
+               ${auraRing}
                <div class="ava-pulse"></div>
                ${inner}
                ${sentBadge}

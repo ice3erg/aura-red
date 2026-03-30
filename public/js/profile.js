@@ -1,3 +1,14 @@
+// Цвет ауры по очкам
+function getAuraColor(pts) {
+  if (pts >= 600) return { color: '#ffd700', glow: 'rgba(255,215,0,0.5)'   };
+  if (pts >= 300) return { color: '#ff2b2b', glow: 'rgba(255,43,43,0.6)'   };
+  if (pts >= 150) return { color: '#ff6b35', glow: 'rgba(255,107,53,0.5)'  };
+  if (pts >= 75)  return { color: '#ff8c00', glow: 'rgba(255,140,0,0.5)'   };
+  if (pts >= 30)  return { color: '#c084fc', glow: 'rgba(192,132,252,0.4)' };
+  if (pts >= 10)  return { color: '#60a5fa', glow: 'rgba(96,165,250,0.35)' };
+  return           { color: 'rgba(255,255,255,0.15)', glow: 'transparent'  };
+}
+
 const U = window.AuraUtils;
 
 "use strict";
@@ -176,17 +187,19 @@ function showNotice(msg, type = 'error') {
   const ph  = document.getElementById('avatarPh');
   if (img && user.avatar) { img.src = user.avatar; img.className = 'avatar-img visible'; if (ph) ph.style.display = 'none'; }
 
-  // Пульсирующая окантовка — если сейчас играет трек
-  try {
-    const saved = localStorage.getItem('aura_last_track');
-    if (saved) {
-      const t = JSON.parse(saved);
-      if (t?.name) {
-        const ring = document.getElementById('avatarRing');
-        if (ring) ring.classList.add('playing');
-      }
-    }
-  } catch(_) {}
+  // Цветное кольцо ауры вокруг аватарки
+  const auraColor = getAuraColor(user.auraPoints || 0);
+  const ring = document.getElementById('avatarRing');
+  if (ring) {
+    ring.style.background = `conic-gradient(${auraColor.color}, ${auraColor.glow}, ${auraColor.color})`;
+    ring.style.opacity = '0.85';
+    // Пульсирует только если играет трек
+    try {
+      const saved = localStorage.getItem('aura_last_track');
+      if (saved && JSON.parse(saved)?.name) ring.classList.add('playing');
+      else ring.style.animation = 'none'; // статичное кольцо
+    } catch(_) {}
+  }
 
   // Name + username
   const nameEl = document.getElementById('nameDisplay');
@@ -207,6 +220,15 @@ function showNotice(msg, type = 'error') {
 
   // Aura
   renderAura(user.auraPoints || 0);
+  // Цвет aura-block динамический
+  const _ac = getAuraColor(user.auraPoints || 0);
+  const _ab = document.querySelector('.aura-block');
+  if (_ab) {
+    _ab.style.borderColor = _ac.color;
+    _ab.style.boxShadow = `0 0 20px ${_ac.glow}`;
+  }
+  const _fill = document.getElementById('auraBarFill');
+  if (_fill) _fill.style.background = `linear-gradient(90deg, ${_ac.color}, ${_ac.glow})`;
 
   // Stats
   const streakEl = document.getElementById('statStreak');
