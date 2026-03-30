@@ -38,16 +38,16 @@
     .back-btn{position:absolute;top:calc(env(safe-area-inset-top)+12px);left:14px;z-index:10;width:36px;height:36px;border-radius:50%;background:rgba(6,6,8,0.7);border:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none}
 
     /* Avatar */
-    .avatar-wrap{position:absolute;bottom:-48px;left:20px;width:92px;height:92px;border-radius:50%;border:3px solid var(--bg);background:#1a1a22;z-index:5;overflow:hidden}
+    .avatar-wrap{width:92px;height:92px;border-radius:50%;border:3px solid var(--bg);background:#1a1a22;overflow:hidden;flex-shrink:0}
     .avatar-wrap img{width:100%;height:100%;object-fit:cover}
     .avatar-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;color:rgba(255,255,255,0.4)}
 
     /* Share btn */
-    .share-btn{position:absolute;bottom:-38px;right:20px;display:flex;align-items:center;gap:6px;padding:9px 16px;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);font:700 12px/1 Inter,sans-serif;color:rgba(255,255,255,0.6);cursor:pointer;transition:color 0.2s,border-color 0.2s}
+    .share-btn{display:flex;align-items:center;gap:6px;padding:9px 16px;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);font:700 12px/1 Inter,sans-serif;color:rgba(255,255,255,0.6);cursor:pointer;transition:color 0.2s,border-color 0.2s}
     .share-btn:hover{color:#fff;border-color:rgba(255,255,255,0.2)}
 
     /* Info */
-    .info{padding:62px 20px 0}
+    .info{padding:14px 20px 0}
     .name{font-size:26px;font-weight:900;letter-spacing:-0.4px;line-height:1.1}
     .meta{font-size:13px;color:var(--muted);margin-top:5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .meta-dot{width:3px;height:3px;border-radius:50%;background:var(--muted)}
@@ -106,17 +106,18 @@
       <div class="cover-ph" id="coverPh"></div>
       <img class="cover-img" id="coverImg" src="" alt="" />
       <div class="cover-overlay"></div>
-
       <a class="back-btn" href="/home">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
       </a>
+    </div>
 
-      <div class="avatar-wrap" id="avatarWrap">
+    <!-- Avatar row — вне cover чтобы не срезался -->
+    <div style="position:relative;padding:0 20px;margin-top:-46px;margin-bottom:0;display:flex;align-items:flex-end;justify-content:space-between;">
+      <div class="avatar-wrap" id="avatarWrap" style="position:relative;bottom:0;left:0;flex-shrink:0;">
         <div class="avatar-ph" id="avatarPh">?</div>
         <img id="avatarImg" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;" />
       </div>
-
-      <button class="share-btn" id="shareBtn" onclick="shareProfile()">
+      <button class="share-btn" id="shareBtn" onclick="shareProfile()" style="position:relative;bottom:0;right:0;margin-bottom:4px;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
         Поделиться
       </button>

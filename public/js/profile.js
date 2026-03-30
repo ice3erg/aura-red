@@ -462,63 +462,6 @@ function showNotice(msg, type = 'error') {
     btn.disabled = false; btn.textContent = 'Сохранить';
   });
 
-  // ── Music: VK ────────────────────────────────────────────────
-  // VK Музыка работает через Last.fm скробблинг
-  const vkCard   = document.getElementById('vkCard');
-  const vkStatus = document.getElementById('vkStatus');
-  const vkBtn    = document.getElementById('vkBtn');
-  const vkInput  = document.getElementById('vkInputWrap');
-
-  function renderVk(connected, username) {
-    if (connected && username) {
-      vkCard?.classList.add('connected');
-      if (vkStatus) { vkStatus.textContent = username; vkStatus.classList.add('connected'); }
-      if (vkBtn)    { vkBtn.textContent = 'Отключить'; vkBtn.className = 'music-action disconnect'; }
-      if (vkInput)  vkInput.style.display = 'none';
-    } else {
-      vkCard?.classList.remove('connected');
-      if (vkStatus) { vkStatus.textContent = 'Через Last.fm'; vkStatus.classList.remove('connected'); }
-      if (vkBtn)    { vkBtn.textContent = 'Подключить'; vkBtn.className = 'music-action connect'; }
-    }
-  }
-  renderVk(user.vkConnected, user.vkUsername);
-
-  vkBtn?.addEventListener('click', async () => {
-    if (user.vkConnected) {
-      await fetch('/api/profile', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ vkConnected: false, vkUsername: '' }) });
-      user.vkConnected = false; user.vkUsername = '';
-      renderVk(false, '');
-    } else {
-      if (vkInput) vkInput.style.display = '';
-      document.getElementById('vkUsernameField')?.focus();
-    }
-  });
-
-  document.getElementById('vkSaveBtn')?.addEventListener('click', async () => {
-    const un = document.getElementById('vkUsernameField')?.value.trim();
-    if (!un) return;
-    const btn = document.getElementById('vkSaveBtn');
-    if (!btn) return;
-    btn.disabled = true; btn.textContent = '...';
-    try {
-      // Сохраняем как lastfm username (VK → Last.fm pipeline)
-      const r = await fetch('/api/profile', {
-        method:'PATCH', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ vkConnected: true, vkUsername: un, lastfmConnected: true, lastfmUsername: un })
-      }).then(r => r.json());
-      if (r.ok) {
-        user.vkConnected = true; user.vkUsername = un;
-        user.lastfmConnected = true; user.lastfmUsername = un;
-        renderVk(true, un);
-        renderLastfm(true, un);
-        showNotice('VK Музыка подключена через Last.fm!', 'success');
-        // Сразу синкаем
-        fetch('/api/lastfm/sync', { method: 'POST' }).catch(() => {});
-      } else showNotice(r.error || 'Ошибка');
-    } catch { showNotice('Ошибка сети'); }
-    btn.disabled = false; btn.textContent = 'Сохранить';
-  });
-
   // ── Music: Spotify ────────────────────────────────────────
   const spotifyCard   = document.getElementById('spotifyCard');
   const spotifyStatus = document.getElementById('spotifyStatus');
