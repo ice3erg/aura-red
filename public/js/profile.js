@@ -87,8 +87,8 @@ function renderMusicStats(history) {
       <div class="artist-card">
         <div class="artist-img-wrap">
           ${a.image
-            ? `<img src="${a.image}" onerror="this.style.display='none'" />`
-            : `<div style="width:100%;height:100%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>`
+            ? `<img src="${a.image}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'" />`
+            : `<div style="width:100%;height:100%;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>`
           }
           <div class="artist-rank">${i+1}</div>
         </div>
