@@ -309,6 +309,7 @@ function showNotice(msg, type = 'error') {
   });
 
   document.getElementById('usernameSaveBtn')?.addEventListener('click', async () => {
+    const saveBtn2 = document.getElementById('usernameSaveBtn');
     if (!_usernameValid) return;
     const val = document.getElementById('usernameInput')?.value.trim();
     if (!val) return;
@@ -400,6 +401,7 @@ function showNotice(msg, type = 'error') {
     const un = document.getElementById('lastfmUsernameField')?.value.trim();
     if (!un) return;
     const btn = document.getElementById('lastfmSaveBtn');
+    if (!btn) return;
     btn.disabled = true; btn.textContent = '...';
     try {
       const r = await fetch('/api/lastfm/current-track?username=' + encodeURIComponent(un)).then(r => r.json());
