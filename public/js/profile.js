@@ -52,10 +52,26 @@ function renderCollage(photos) {
   photos.slice(0, 6).forEach((src, i) => {
     const cell = document.createElement('div');
     cell.className = 'collage-cell' + (i === 0 && n === 3 ? ' span2' : '');
-    cell.innerHTML = `<img src="${src}" loading="lazy" />`;
+    cell.style.position = 'relative';
+    cell.innerHTML = `
+      <img src="${src}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;" />
+      <button onclick="removeCollagePhoto(${i})" style="position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,0.7);border:none;color:#fff;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;">✕</button>`;
     grid.appendChild(cell);
   });
 }
+
+// Удаление фото из коллажа
+window.removeCollagePhoto = async function(idx) {
+  const photos = (window._profileUser?.photos || []).filter((_, i) => i !== idx);
+  const r = await fetch('/api/profile', {
+    method:'PATCH', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ photos })
+  }).then(r => r.json());
+  if (r.ok && window._profileUser) {
+    window._profileUser.photos = photos;
+    renderCollage(photos);
+  }
+};
 
 // ── Top artists & on repeat from track history ─────────────
 function renderMusicStats(history) {
@@ -150,6 +166,7 @@ function showNotice(msg, type = 'error') {
   try {
   const user = await U.requireAuth();
   if (!user) return;
+  window._profileUser = user; // для removeCollagePhoto
 
   // Collage
   renderCollage(user.photos || []);
@@ -349,7 +366,7 @@ function showNotice(msg, type = 'error') {
         method:'PATCH', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ photos })
       }).then(r => r.json());
-      if (r.ok) { user.photos = photos; renderCollage(photos); }
+      if (r.ok) { user.photos = photos; if (window._profileUser) window._profileUser.photos = photos; renderCollage(photos); }
     };
     reader.readAsDataURL(file);
     e.target.value = '';
