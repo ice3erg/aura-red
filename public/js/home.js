@@ -256,7 +256,25 @@
       n.style.setProperty('--beat-dur', '0.5s');
       n.classList.add('beating');
 
-      pushNowPlaying(track);
+      // pushNowPlaying с обработкой бонусов
+      fetch('/api/now-playing', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          track: track.name||'', artist: track.artists||'',
+          album: track.album||'', image: track.image||'',
+          url: track.url||'', source: track.source||'lastfm',
+          lat: null, lng: null,
+        })
+      }).then(r=>r.json()).then(d => {
+        if (d.streakBonus > 0) {
+          showMapToast(`🔥 Стрик-бонус +${d.streakBonus} ауры!`);
+        }
+        if (d.newAchievements?.length) {
+          d.newAchievements.forEach((a, i) => {
+            setTimeout(() => showMapToast(`${a.emoji||'🏆'} Достижение: ${a.name}`), i * 2500);
+          });
+        }
+      }).catch(()=>{});
 
       // Обновляем радар с новым треком
       const pos = await getGeo();

@@ -257,6 +257,48 @@ function showNotice(msg, type = 'error') {
       .catch(() => {});
   }
 
+  // ── Achievements ─────────────────────────────────────────
+  try {
+    const achR = await fetch('/api/achievements').then(r => r.json());
+    if (achR.ok) {
+      const earned  = achR.achievements.filter(a => a.earned);
+      const locked  = achR.achievements.filter(a => !a.earned);
+      const section = document.getElementById('achievementsSection');
+      const grid    = document.getElementById('achievementsGrid');
+      const lockedEl= document.getElementById('achievementsLocked');
+      if (earned.length && section) section.style.display = '';
+
+      // Заработанные — крупные иконки
+      if (grid) grid.innerHTML = earned.map(a => `
+        <div title="${a.name}: ${a.desc}" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:14px;background:rgba(255,43,43,0.08);border:1px solid rgba(255,43,43,0.15);cursor:default;">
+          <div style="font-size:26px;line-height:1;">${a.emoji}</div>
+          <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.6);text-align:center;line-height:1.2;">${a.name}</div>
+        </div>`).join('');
+
+      // Незаработанные — маленькие серые с замком
+      if (lockedEl && locked.length) {
+        lockedEl.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:2px;">` +
+          locked.map(a => `
+            <div title="${a.name}: ${a.desc}" style="display:flex;align-items:center;gap:5px;padding:5px 9px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);">
+              <span style="font-size:15px;filter:grayscale(1);opacity:0.35;">${a.emoji}</span>
+              <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.25);">${a.name}</span>
+            </div>`).join('') + '</div>';
+      }
+
+      // Титул под именем
+      if (achR.title) {
+        const usernameRow = document.querySelector('.username-row');
+        if (usernameRow && !document.getElementById('profileTitle')) {
+          const titleEl = document.createElement('span');
+          titleEl.id = 'profileTitle';
+          titleEl.style.cssText = 'font-size:12px;font-weight:700;color:rgba(255,140,0,0.9);margin-left:4px;';
+          titleEl.textContent = achR.title;
+          usernameRow.appendChild(titleEl);
+        }
+      }
+    }
+  } catch(_) {}
+
   // Реакции на мои треки
   try {
     const rxR = await fetch('/api/reactions').then(r => r.json());
@@ -519,3 +561,15 @@ function showNotice(msg, type = 'error') {
 })();
 
 window.copyRefCode = function() {};
+
+// Показ тоста о новом достижении
+window.showAchievementToast = function(ach) {
+  const toast   = document.getElementById('achToast');
+  const emoji   = document.getElementById('achToastEmoji');
+  const name    = document.getElementById('achToastName');
+  if (!toast) return;
+  if (emoji) emoji.textContent = ach.emoji || '🏆';
+  if (name)  name.textContent  = ach.name  || 'Достижение';
+  toast.style.display = 'flex';
+  setTimeout(() => { toast.style.display = 'none'; }, 4000);
+};

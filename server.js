@@ -540,8 +540,35 @@ app.post("/api/now-playing", requireAuth, async (req, res) => {
     const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
     newStreak = lastDay === yesterday ? newStreak + 1 : 1;
   }
-  await db.updateUser(req.user.id, { currentTrack: data, trackHistory: newHistory, streakDays: newStreak, streakLast: today });
-  res.json({ ok:true, streak: newStreak });
+  // Стрик-бонус: ×3 на 7й день, ×5 на 30й
+  let streakBonus = 0;
+  if (lastDay !== today) {
+    if (newStreak === 7)  streakBonus = 15;
+    else if (newStreak === 30) streakBonus = 50;
+    else if (newStreak % 7 === 0 && newStreak > 7) streakBonus = 10;
+  }
+
+  const updatedUser = await db.updateUser(req.user.id, {
+    currentTrack: data, trackHistory: newHistory,
+    streakDays: newStreak, streakLast: today,
+    auraPoints: (user.auraPoints || 0) + (streakBonus > 0 ? streakBonus : 0),
+  });
+
+  // Проверяем новые достижения
+  const newAchs = checkAchievements(updatedUser);
+  if (newAchs.length) {
+    const allAchs = [...(updatedUser.achievements || []), ...newAchs];
+    const achBonus = newAchs.reduce((sum, a) => {
+      const def = ACHIEVEMENTS.find(x => x.id === a.id);
+      return sum + (def?.aura || 0);
+    }, 0);
+    await db.updateUser(req.user.id, {
+      achievements: allAchs,
+      auraPoints: (updatedUser.auraPoints || 0) + achBonus,
+    });
+  }
+
+  res.json({ ok:true, streak: newStreak, streakBonus, newAchievements: newAchs });
   } catch(e) { console.error("[now-playing]", e.message); res.status(500).json({ ok:false, error: e.message }); }
 });
 
@@ -779,6 +806,11 @@ app.post("/api/reactions", requireAuth, async (req, res) => {
         [id, req.user.id, toId, track||'', artist||'', emoji, Date.now()]
       );
     }
+    // +5 ауры тому кто получил реакцию
+    const recipient = await db.findById(toId);
+    if (recipient) {
+      await db.updateUser(toId, { auraPoints: (recipient.auraPoints || 0) + 5 });
+    }
     res.json({ ok: true });
   } catch(e) { console.error('[reactions]', e.message); res.status(500).json({ ok: false }); }
 });
@@ -799,6 +831,23 @@ app.get("/api/reactions", requireAuth, async (req, res) => {
       track: r.track, artist: r.artist, emoji: r.emoji, createdAt: Number(r.created_at)
     }))});
   } catch(e) { res.json({ ok: true, reactions: [] }); }
+});
+
+// ── Achievements ──────────────────────────────────────────
+app.get("/api/achievements", requireAuth, async (req, res) => {
+  try {
+    const user = await db.findById(req.user.id);
+    const earned = user?.achievements || [];
+    const earnedIds = new Set(earned.map(a => a.id));
+    const all = ACHIEVEMENTS.map(a => ({
+      ...a,
+      check: undefined, // не отправляем функцию
+      earned: earnedIds.has(a.id),
+      earnedAt: earned.find(e => e.id === a.id)?.ts || null,
+    }));
+    const title = getTitle(user?.auraPoints || 0);
+    res.json({ ok: true, achievements: all, title });
+  } catch(e) { res.status(500).json({ ok: false }); }
 });
 
 // ── Referral ───────────────────────────────────────────────
