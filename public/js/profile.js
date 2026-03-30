@@ -257,6 +257,47 @@ function showNotice(msg, type = 'error') {
       .catch(() => {});
   }
 
+  // ── Weekly Challenges ───────────────────────────────────────
+  try {
+    const chR = await fetch('/api/challenges').then(r => r.json());
+    if (chR.ok) {
+      const list = document.getElementById('challengesList');
+      const resetEl = document.getElementById('challengesReset');
+
+      // Дней до сброса
+      const now = new Date();
+      const daysLeft = 7 - now.getDay() || 7;
+      if (resetEl) resetEl.textContent = `сброс через ${daysLeft} дн.`;
+
+      if (list) {
+        list.innerHTML = chR.challenges.map(ch => {
+          const done = ch.completed;
+          const prog = ch.progress || { cur: 0, max: 1 };
+          const pct  = Math.min(100, Math.round(prog.cur / prog.max * 100));
+          return `
+            <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:16px;background:${done ? 'rgba(255,43,43,0.08)' : 'rgba(255,255,255,0.04)'};border:1px solid ${done ? 'rgba(255,43,43,0.2)' : 'rgba(255,255,255,0.07)'};">
+              <div style="width:42px;height:42px;border-radius:12px;background:${done ? 'rgba(255,43,43,0.15)' : 'rgba(255,255,255,0.06)'};display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">${ch.emoji}</div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+                  <div style="font-size:14px;font-weight:800;${done ? 'color:#ff8080;' : ''}">${ch.name}</div>
+                  <div style="font-size:12px;font-weight:800;color:${done ? '#ff8080' : 'rgba(255,255,255,0.3)'};">+${ch.aura} ✦</div>
+                </div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:6px;">${ch.desc}</div>
+                <div style="height:3px;border-radius:99px;background:rgba(255,255,255,0.08);overflow:hidden;">
+                  <div style="height:100%;width:${pct}%;border-radius:99px;background:${done ? 'linear-gradient(90deg,#ff2b2b,#ff8c00)' : 'rgba(255,255,255,0.2)'};transition:width 0.6s ease;"></div>
+                </div>
+                ${prog.max > 1 ? `<div style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:3px;">${prog.cur} / ${prog.max}</div>` : ''}
+              </div>
+              ${done ? '<div style="font-size:20px;flex-shrink:0;">✅</div>' : ''}
+            </div>`;
+        }).join('');
+      }
+
+      // Начисляем ауру за выполненные (если ещё не начислено)
+      // Сервер сам проверяет через checkAchievements
+    }
+  } catch(_) {}
+
   // ── Achievements ─────────────────────────────────────────
   try {
     const achR = await fetch('/api/achievements').then(r => r.json());

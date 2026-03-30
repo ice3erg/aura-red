@@ -643,10 +643,42 @@ app.post("/api/signals/:id/accept", requireAuth, async (req, res) => {
   const from = await db.findById(signal.fromId);
   const emoji = signal.matchType==="same-track" ? "🔴" : signal.matchType==="same-artist" ? "⚪" : "⚫";
   await db.sendMessage(updated.chatId, "system", `${emoji} ${from?.name||"Кто-то"} слушал ${signal.artist} — ${signal.track}`);
-  // +5 ауры отправителю за принятый сигнал
+
+  // Считаем совпадение вкусов
+  const toUser   = await db.findById(signal.toId);
   const fromUser = await db.findById(signal.fromId);
-  if (fromUser) await db.updateUser(signal.fromId, { auraPoints: (fromUser.auraPoints || 0) + 5 });
-  res.json({ ok:true, chatId:updated.chatId });
+  let tasteBonus = 0;
+  if (fromUser && toUser) {
+    const h1 = (fromUser.trackHistory||[]).map(t=>t.artist?.toLowerCase()).filter(Boolean);
+    const h2 = (toUser.trackHistory||[]).map(t=>t.artist?.toLowerCase()).filter(Boolean);
+    if (h1.length && h2.length) {
+      const s1 = new Set(h1), s2 = new Set(h2);
+      const common = [...s1].filter(a => s2.has(a)).length;
+      const total  = new Set([...s1,...s2]).size;
+      const pct    = total > 0 ? Math.round(common/total*100) : 0;
+      // Бонус за совпадение вкусов
+      tasteBonus = pct >= 70 ? 30 : pct >= 40 ? 20 : pct >= 15 ? 10 : 5;
+    }
+  }
+
+  // +10 базовых + taste bonus обоим
+  const totalBonus = 10 + tasteBonus;
+  if (fromUser) {
+    const newAchs = checkAchievements({...fromUser, auraPoints:(fromUser.auraPoints||0)+totalBonus});
+    await db.updateUser(signal.fromId, {
+      auraPoints: (fromUser.auraPoints||0) + totalBonus,
+      achievements: [...(fromUser.achievements||[]), ...newAchs]
+    });
+  }
+  if (toUser) {
+    const newAchs = checkAchievements({...toUser, auraPoints:(toUser.auraPoints||0)+totalBonus});
+    await db.updateUser(signal.toId, {
+      auraPoints: (toUser.auraPoints||0) + totalBonus,
+      achievements: [...(toUser.achievements||[]), ...newAchs]
+    });
+  }
+
+  res.json({ ok:true, chatId:updated.chatId, tasteBonus, totalBonus });
   } catch(e) { console.error("[accept-signal]", e.message); res.status(500).json({ ok:false, error: e.message }); }
 });
 
@@ -849,6 +881,71 @@ app.get("/api/achievements", requireAuth, async (req, res) => {
     res.json({ ok: true, achievements: all, title });
   } catch(e) { res.status(500).json({ ok: false }); }
 });
+
+// ── Weekly Challenges ─────────────────────────────────────
+app.get("/api/challenges", requireAuth, async (req, res) => {
+  try {
+    const user = await db.findById(req.user.id);
+    const pool = db.pgPool();
+    const weekStart = new Date();
+    weekStart.setHours(0,0,0,0);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Пн
+    const weekStartTs = weekStart.getTime();
+
+    // Статистика за неделю
+    const history = (user?.trackHistory||[]).filter(t => (t.ts||0) >= weekStartTs);
+    const weekStats = {
+      tracksThisWeek:    history.length,
+      uniqueArtists:     new Set(history.map(t=>t.artist).filter(Boolean)).size,
+      morningTrack:      history.some(t => { const h=new Date(t.ts).getHours(); return h>=5&&h<10; }),
+      lateNightTrack:    history.some(t => new Date(t.ts).getHours() >= 23),
+      reactionsGiven:    0,
+      reactionsReceived: 0,
+      signalsSent:       0,
+    };
+
+    // Реакции и сигналы за неделю из БД
+    if (pool) {
+      const [rxGiven, rxReceived, sigs] = await Promise.all([
+        pool.query(`SELECT COUNT(*) FROM reactions WHERE from_id=$1 AND created_at>$2`, [req.user.id, weekStartTs]),
+        pool.query(`SELECT COUNT(*) FROM reactions WHERE to_id=$1 AND created_at>$2`,   [req.user.id, weekStartTs]),
+        pool.query(`SELECT COUNT(*) FROM signals WHERE from_id=$1 AND created_at>$2`,   [req.user.id, weekStartTs]).catch(()=>({rows:[{count:0}]})),
+      ]);
+      weekStats.reactionsGiven    = parseInt(rxGiven.rows[0].count)||0;
+      weekStats.reactionsReceived = parseInt(rxReceived.rows[0].count)||0;
+      weekStats.signalsSent       = parseInt(sigs.rows[0].count)||0;
+    }
+
+    const defs = getWeeklyChallengeDefs();
+    const challenges = defs.map(ch => ({
+      ...ch,
+      check: undefined,
+      completed: ch.check(user, weekStats),
+      progress: getProgress(ch.id, weekStats),
+    }));
+
+    res.json({ ok: true, challenges, weekStats });
+  } catch(e) {
+    console.error("[challenges]", e.message);
+    res.status(500).json({ ok: false });
+  }
+});
+
+function getProgress(id, w) {
+  const map = {
+    streak_3:      { cur: Math.min(w.tracksThisWeek, 3),    max: 3  },
+    tracks_5:      { cur: Math.min(w.tracksThisWeek, 5),    max: 5  },
+    genres_2:      { cur: Math.min(w.tracksThisWeek, 5),    max: 5  },
+    react_3:       { cur: Math.min(w.reactionsGiven, 3),     max: 3  },
+    signal_1:      { cur: Math.min(w.signalsSent, 1),        max: 1  },
+    new_artist:    { cur: Math.min(w.uniqueArtists, 3),      max: 3  },
+    react_back:    { cur: Math.min(w.reactionsReceived, 1),  max: 1  },
+    morning_track: { cur: w.morningTrack ? 1 : 0,            max: 1  },
+    late_night:    { cur: w.lateNightTrack ? 1 : 0,          max: 1  },
+    profile_full:  { cur: 0,                                  max: 1  },
+  };
+  return map[id] || { cur: 0, max: 1 };
+}
 
 // ── Referral ───────────────────────────────────────────────
 app.post("/api/referral/use", requireAuth, async (req, res) => {
