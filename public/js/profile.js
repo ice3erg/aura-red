@@ -406,7 +406,10 @@ function showNotice(msg, type = 'error') {
 
   // ── Achievements ─────────────────────────────────────────
   try {
-    const achR = await fetch('/api/achievements').then(r => r.json());
+    const _achResp = await fetch('/api/achievements');
+    console.log('[ach] status:', _achResp.status, 'url:', _achResp.url);
+    if (!_achResp.ok) { console.warn('[ach] failed:', await _achResp.text()); throw new Error('ach ' + _achResp.status); }
+    const achR = await _achResp.json();
     if (achR.ok) {
       const earned  = achR.achievements.filter(a => a.earned);
       const locked  = achR.achievements.filter(a => !a.earned);
@@ -448,7 +451,10 @@ function showNotice(msg, type = 'error') {
 
   // Реакции на мои треки
   try {
-    const rxR = await fetch('/api/reactions').then(r => r.json());
+    const _rxResp = await fetch('/api/reactions');
+    console.log('[rx] status:', _rxResp.status);
+    if (!_rxResp.ok) throw new Error('rx ' + _rxResp.status);
+    const rxR = await _rxResp.json();
     const rxns = rxR.reactions || [];
     if (rxns.length) {
       const sec  = document.getElementById('reactionsSection');
