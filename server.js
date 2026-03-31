@@ -33,7 +33,7 @@ const REDIRECT_URI  = process.env.SPOTIFY_REDIRECT_URI;
 
 // ── Pages ──────────────────────────────────────────────────
 const pages = {
-  "/":"index.html", "/login":"login.html", "/signup":"signup.html",
+  "/":"index.html", "/login":"login.html", "/signup":"signup.html", "/aura":"aura.html",
   "/onboarding":"onboarding.html", "/connect-music":"connect-music.html",
   "/connect-success":"connect-success.html", "/home":"home.html",
   "/profile":"profile.html", "/map":"map.html", "/chat":"chat.html"
