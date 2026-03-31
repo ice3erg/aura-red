@@ -556,19 +556,22 @@ app.post("/api/now-playing", requireAuth, async (req, res) => {
     auraPoints: (user.auraPoints || 0) + (streakBonus > 0 ? streakBonus : 0),
   });
 
-  // Проверяем новые достижения
-  const newAchs = checkAchievements(updatedUser);
-  if (newAchs.length) {
-    const allAchs = [...(updatedUser.achievements || []), ...newAchs];
-    const achBonus = newAchs.reduce((sum, a) => {
-      const def = ACHIEVEMENTS.find(x => x.id === a.id);
-      return sum + (def?.aura || 0);
-    }, 0);
-    await db.updateUser(req.user.id, {
-      achievements: allAchs,
-      auraPoints: (updatedUser.auraPoints || 0) + achBonus,
-    });
-  }
+  // Проверяем новые достижения (безопасно — колонка может не существовать)
+  let newAchs = [];
+  try {
+    newAchs = checkAchievements(updatedUser);
+    if (newAchs.length) {
+      const allAchs = [...(updatedUser.achievements || []), ...newAchs];
+      const achBonus = newAchs.reduce((sum, a) => {
+        const def = ACHIEVEMENTS.find(x => x.id === a.id);
+        return sum + (def?.aura || 0);
+      }, 0);
+      await db.updateUser(req.user.id, {
+        achievements: allAchs,
+        auraPoints: (updatedUser.auraPoints || 0) + achBonus,
+      });
+    }
+  } catch(achErr) { console.warn('[achievements] skipped:', achErr.message); }
 
   res.json({ ok:true, streak: newStreak, streakBonus, newAchievements: newAchs });
   } catch(e) { console.error("[now-playing]", e.message); res.status(500).json({ ok:false, error: e.message }); }
@@ -874,14 +877,17 @@ app.get("/api/achievements", requireAuth, async (req, res) => {
     const earned = user?.achievements || [];
     const earnedIds = new Set(earned.map(a => a.id));
     const all = ACHIEVEMENTS.map(a => ({
-      ...a,
-      check: undefined, // не отправляем функцию
+      id: a.id, emoji: a.emoji, name: a.name, desc: a.desc, aura: a.aura,
       earned: earnedIds.has(a.id),
       earnedAt: earned.find(e => e.id === a.id)?.ts || null,
     }));
     const title = getTitle(user?.auraPoints || 0);
     res.json({ ok: true, achievements: all, title });
-  } catch(e) { res.status(500).json({ ok: false }); }
+  } catch(e) {
+    console.error('[achievements]', e.message);
+    // Возвращаем пустой список — не падаем
+    res.json({ ok: true, achievements: [], title: '' });
+  }
 });
 
 // ── Weekly Challenges ─────────────────────────────────────

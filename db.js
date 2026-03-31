@@ -57,6 +57,10 @@ if (USE_PG) {
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_days INTEGER DEFAULT 0`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_last DATE`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT UNIQUE`))
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS achievements JSONB DEFAULT '[]'`))
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS title TEXT DEFAULT ''`))
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS vk_connected BOOLEAN DEFAULT false`))
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS vk_username TEXT DEFAULT ''`))
       .then(() => pgPool.query(`
         CREATE TABLE IF NOT EXISTS reactions (
           id TEXT PRIMARY KEY,
