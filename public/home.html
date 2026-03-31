@@ -338,6 +338,10 @@
       from { opacity: 0; } to { opacity: 1; }
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes youPulse {
+      0%,100% { box-shadow: inherit; transform: scale(1); }
+      50%      { transform: scale(1.06); }
+    }
     @keyframes pulse-dot {
       0%, 100% { box-shadow: 0 0 0 0 var(--red-glow); }
       50%       { box-shadow: 0 0 0 5px transparent; }

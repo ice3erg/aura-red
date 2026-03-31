@@ -41,13 +41,17 @@
   // ── You marker ───────────────────────────────────────────
   function makeYouIcon(user) {
     const size = 48;
+    const ap2 = user?.auraPoints || 0;
+    const yColor = ap2>=600?'#ffd700':ap2>=300?'#ff2b2b':ap2>=150?'#ff6b35':ap2>=75?'#ff8c00':ap2>=30?'#c084fc':ap2>=10?'#60a5fa':'rgba(255,255,255,0.5)';
+    const yGlow  = ap2>=10 ? `0 0 12px ${yColor}44` : '0 0 8px rgba(255,255,255,0.2)';
+    const isPlaying = !!_currentTrack?.name;
+    const yAnim = isPlaying ? 'animation:youPulse 1.4s ease-in-out infinite;' : '';
     const inner = user?.avatar
       ? `<img src="${user.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
       : `<div class="ava-init" style="font-size:18px;">${(user?.name || 'Я')[0].toUpperCase()}</div>`;
     return L.divIcon({
       className: '',
-      html: `<div class="you-marker" style="width:${size}px;height:${size}px;">
-               <div class="you-ring"></div>
+      html: `<div class="you-marker" style="width:${size}px;height:${size}px;border-radius:50%;overflow:hidden;position:relative;border:2.5px solid ${yColor};box-shadow:${yGlow};${yAnim}">
                ${inner}
              </div>`,
       iconSize: [size, size], iconAnchor: [size/2, size/2],
@@ -78,9 +82,11 @@
     // Демо-маркер полупрозрачный
     const opacity = u.isDemo ? '0.45' : '1';
 
-    // Кольцо цвета ауры
-    const ac = getAuraColor(u.auraPoints || 0);
-    const auraRing = `<div style="position:absolute;inset:-3px;border-radius:50%;border:2.5px solid ${ac.color};box-shadow:0 0 8px ${ac.glow};pointer-events:none;z-index:0;"></div>`;
+    // Кольцо цвета ауры — простая inline функция
+    const ap = u.auraPoints || 0;
+    const ringColor = ap>=600?'#ffd700':ap>=300?'#ff2b2b':ap>=150?'#ff6b35':ap>=75?'#ff8c00':ap>=30?'#c084fc':ap>=10?'#60a5fa':'rgba(255,255,255,0.2)';
+    const ringGlow  = ap>=300?'rgba(255,43,43,0.4)':ap>=75?'rgba(255,140,0,0.35)':'transparent';
+    const auraRing = `<div style="position:absolute;inset:-3px;border-radius:50%;border:2px solid ${ringColor};box-shadow:0 0 6px ${ringGlow};pointer-events:none;z-index:0;"></div>`;
 
     return L.divIcon({
       className: '',
