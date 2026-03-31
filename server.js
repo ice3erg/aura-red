@@ -903,7 +903,7 @@ app.get("/api/achievements", requireAuth, async (req, res) => {
       earnedAt: earned.find(e => e.id === a.id)?.ts || null,
     }));
     const title = getTitle(user?.auraPoints || 0);
-    res.json({ ok: true, achievements: all, title, newUnlocked: newOnes.length });
+    res.json({ ok: true, achievements: all, title, newUnlocked: newOnes.length, auraPoints: user.auraPoints || 0 });
   } catch(e) {
     console.error('[achievements]', e.message);
     res.json({ ok: true, achievements: [], title: '' });
