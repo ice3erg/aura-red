@@ -463,6 +463,31 @@ function showNotice(msg, type = 'error') {
     }
   } catch(_) {}
 
+  // ── Genres ───────────────────────────────────────────────
+  try {
+    // Сначала показываем сохранённые жанры
+    const showGenres = (genres) => {
+      const sec  = document.getElementById('genresSection');
+      const wrap = document.getElementById('genresWrap');
+      if (!sec || !wrap || !genres.length) return;
+      sec.style.display = '';
+      wrap.innerHTML = genres.map(g =>
+        `<div style="padding:4px 11px;border-radius:99px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);font-size:12px;font-weight:600;color:rgba(255,255,255,0.6);">${g}</div>`
+      ).join('');
+    };
+
+    // Показываем что уже есть
+    if ((user.genres||[]).length) showGenres(user.genres);
+
+    // Если Last.fm подключён — обновляем жанры в фоне
+    if (user.lastfmConnected && user.lastfmUsername) {
+      fetch('/api/lastfm/genres', { method: 'POST' })
+        .then(r => r.json())
+        .then(d => { if (d.ok && d.genres.length) showGenres(d.genres); })
+        .catch(() => {});
+    }
+  } catch(_) {}
+
   // Реакции на мои треки
   try {
     const rxR = await fetch('/api/reactions').then(r => r.json());

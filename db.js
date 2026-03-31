@@ -60,6 +60,7 @@ if (USE_PG) {
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS achievements JSONB DEFAULT '[]'`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS title TEXT DEFAULT ''`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS vk_connected BOOLEAN DEFAULT false`))
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS genres JSONB DEFAULT '[]'`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS vk_username TEXT DEFAULT ''`))
       .then(() => pgPool.query(`
         CREATE TABLE IF NOT EXISTS reactions (
@@ -96,6 +97,7 @@ function rowToUser(row) {
     streakLast:          row.streak_last  || null,
     username:            row.username     || null,
     vkConnected:         row.vk_connected || false,
+    genres:              row.genres       || [],
     vkUsername:          row.vk_username  || '',
     achievements:        row.achievements || [],
     title:               row.title        || '',
@@ -145,14 +147,14 @@ async function pgUpdateUser(id, patch) {
     currentTrack: "current_track",
     username: "username",
     streakDays: "streak_days", streakLast: "streak_last",
-    vkConnected: "vk_connected", vkUsername: "vk_username",
+    vkConnected: "vk_connected", vkUsername: "vk_username", genres: "genres",
     achievements: "achievements", title: "title",
   };
 
   for (const [key, col] of Object.entries(map)) {
     if (patch[key] !== undefined) {
       sets.push(`${col}=$${i++}`);
-      vals.push(["currentTrack","photos","trackHistory","achievements"].includes(key) ? JSON.stringify(patch[key]) : patch[key]);
+      vals.push(["currentTrack","photos","trackHistory","achievements","genres"].includes(key) ? JSON.stringify(patch[key]) : patch[key]);
     }
   }
 
@@ -295,7 +297,8 @@ async function getNearbyUsers(lat, lng, radiusKm, excludeUserId) {
         album: data.album||"", image: data.image||"", url: data.url||"",
         source: data.source||"", lat: lat, lng: lng,
         distKm: null, noGeo: true, updatedAt: data.updatedAt,
-        auraPoints: user.auraPoints||0
+        auraPoints: user.auraPoints||0,
+        genres: user.genres||[]
       });
       continue;
     }
@@ -309,7 +312,8 @@ async function getNearbyUsers(lat, lng, radiusKm, excludeUserId) {
         album: data.album||"", image: data.image||"", url: data.url||"",
         source: data.source||"", lat: data.lat, lng: data.lng,
         distKm: Math.round(dist*10)/10, updatedAt: data.updatedAt,
-        auraPoints: user.auraPoints||0
+        auraPoints: user.auraPoints||0,
+        genres: user.genres||[]
       });
     }
   }

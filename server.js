@@ -346,6 +346,56 @@ app.post("/api/lastfm/sync", requireAuth, async (req, res) => {
   }
 });
 
+// Last.fm — определяем жанры пользователя по топ трекам
+app.post("/api/lastfm/genres", requireAuth, async (req, res) => {
+  try {
+    const user = await db.findById(req.user.id);
+    const history = user?.trackHistory || [];
+    if (!history.length) return res.json({ ok: true, genres: [] });
+
+    const apiKey = process.env.LASTFM_API_KEY;
+
+    // Берём топ-5 артистов
+    const artistCount = {};
+    for (const t of history) {
+      if (t.artist) artistCount[t.artist] = (artistCount[t.artist]||0) + 1;
+    }
+    const topArtists = Object.entries(artistCount)
+      .sort((a,b) => b[1]-a[1]).slice(0,5).map(([a]) => a);
+
+    // Получаем теги для каждого артиста через Last.fm
+    const tagCount = {};
+    const SKIP = new Set(['seen live','under 2000 listeners','all','favorites','spotify','love','awesome','good','music','listened to']);
+
+    await Promise.allSettled(topArtists.map(async artist => {
+      try {
+        const r = await axios.get('https://ws.audioscrobbler.com/2.0/', {
+          params: { method: 'artist.getTopTags', artist, api_key: apiKey, format: 'json' },
+          timeout: 4000
+        });
+        const tags = r.data?.toptags?.tag || [];
+        for (const tag of tags.slice(0,5)) {
+          const name = (tag.name||'').toLowerCase().trim();
+          if (name.length > 1 && name.length < 30 && !SKIP.has(name) && parseInt(tag.count||0) > 10) {
+            tagCount[name] = (tagCount[name]||0) + parseInt(tag.count||0);
+          }
+        }
+      } catch(_) {}
+    }));
+
+    const genres = Object.entries(tagCount)
+      .sort((a,b) => b[1]-a[1]).slice(0,8).map(([g]) => g);
+
+    // Сохраняем жанры в профиль
+    if (genres.length) await db.updateUser(user.id, { genres });
+
+    res.json({ ok: true, genres });
+  } catch(e) {
+    console.error('[genres]', e.message);
+    res.json({ ok: true, genres: [] });
+  }
+});
+
 // Last.fm обложка для конкретного трека + MusicBrainz fallback
 app.get("/api/lastfm/cover", async (req, res) => {
   const { track, artist } = req.query;
@@ -597,18 +647,28 @@ app.get("/api/radar/nearby", requireAuth, async (req, res) => {
     return a === b || a.includes(b) || b.includes(a);
   }
 
+  // Мои жанры
+  const meUser   = await db.findById(req.user.id);
+  const myGenres = new Set((meUser?.genres||[]).map(g => g.toLowerCase()));
+
   const users = nearby.map(u => {
     const uTrack  = u.track?.toLowerCase().trim()  || "";
     const uArtist = u.artist?.toLowerCase().trim() || "";
+    const uGenres = (u.genres||[]).map(g => g.toLowerCase());
+    const commonGenres = uGenres.filter(g => myGenres.has(g));
+
     const matchType =
-      myName   && uTrack  && myName === uTrack          ? "same-track"  :
-      myArtist && uArtist && artistMatch(myArtist, uArtist) ? "same-artist" : "same-vibe";
-    return { ...u, matchType };
+      myName   && uTrack  && myName === uTrack              ? "same-track"  :
+      myArtist && uArtist && artistMatch(myArtist, uArtist) ? "same-artist" :
+      commonGenres.length >= 2                               ? "same-genre"  : "same-vibe";
+
+    return { ...u, matchType, commonGenres };
   });
 
   res.json({ ok:true, count:users.length, users,
     stats:{ sameTrack:users.filter(u=>u.matchType==="same-track").length,
             sameArtist:users.filter(u=>u.matchType==="same-artist").length,
+            sameGenre:users.filter(u=>u.matchType==="same-genre").length,
             sameVibe:users.filter(u=>u.matchType==="same-vibe").length }});
 });
 

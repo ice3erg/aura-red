@@ -113,10 +113,12 @@ function getAuraRing(pts, isPlaying) {
     // Демо-маркер полупрозрачный
     const opacity = u.isDemo ? '0.45' : '1';
 
-    // Кольцо цвета ауры — простая inline функция
+    // Кольцо: same-genre = фиолетовое, иначе — цвет ауры
     const ap_ = u.auraPoints||0;
     const rl_ = ap_>=600?5:ap_>=300?4:ap_>=150?3:ap_>=75?2:ap_>=10?1:0;
-    const auraRing = `<div class="ar ar-${rl_}"></div>`;
+    const auraRing = mt === 'same-genre'
+      ? `<div class="ar" style="position:absolute;inset:-3px;border-radius:50%;border:2.5px solid #a855f7;box-shadow:0 0 8px rgba(168,85,247,0.5);pointer-events:none;z-index:0;"></div>`
+      : `<div class="ar ar-${rl_}"></div>`;
 
     return L.divIcon({
       className: '',
