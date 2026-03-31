@@ -7,6 +7,8 @@ const bcrypt  = require("bcryptjs");
 const axios   = require("axios");
 const path    = require("path");
 const db      = require("./db");
+const { ACHIEVEMENTS, getTitle, checkAchievements } = require("./achievements");
+const { getWeeklyChallengeDefs } = require("./challenges");
 
 const app       = express();
 const publicDir = path.join(__dirname, "public");

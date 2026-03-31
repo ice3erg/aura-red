@@ -1,12 +1,12 @@
 // Цвет ауры по очкам
 function getAuraColor(pts) {
-  if (pts >= 600) return { color: '#ffd700', glow: 'rgba(255,215,0,0.5)'   };
-  if (pts >= 300) return { color: '#ff2b2b', glow: 'rgba(255,43,43,0.6)'   };
-  if (pts >= 150) return { color: '#ff6b35', glow: 'rgba(255,107,53,0.5)'  };
-  if (pts >= 75)  return { color: '#ff8c00', glow: 'rgba(255,140,0,0.5)'   };
-  if (pts >= 30)  return { color: '#c084fc', glow: 'rgba(192,132,252,0.4)' };
-  if (pts >= 10)  return { color: '#60a5fa', glow: 'rgba(96,165,250,0.35)' };
-  return           { color: 'rgba(255,255,255,0.15)', glow: 'transparent'  };
+  // Палитра +aura: белый → красный → ярко-красный → золотой
+  if (pts >= 600) return { color: 'rgba(255,220,100,0.95)', glow: 'rgba(255,200,50,0.4)'  };
+  if (pts >= 300) return { color: 'rgba(255,43,43,0.95)',   glow: 'rgba(255,43,43,0.5)'   };
+  if (pts >= 150) return { color: 'rgba(255,70,43,0.85)',   glow: 'rgba(255,43,43,0.35)'  };
+  if (pts >= 75)  return { color: 'rgba(255,43,43,0.7)',    glow: 'rgba(255,43,43,0.25)'  };
+  if (pts >= 10)  return { color: 'rgba(255,255,255,0.55)', glow: 'rgba(255,255,255,0.1)' };
+  return           { color: 'rgba(255,255,255,0.15)',        glow: 'transparent'           };
 }
 
 const U = window.AuraUtils;
