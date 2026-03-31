@@ -963,21 +963,6 @@ app.get("/api/challenges", requireAuth, async (req, res) => {
   }
 });
 
-function getChallengeProgress(id, w) {
-  const map = {
-    streak_3:      { cur:Math.min(w.tracksThisWeek||0,3), max:3 },
-    tracks_5:      { cur:Math.min(w.tracksThisWeek||0,5), max:5 },
-    genres_2:      { cur:Math.min(w.tracksThisWeek||0,5), max:5 },
-    react_3:       { cur:Math.min(w.reactionsGiven||0,3), max:3 },
-    signal_1:      { cur:Math.min(w.signalsSent||0,1),    max:1 },
-    new_artist:    { cur:Math.min(w.uniqueArtists||0,3),  max:3 },
-    react_back:    { cur:Math.min(w.reactionsReceived||0,1),max:1 },
-    morning_track: { cur:w.morningTrack?1:0,              max:1 },
-    late_night:    { cur:w.lateNightTrack?1:0,            max:1 },
-    profile_full:  { cur:0,                               max:1 },
-  };
-  return map[id] || { cur:0, max:1 };
-}
 
 // ── Referral ───────────────────────────────────────────────
 app.post("/api/referral/use", requireAuth, async (req, res) => {

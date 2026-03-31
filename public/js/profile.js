@@ -320,7 +320,11 @@ function showNotice(msg, type = 'error') {
     const resetEl = document.getElementById('challengesReset');
     const secEl = document.getElementById('challengesSection');
 
-    if (_chResp.ok && chR.challenges && chR.challenges.length > 0 && list) {
+    console.log('[challenges] response:', JSON.stringify(chR));
+    if (_chResp.ok && chR.challenges && list) {
+      if (chR.challenges.length === 0) {
+        list.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:rgba(255,255,255,0.3);">Загрузка...</div>';
+      }
       const now = new Date();
       const daysLeft = ((8 - now.getDay()) % 7) || 7;
       if (resetEl) resetEl.textContent = 'сброс через ' + daysLeft + ' дн.';
