@@ -802,14 +802,7 @@ if (process.env.RENDER_EXTERNAL_URL) {
   }, 10 * 60 * 1000); // каждые 10 минут
 }
 
-// ── 404 ───────────────────────────────────────────────────
-app.use((_,res) => res.status(404).sendFile(path.join(publicDir,"index.html")));
 
-// ── Global error handler ──────────────────────────────────
-app.use((err, req, res, next) => {
-  console.error("[server error]", err.message);
-  res.status(500).json({ ok: false, error: "Внутренняя ошибка сервера" });
-});
 
 // ── Username ──────────────────────────────────────────────
 app.post("/api/username/check", requireAuth, async (req, res) => {
@@ -1031,6 +1024,15 @@ app.get("/api/weekly-recap", requireAuth, async (req, res) => {
 });
 
 
+
+// ── 404 ───────────────────────────────────────────────────
+app.use((_,res) => res.status(404).sendFile(path.join(publicDir,"index.html")));
+
+// ── Global error handler ──────────────────────────────────
+app.use((err, req, res, next) => {
+  console.error("[server error]", err.message);
+  res.status(500).json({ ok: false, error: "Внутренняя ошибка сервера" });
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`+aura запущен на http://127.0.0.1:${PORT}`));
