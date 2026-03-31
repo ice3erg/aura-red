@@ -515,25 +515,15 @@ app.post("/api/now-playing", requireAuth, async (req, res) => {
   if (data.lng !== null && (isNaN(data.lng)||data.lng<-180||data.lng>180)) data.lng=null;
   db.setNowPlaying(req.user.id, data);
 
-  // +1 аура за активность (не чаще раза в 10 мин)
-  const lastPush = db.getMyNowPlaying(req.user.id);
-  const tenMin = 10 * 60 * 1000;
-  if (!lastPush || Date.now() - (lastPush.updatedAt || 0) > tenMin) {
-    const u = await db.findById(req.user.id);
-    if (u) await db.updateUser(req.user.id, { auraPoints: (u.auraPoints || 0) + 1 });
-  }
-
-  // Обновляем текущий трек и историю треков (последние 10)
+  // Загружаем пользователя один раз
   const user = await db.findById(req.user.id);
   const history = Array.isArray(user?.trackHistory) ? user.trackHistory : [];
   const entry = { track: data.track, artist: data.artist, image: data.image, ts: Date.now() };
-  // Не дублируем если тот же трек что и последний
   const last = history[0];
   const newHistory = (last?.track === entry.track && last?.artist === entry.artist)
-    ? history
-    : [entry, ...history].slice(0, 200);
+    ? history : [entry, ...history].slice(0, 200);
 
-  // Обновляем стрик
+  // Стрик
   const today = new Date().toISOString().slice(0,10);
   const lastDay = user?.streakLast ? String(user.streakLast).slice(0,10) : null;
   let newStreak = user?.streakDays || 0;
@@ -541,18 +531,30 @@ app.post("/api/now-playing", requireAuth, async (req, res) => {
     const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
     newStreak = lastDay === yesterday ? newStreak + 1 : 1;
   }
-  // Стрик-бонус: ×3 на 7й день, ×5 на 30й
+
+  // Считаем все бонусы за один раз
+  let auraGain = 0;
   let streakBonus = 0;
-  if (lastDay !== today) {
-    if (newStreak === 7)  streakBonus = 15;
-    else if (newStreak === 30) streakBonus = 50;
-    else if (newStreak % 7 === 0 && newStreak > 7) streakBonus = 10;
+
+  // +1 за публикацию (раз в 10 мин)
+  const lastPush = db.getMyNowPlaying(req.user.id);
+  const tenMin = 10 * 60 * 1000;
+  if (!lastPush || Date.now() - (lastPush.updatedAt || 0) > tenMin) {
+    auraGain += 1;
   }
 
+  // Стрик-бонус
+  if (lastDay !== today) {
+    if (newStreak === 7)               { streakBonus = 15; auraGain += 15; }
+    else if (newStreak === 30)         { streakBonus = 50; auraGain += 50; }
+    else if (newStreak % 7 === 0)      { streakBonus = 10; auraGain += 10; }
+  }
+
+  // Одно обновление — все поля сразу
   const updatedUser = await db.updateUser(req.user.id, {
     currentTrack: data, trackHistory: newHistory,
     streakDays: newStreak, streakLast: today,
-    auraPoints: (user.auraPoints || 0) + (streakBonus > 0 ? streakBonus : 0),
+    auraPoints: (user.auraPoints || 0) + auraGain,
   });
 
   // Проверяем новые достижения (безопасно — колонка может не существовать)
@@ -928,7 +930,7 @@ function getWeeklyChallenges() {
   return idx.map(i=>CHALLENGE_POOL[i]);
 }
 function getChallengeProgress(id,w){
-  const m={streak_3:{cur:Math.min(w.tracksThisWeek||0,3),max:3},tracks_5:{cur:Math.min(w.tracksThisWeek||0,5),max:5},react_3:{cur:Math.min(w.reactionsGiven||0,3),max:3},signal_1:{cur:Math.min(w.signalsSent||0,1),max:1},new_artist:{cur:Math.min(w.uniqueArtists||0,3),max:3},morning_track:{cur:w.morningTrack?1:0,max:1},late_night:{cur:w.lateNightTrack?1:0,max:1},react_back:{cur:Math.min(w.reactionsReceived||0,1),max:1}};
+  const m={streak_3:{cur:Math.min(w.streakDays||0,3),max:3},tracks_5:{cur:Math.min(w.tracksThisWeek||0,5),max:5},react_3:{cur:Math.min(w.reactionsGiven||0,3),max:3},signal_1:{cur:Math.min(w.signalsSent||0,1),max:1},new_artist:{cur:Math.min(w.uniqueArtists||0,3),max:3},morning_track:{cur:w.morningTrack?1:0,max:1},late_night:{cur:w.lateNightTrack?1:0,max:1},react_back:{cur:Math.min(w.reactionsReceived||0,1),max:1}};
   return m[id]||{cur:0,max:1};
 }
 
@@ -952,6 +954,7 @@ app.get("/api/challenges", requireAuth, async (req, res) => {
       reactionsGiven:    0,
       reactionsReceived: 0,
       signalsSent:       0,
+      streakDays:        user.streakDays || 0,
     };
 
     // Пробуем получить статистику из БД — но не падаем если не получается
