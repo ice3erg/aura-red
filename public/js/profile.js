@@ -492,8 +492,8 @@ function showNotice(msg, type = 'error') {
       // Дедупликация
       const unique = [...new Set(genres.map(g => g.toLowerCase()))].slice(0, 8);
       sec.style.display = '';
-      wrap.innerHTML = unique.map(g =>
-        `<div class="genre-chip">${g}</div>`
+      wrap.innerHTML = unique.map((g, i) =>
+        `<span style="font-size:13px;font-weight:600;color:rgba(255,255,255,${i===0?'0.7':'0.4'});">${g}</span>${i < unique.length-1 ? '<span style="color:rgba(255,255,255,0.15);font-size:11px;">·</span>' : ''}`
       ).join('');
     };
 
