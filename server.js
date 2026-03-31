@@ -888,69 +888,67 @@ app.get("/api/achievements", requireAuth, async (req, res) => {
 app.get("/api/challenges", requireAuth, async (req, res) => {
   try {
     const user = await db.findById(req.user.id);
-    const pool = db.pgPool();
+    if (!user) return res.status(401).json({ ok: false });
+
+    // Статистика за неделю из trackHistory
     const weekStart = new Date();
     weekStart.setHours(0,0,0,0);
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay() + 1); // Пн
+    weekStart.setDate(weekStart.getDate() - ((weekStart.getDay()+6)%7)); // Пн
     const weekStartTs = weekStart.getTime();
 
-    // Статистика за неделю
-    const history = (user?.trackHistory||[]).filter(t => (t.ts||0) >= weekStartTs);
+    const history = (user.trackHistory||[]).filter(t => (t.ts||0) >= weekStartTs);
     const weekStats = {
       tracksThisWeek:    history.length,
       uniqueArtists:     new Set(history.map(t=>t.artist).filter(Boolean)).size,
-      morningTrack:      history.some(t => { const h=new Date(t.ts).getHours(); return h>=5&&h<10; }),
-      lateNightTrack:    history.some(t => new Date(t.ts).getHours() >= 23),
+      morningTrack:      history.some(t => { const h=new Date(t.ts||0).getHours(); return h>=5&&h<10; }),
+      lateNightTrack:    history.some(t => new Date(t.ts||0).getHours()>=23),
       reactionsGiven:    0,
       reactionsReceived: 0,
       signalsSent:       0,
     };
 
-    // Реакции и сигналы за неделю из БД
-    if (pool) {
-      const [rxGiven, rxReceived, sigs] = await Promise.all([
-        pool.query(`SELECT COUNT(*) FROM reactions WHERE from_id=$1 AND created_at>$2`, [req.user.id, weekStartTs]).catch(()=>({rows:[{count:0}]})),
-        pool.query(`SELECT COUNT(*) FROM reactions WHERE to_id=$1 AND created_at>$2`,   [req.user.id, weekStartTs]).catch(()=>({rows:[{count:0}]})),
-        pool.query(`SELECT COUNT(*) FROM signals WHERE from_id=$1 AND created_at>$2`,   [req.user.id, weekStartTs]).catch(()=>({rows:[{count:0}]})),
-      ]);
-      weekStats.reactionsGiven    = parseInt(rxGiven.rows[0].count)||0;
-      weekStats.reactionsReceived = parseInt(rxReceived.rows[0].count)||0;
-      weekStats.signalsSent       = parseInt(sigs.rows[0].count)||0;
-    }
+    // Пробуем получить статистику из БД — но не падаем если не получается
+    try {
+      const pool = db.pgPool();
+      if (pool) {
+        const rxG = await pool.query(`SELECT COUNT(*)::int as n FROM reactions WHERE from_id=$1 AND created_at>$2`, [user.id, weekStartTs]).catch(()=>({rows:[{n:0}]}));
+        const rxR = await pool.query(`SELECT COUNT(*)::int as n FROM reactions WHERE to_id=$1 AND created_at>$2`,   [user.id, weekStartTs]).catch(()=>({rows:[{n:0}]}));
+        const sgs = await pool.query(`SELECT COUNT(*)::int as n FROM signals  WHERE from_id=$1 AND created_at>$2`, [user.id, weekStartTs]).catch(()=>({rows:[{n:0}]}));
+        weekStats.reactionsGiven    = rxG.rows[0]?.n || 0;
+        weekStats.reactionsReceived = rxR.rows[0]?.n || 0;
+        weekStats.signalsSent       = sgs.rows[0]?.n || 0;
+      }
+    } catch(_) {}
 
     const defs = getWeeklyChallengeDefs();
     const challenges = defs.map(ch => {
       let completed = false;
-      try { completed = ch.check(user, weekStats); } catch(_) {}
-      return {
-        id: ch.id, emoji: ch.emoji, name: ch.name,
-        desc: ch.desc, aura: ch.aura,
-        completed,
-        progress: getProgress(ch.id, weekStats),
-      };
+      try { completed = !!ch.check(user, weekStats); } catch(_) {}
+      const prog = getChallengeProgress(ch.id, weekStats);
+      return { id:ch.id, emoji:ch.emoji, name:ch.name, desc:ch.desc, aura:ch.aura, completed, progress:prog };
     });
 
-    res.json({ ok: true, challenges, weekStats });
+    res.json({ ok:true, challenges, weekStats });
   } catch(e) {
     console.error("[challenges]", e.message);
-    res.status(500).json({ ok: false });
+    res.json({ ok:true, challenges:[], weekStats:{} }); // не падаем — возвращаем пустой массив
   }
 });
 
-function getProgress(id, w) {
+function getChallengeProgress(id, w) {
   const map = {
-    streak_3:      { cur: Math.min(w.tracksThisWeek, 3),    max: 3  },
-    tracks_5:      { cur: Math.min(w.tracksThisWeek, 5),    max: 5  },
-    genres_2:      { cur: Math.min(w.tracksThisWeek, 5),    max: 5  },
-    react_3:       { cur: Math.min(w.reactionsGiven, 3),     max: 3  },
-    signal_1:      { cur: Math.min(w.signalsSent, 1),        max: 1  },
-    new_artist:    { cur: Math.min(w.uniqueArtists, 3),      max: 3  },
-    react_back:    { cur: Math.min(w.reactionsReceived, 1),  max: 1  },
-    morning_track: { cur: w.morningTrack ? 1 : 0,            max: 1  },
-    late_night:    { cur: w.lateNightTrack ? 1 : 0,          max: 1  },
-    profile_full:  { cur: 0,                                  max: 1  },
+    streak_3:      { cur:Math.min(w.tracksThisWeek||0,3), max:3 },
+    tracks_5:      { cur:Math.min(w.tracksThisWeek||0,5), max:5 },
+    genres_2:      { cur:Math.min(w.tracksThisWeek||0,5), max:5 },
+    react_3:       { cur:Math.min(w.reactionsGiven||0,3), max:3 },
+    signal_1:      { cur:Math.min(w.signalsSent||0,1),    max:1 },
+    new_artist:    { cur:Math.min(w.uniqueArtists||0,3),  max:3 },
+    react_back:    { cur:Math.min(w.reactionsReceived||0,1),max:1 },
+    morning_track: { cur:w.morningTrack?1:0,              max:1 },
+    late_night:    { cur:w.lateNightTrack?1:0,            max:1 },
+    profile_full:  { cur:0,                               max:1 },
   };
-  return map[id] || { cur: 0, max: 1 };
+  return map[id] || { cur:0, max:1 };
 }
 
 // ── Referral ───────────────────────────────────────────────

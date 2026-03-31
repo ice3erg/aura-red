@@ -197,19 +197,14 @@ function showNotice(msg, type = 'error') {
   const ph  = document.getElementById('avatarPh');
   if (img && user.avatar) { img.src = user.avatar; img.className = 'avatar-img visible'; if (ph) ph.style.display = 'none'; }
 
-  // Кольцо ауры — стиль по уровню
+  // Кольцо ауры — CSS класс по уровню
   const ring = document.getElementById('avatarRing');
   if (ring) {
     let isPlaying = false;
     try { const s = localStorage.getItem('aura_last_track'); isPlaying = !!(s && JSON.parse(s)?.name); } catch(_) {}
-    const rs = getAuraRingStyle(user.auraPoints || 0, isPlaying);
-    ring.style.border = rs.border;
-    ring.style.boxShadow = rs.shadow;
-    ring.style.animation = rs.anim;
-    ring.style.opacity = '1';
-    ring.style.inset = '-4px';
-    ring.style.background = 'transparent';
-    if (isPlaying) ring.classList.add('playing');
+    const pts = user.auraPoints || 0;
+    const lvl = pts>=600?5 : pts>=300?4 : pts>=150?3 : pts>=75?2 : pts>=10?1 : 0;
+    ring.className = `avatar-ring ring-${lvl}${isPlaying?' playing':''}`;
   }
 
   // Name + username
@@ -292,8 +287,9 @@ function showNotice(msg, type = 'error') {
 
   // ── Weekly Challenges ───────────────────────────────────────
   try {
-    const chR = await fetch('/api/challenges').then(r => r.json());
-    if (chR.ok) {
+    const _chResp = await fetch('/api/challenges');
+    const chR = await _chResp.json();
+    if (_chResp.ok && chR.challenges?.length) {
       const list = document.getElementById('challengesList');
       const resetEl = document.getElementById('challengesReset');
 

@@ -338,6 +338,19 @@
       from { opacity: 0; } to { opacity: 1; }
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    /* Аура кольца — уровни */
+    .ar{position:absolute;inset:-4px;border-radius:50%;pointer-events:none;z-index:0}
+    .ar-0{border:1.5px solid rgba(255,255,255,0.12)}
+    .ar-1{border:1.5px dashed rgba(255,255,255,0.35);animation:dashSpin 8s linear infinite}
+    .ar-2{border:2px solid rgba(255,43,43,0.55);animation:ringGlow2 3s ease-in-out infinite}
+    .ar-3{border:2px solid rgba(255,43,43,0.8);animation:ringGlow2 2s ease-in-out infinite}
+    .ar-4{border:2.5px solid rgba(255,43,43,0.95);box-shadow:0 0 12px rgba(255,43,43,0.4);animation:ringP 1.5s ease-in-out infinite}
+    .ar-5{border:3px solid rgba(255,215,80,0.95);box-shadow:0 0 16px rgba(255,215,80,0.4);animation:goldS 2s ease-in-out infinite}
+    @keyframes dashSpin{to{transform:rotate(360deg)}}
+    @keyframes ringGlow2{0%,100%{opacity:0.55}50%{opacity:1;box-shadow:0 0 8px rgba(255,43,43,0.3)}}
+    @keyframes ringP{0%,100%{transform:scale(1)}50%{transform:scale(1.07);box-shadow:0 0 18px rgba(255,43,43,0.6)}}
+    @keyframes goldS{0%,100%{box-shadow:0 0 14px rgba(255,215,80,0.35)}50%{box-shadow:0 0 22px rgba(255,215,80,0.6);transform:scale(1.04)}}
+
     @keyframes youPulse {
       0%,100% { transform: scale(1);    opacity: 0.9; }
       50%      { transform: scale(1.07); opacity: 1;   }
