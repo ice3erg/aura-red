@@ -107,32 +107,33 @@
     .stat-val.red{color:var(--red)}
     .stat-lbl{font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px}
 
-    /* ── Top artists ── */
-    .section-header{display:flex;align-items:center;justify-content:space-between;margin:20px 20px 12px}
-    .section-label{font-size:22px;font-weight:900;letter-spacing:-0.5px;text-transform:lowercase}
-    .section-sub{font-size:11px;color:var(--muted);font-weight:600}
+    /* ── Section bg title ── */
+    .sec-wrap{position:relative;margin-top:24px;overflow:hidden}
+    .sec-bg-title{position:absolute;top:-8px;left:16px;font-size:72px;font-weight:900;letter-spacing:-3px;text-transform:lowercase;line-height:1;pointer-events:none;z-index:0;user-select:none}
+    .sec-content{position:relative;z-index:1;padding-top:44px}
+    .sec-sub{font-size:11px;font-weight:600;color:rgba(255,255,255,0.3);padding:0 20px;margin-bottom:10px;margin-top:-6px}
 
-    .top-artists-row{display:flex;gap:0;padding:0 20px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-right:20px}
+    /* ── Top artists ── */
+    .top-artists-row{display:flex;gap:0;padding:0 20px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
     .top-artists-row::-webkit-scrollbar{display:none}
-    .artist-card{flex-shrink:0;width:96px;margin-right:10px;text-align:center;cursor:pointer}
-    .artist-img-wrap{position:relative;width:96px;height:96px;border-radius:50%;background:#1a1a22;margin-bottom:7px}
-    .artist-img-wrap img{width:100%;height:100%;object-fit:cover}
-    .artist-rank{position:absolute;bottom:4px;right:4px;width:22px;height:22px;border-radius:50%;background:rgba(10,10,14,0.95);color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,43,43,0.5);z-index:5}
-    .artist-name{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .artist-card{flex-shrink:0;width:88px;margin-right:14px;text-align:center;cursor:pointer}
+    .artist-img-wrap{position:relative;width:88px;height:88px;border-radius:50%;background:#1a1a22;margin-bottom:7px;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
+    .artist-img-wrap img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+    .artist-rank{position:absolute;bottom:2px;right:2px;width:22px;height:22px;border-radius:50%;background:rgba(10,10,14,0.95);color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,0.15);z-index:5}
+    .artist-name{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:rgba(255,255,255,0.85)}
 
     /* ── On repeat ── */
     .on-repeat-scroll{display:flex;gap:0;padding:0 20px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
     .on-repeat-scroll::-webkit-scrollbar{display:none}
-    .repeat-card{flex-shrink:0;width:120px;margin-right:10px}
-    .repeat-cover{position:relative;width:120px;height:120px;border-radius:14px;overflow:hidden;background:#1a1a22;margin-bottom:8px}
+    .repeat-card{flex-shrink:0;width:130px;margin-right:12px}
+    .repeat-cover{position:relative;width:130px;height:130px;border-radius:16px;overflow:hidden;background:#1a1a22;margin-bottom:8px;box-shadow:0 6px 24px rgba(0,0,0,0.5)}
     .repeat-cover img{width:100%;height:100%;object-fit:cover}
-    .repeat-count{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);padding:3px 10px;border-radius:99px;background:rgba(0,0,0,0.75);backdrop-filter:blur(8px);border:1px solid rgba(255,43,43,0.4);font-size:11px;font-weight:700;white-space:nowrap;color:#ff8080}
+    .repeat-count{position:absolute;bottom:8px;left:8px;padding:3px 9px;border-radius:99px;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);font-size:11px;font-weight:700;white-space:nowrap;color:rgba(255,255,255,0.8)}
     .repeat-title{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .repeat-artist{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
 
     /* ── Genre chips ── */
-    .genres-wrap{display:flex;flex-wrap:wrap;gap:6px;padding:0 20px;margin-top:4px}
-    .genre-chip{padding:5px 12px;border-radius:99px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);font-size:12px;font-weight:600;color:rgba(255,255,255,0.7)}
+    .genre-chip{padding:5px 13px;border-radius:99px;border:1px solid rgba(255,255,255,0.12);font-size:12px;font-weight:600;color:rgba(255,255,255,0.55);background:rgba(255,255,255,0.04)}
 
     /* ── Ticker ── */
     .ticker-section{margin:16px 20px 0}
@@ -302,26 +303,25 @@
       </div>
  
     <!-- TOP ARTISTS -->
-    <div id="topArtistsSection" style="display:none;margin-top:20px;">
-      <div style="padding:0 20px;margin-bottom:10px;display:flex;align-items:baseline;gap:8px;">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.45);">Топ артисты</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.2);font-weight:600;">за всё время</div>
+    <div id="topArtistsSection" class="sec-wrap" style="display:none;">
+      <div class="sec-bg-title" style="color:rgba(255,255,255,0.04);">топ<br>артисты</div>
+      <div class="sec-content">
+        <div class="sec-sub">за всё время</div>
+        <div class="top-artists-row" id="topArtistsRow"></div>
       </div>
-      <div class="top-artists-row" id="topArtistsRow"></div>
     </div>
 
     <!-- ON REPEAT -->
-    <div id="onRepeatSection" style="display:none;margin-top:20px;">
-      <div style="padding:0 20px;margin-bottom:10px;display:flex;align-items:baseline;gap:8px;">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.45);">На повторе</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.2);font-weight:600;">слушаешь чаще всего</div>
+    <div id="onRepeatSection" class="sec-wrap" style="display:none;">
+      <div class="sec-bg-title" style="color:rgba(255,43,43,0.08);">на<br>повторе</div>
+      <div class="sec-content">
+        <div class="sec-sub">слушаешь чаще всего</div>
+        <div class="on-repeat-scroll" id="onRepeatRow"></div>
       </div>
-      <div class="on-repeat-scroll" id="onRepeatRow"></div>
     </div>
 
     <!-- Genres -->
-    <div id="genresSection" style="margin:12px 20px 0;display:none;">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.45);margin-bottom:8px;">Твои жанры</div>
+    <div id="genresSection" style="margin:16px 20px 0;display:none;">
       <div id="genresWrap" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
     </div>
 

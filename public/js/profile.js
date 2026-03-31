@@ -141,22 +141,38 @@ function renderMusicStats(history) {
   const topArtists = Object.values(artistMap).sort((a,b) => b.count - a.count).slice(0, 6);
   const topTracks  = Object.values(trackMap).sort((a,b) => b.count - a.count).slice(0, 8);
 
-  // Top artists
+  // Top artists — рендерим с плейсхолдерами, потом подгружаем фото с Last.fm
   if (topArtists.length >= 1) {
     const sec = document.getElementById('topArtistsSection');
     const row = document.getElementById('topArtistsRow');
     if (sec) sec.style.display = '';
-    if (row) row.innerHTML = topArtists.map((a, i) => `
-      <div class="artist-card">
-        <div class="artist-img-wrap">
-          ${a.image
-            ? `<img src="${a.image}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.style.display='none'" />`
-            : `<div style="width:100%;height:100%;border-radius:50%;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>`
+    if (row) {
+      // Сначала рендерим с заглушками
+      row.innerHTML = topArtists.map((a, i) => `
+        <div class="artist-card" id="artist-card-${i}">
+          <div class="artist-img-wrap">
+            <img id="artist-img-${i}" src="${a.image||''}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;${a.image?'':'display:none'}" />
+            <div id="artist-ph-${i}" style="position:absolute;inset:0;border-radius:50%;background:rgba(255,255,255,0.06);display:${a.image?'none':'flex'};align-items:center;justify-content:center;">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            </div>
+            <div class="artist-rank">${i+1}</div>
+          </div>
+          <div class="artist-name">${a.name}</div>
+        </div>`).join('');
+
+      // Асинхронно подгружаем фото артистов со страниц Last.fm
+      topArtists.forEach(async (a, i) => {
+        try {
+          const r = await fetch(`/api/lastfm/artist-image?artist=${encodeURIComponent(a.name)}`).then(r=>r.json());
+          if (r.image) {
+            const img = document.getElementById(`artist-img-${i}`);
+            const ph  = document.getElementById(`artist-ph-${i}`);
+            if (img) { img.src = r.image; img.style.display = ''; }
+            if (ph)  ph.style.display = 'none';
           }
-          <div class="artist-rank">${i+1}</div>
-        </div>
-        <div class="artist-name">${a.name}</div>
-      </div>`).join('');
+        } catch(_) {}
+      });
+    }
   }
 
   // On repeat
@@ -470,9 +486,11 @@ function showNotice(msg, type = 'error') {
       const sec  = document.getElementById('genresSection');
       const wrap = document.getElementById('genresWrap');
       if (!sec || !wrap || !genres.length) return;
+      // Дедупликация
+      const unique = [...new Set(genres.map(g => g.toLowerCase()))].slice(0, 8);
       sec.style.display = '';
-      wrap.innerHTML = genres.map(g =>
-        `<div style="padding:4px 11px;border-radius:99px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);font-size:12px;font-weight:600;color:rgba(255,255,255,0.6);">${g}</div>`
+      wrap.innerHTML = unique.map(g =>
+        `<div class="genre-chip">${g}</div>`
       ).join('');
     };
 
@@ -483,7 +501,13 @@ function showNotice(msg, type = 'error') {
     if (user.lastfmConnected && user.lastfmUsername) {
       fetch('/api/lastfm/genres', { method: 'POST' })
         .then(r => r.json())
-        .then(d => { if (d.ok && d.genres.length) showGenres(d.genres); })
+        .then(d => {
+          if (d.ok && d.genres.length) {
+            // Дедупликация жанров
+            const unique = [...new Set(d.genres.map(g => g.toLowerCase()))];
+            showGenres(unique);
+          }
+        })
         .catch(() => {});
     }
   } catch(_) {}

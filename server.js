@@ -346,6 +346,28 @@ app.post("/api/lastfm/sync", requireAuth, async (req, res) => {
   }
 });
 
+// Last.fm — фото артиста с его страницы
+app.get("/api/lastfm/artist-image", async (req, res) => {
+  const { artist } = req.query;
+  if (!artist) return res.json({ ok: false, image: "" });
+  const apiKey = process.env.LASTFM_API_KEY;
+  if (!apiKey) return res.json({ ok: false, image: "" });
+  try {
+    const r = await axios.get("https://ws.audioscrobbler.com/2.0/", {
+      params: { method: "artist.getInfo", artist, api_key: apiKey, format: "json" },
+      timeout: 5000
+    });
+    const images = r.data?.artist?.image || [];
+    const placeholder = "2a96cbd8b46e442fc41c2b86b821562f";
+    const img = images.find(i => i.size === "extralarge")?.["#text"]
+             || images.find(i => i.size === "large")?.["#text"] || "";
+    const valid = img && img.startsWith("https://") && !img.includes(placeholder) ? img : "";
+    res.json({ ok: true, image: valid });
+  } catch(e) {
+    res.json({ ok: false, image: "" });
+  }
+});
+
 // Last.fm — определяем жанры пользователя по топ трекам
 app.post("/api/lastfm/genres", requireAuth, async (req, res) => {
   try {
