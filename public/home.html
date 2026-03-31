@@ -403,10 +403,10 @@
   <!-- Full-screen map -->
   <div id="map"></div>
 
-  <!-- Город (левый верхний) -->
-  <div id="cityChip" style="display:none;position:fixed;top:calc(env(safe-area-inset-top)+14px);left:16px;z-index:50;display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:99px;background:rgba(6,6,8,0.75);border:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(16px);">
-    <svg width="10" height="10" viewBox="0 0 24 24" fill="rgba(255,43,43,0.8)" stroke="none"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-    <span id="cityName" style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.75);">...</span>
+  <!-- Город (Zenly стиль) -->
+  <div id="cityChip" style="display:none;position:fixed;top:calc(env(safe-area-inset-top)+16px);left:18px;z-index:50;pointer-events:none;">
+    <div id="cityName" style="font-size:28px;font-weight:900;color:#fff;letter-spacing:-0.5px;line-height:1;text-shadow:0 2px 16px rgba(0,0,0,0.5);"></div>
+    <div id="districtName" style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.55);margin-top:1px;text-shadow:0 1px 8px rgba(0,0,0,0.5);"></div>
   </div>
 
   <!-- Logo -->

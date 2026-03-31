@@ -53,18 +53,25 @@ function getAuraRing(pts, isPlaying) {
   let _currentTrack = null;
 
   // ── Geo ──────────────────────────────────────────────────
-  // Показываем город в левом верхнем углу
+  // Показываем город в стиле Zenly
   async function updateCityDisplay(lat, lng) {
     try {
       const r = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ru`,
         { headers: { 'User-Agent': 'AuraApp/1.0' } }
       ).then(r => r.json());
-      const city = r.address?.city || r.address?.town || r.address?.village || r.address?.county || '';
-      const chip = document.getElementById('cityName');
-      const wrap = document.getElementById('cityChip');
-      if (chip && city) chip.textContent = city;
-      if (wrap && city) wrap.style.display = 'flex';
+
+      const addr = r.address || {};
+      const city     = addr.city || addr.town || addr.village || addr.county || '';
+      const district = addr.city_district || addr.suburb || addr.neighbourhood || addr.road || '';
+
+      const cityEl     = document.getElementById('cityName');
+      const districtEl = document.getElementById('districtName');
+      const wrap       = document.getElementById('cityChip');
+
+      if (cityEl && city) cityEl.textContent = city;
+      if (districtEl)     districtEl.textContent = district;
+      if (wrap && city)   wrap.style.display = 'block';
     } catch(_) {}
   }
 
