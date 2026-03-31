@@ -312,46 +312,93 @@ function showNotice(msg, type = 'error') {
   }
 
   // ── Weekly Challenges ───────────────────────────────────────
+  // ── Weekly Challenges ───────────────────────────────────────
   try {
     const _chResp = await fetch('/api/challenges');
     const chR = await _chResp.json();
-    if (_chResp.ok && chR.challenges?.length) {
-      const list = document.getElementById('challengesList');
-      const resetEl = document.getElementById('challengesReset');
+    const list = document.getElementById('challengesList');
+    const resetEl = document.getElementById('challengesReset');
+    const secEl = document.getElementById('challengesSection');
 
-      // Дней до сброса
+    if (_chResp.ok && chR.challenges && chR.challenges.length > 0 && list) {
       const now = new Date();
-      const daysLeft = 7 - now.getDay() || 7;
-      if (resetEl) resetEl.textContent = `сброс через ${daysLeft} дн.`;
+      const daysLeft = ((8 - now.getDay()) % 7) || 7;
+      if (resetEl) resetEl.textContent = 'сброс через ' + daysLeft + ' дн.';
 
-      if (list) {
-        list.innerHTML = chR.challenges.map(ch => {
-          const done = ch.completed;
-          const prog = ch.progress || { cur: 0, max: 1 };
-          const pct  = Math.min(100, Math.round(prog.cur / prog.max * 100));
-          return `
-            <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:16px;background:${done ? 'rgba(255,43,43,0.08)' : 'rgba(255,255,255,0.04)'};border:1px solid ${done ? 'rgba(255,43,43,0.2)' : 'rgba(255,255,255,0.07)'};">
-              <div style="width:42px;height:42px;border-radius:12px;background:${done ? 'rgba(255,43,43,0.15)' : 'rgba(255,255,255,0.06)'};display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">${ch.emoji}</div>
-              <div style="flex:1;min-width:0;">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-                  <div style="font-size:14px;font-weight:800;${done ? 'color:#ff8080;' : ''}">${ch.name}</div>
-                  <div style="font-size:12px;font-weight:800;color:${done ? '#ff8080' : 'rgba(255,255,255,0.3)'};">+${ch.aura} ✦</div>
-                </div>
-                <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:6px;">${ch.desc}</div>
-                <div style="height:3px;border-radius:99px;background:rgba(255,255,255,0.08);overflow:hidden;">
-                  <div style="height:100%;width:${pct}%;border-radius:99px;background:${done ? 'linear-gradient(90deg,#ff2b2b,#ff8c00)' : 'rgba(255,255,255,0.2)'};transition:width 0.6s ease;"></div>
-                </div>
-                ${prog.max > 1 ? `<div style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:3px;">${prog.cur} / ${prog.max}</div>` : ''}
-              </div>
-              ${done ? '<div style="font-size:20px;flex-shrink:0;">✅</div>' : ''}
-            </div>`;
-        }).join('');
-      }
+      list.innerHTML = '';
+      chR.challenges.forEach(ch => {
+        const done = !!ch.completed;
+        const prog = ch.progress || { cur: 0, max: 1 };
+        const pct  = prog.max > 0 ? Math.min(100, Math.round(prog.cur / prog.max * 100)) : 0;
 
-      // Начисляем ауру за выполненные (если ещё не начислено)
-      // Сервер сам проверяет через checkAchievements
+        const card = document.createElement('div');
+        card.style.cssText = 'display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:14px;' +
+          'background:rgba(255,255,255,0.03);border:1px solid ' +
+          (done ? 'rgba(255,43,43,0.2)' : 'rgba(255,255,255,0.06)') + ';margin-bottom:8px;';
+
+        const emojiEl = document.createElement('div');
+        emojiEl.style.cssText = 'font-size:22px;flex-shrink:0;opacity:' + (done ? '1' : '0.5') + ';';
+        emojiEl.textContent = ch.emoji || '⭐';
+        card.appendChild(emojiEl);
+
+        const body = document.createElement('div');
+        body.style.cssText = 'flex:1;min-width:0;';
+
+        const topRow = document.createElement('div');
+        topRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;';
+
+        const nameEl = document.createElement('div');
+        nameEl.style.cssText = 'font-size:13px;font-weight:700;color:' + (done ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)') + ';';
+        nameEl.textContent = ch.name || '';
+
+        const auraEl = document.createElement('div');
+        auraEl.style.cssText = 'font-size:11px;font-weight:700;color:' + (done ? '#ff2b2b' : 'rgba(255,255,255,0.2)') + ';';
+        auraEl.textContent = '+' + (ch.aura || 0) + ' ✦';
+
+        topRow.appendChild(nameEl);
+        topRow.appendChild(auraEl);
+        body.appendChild(topRow);
+
+        const descEl = document.createElement('div');
+        descEl.style.cssText = 'font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:6px;';
+        descEl.textContent = ch.desc || '';
+        body.appendChild(descEl);
+
+        const barBg = document.createElement('div');
+        barBg.style.cssText = 'height:2px;border-radius:99px;background:rgba(255,255,255,0.07);overflow:hidden;';
+        const barFill = document.createElement('div');
+        barFill.style.cssText = 'height:100%;width:' + pct + '%;border-radius:99px;background:' +
+          (done ? '#ff2b2b' : 'rgba(255,255,255,0.15)') + ';';
+        barBg.appendChild(barFill);
+        body.appendChild(barBg);
+
+        if (prog.max > 1) {
+          const progEl = document.createElement('div');
+          progEl.style.cssText = 'font-size:10px;color:rgba(255,255,255,0.2);margin-top:3px;';
+          progEl.textContent = prog.cur + ' / ' + prog.max;
+          body.appendChild(progEl);
+        }
+
+        card.appendChild(body);
+
+        if (done) {
+          const check = document.createElement('div');
+          check.style.cssText = 'width:18px;height:18px;border-radius:50%;background:rgba(255,43,43,0.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;';
+          check.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ff2b2b" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+          card.appendChild(check);
+        }
+
+        list.appendChild(card);
+      });
+
+      if (secEl) secEl.style.display = '';
+    } else if (list) {
+      // Показываем заглушку если challenges не пришли
+      list.innerHTML = '<div style="padding:16px;text-align:center;color:rgba(255,255,255,0.2);font-size:12px;">Обновляются каждую неделю</div>';
+      if (secEl) secEl.style.display = '';
     }
-  } catch(_) {}
+  } catch(e) { console.warn('[challenges]', e); }
+
 
   // ── Achievements ─────────────────────────────────────────
   try {

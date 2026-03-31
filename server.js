@@ -8,7 +8,6 @@ const axios   = require("axios");
 const path    = require("path");
 const db      = require("./db");
 const { ACHIEVEMENTS, getTitle, checkAchievements } = require("./achievements");
-const { getWeeklyChallengeDefs } = require("./challenges");
 
 const app       = express();
 const publicDir = path.join(__dirname, "public");
@@ -891,6 +890,29 @@ app.get("/api/achievements", requireAuth, async (req, res) => {
 });
 
 // ── Weekly Challenges ─────────────────────────────────────
+// ── Недельные челленджи (встроено) ────────────────────────
+const CHALLENGE_POOL = [
+  { id:'streak_3',      emoji:'🔥', name:'Не пропускай',       desc:'Публикуй трек 3 дня подряд',   aura:30, check:(u,w)=>(u.streakDays||0)>=3 },
+  { id:'tracks_5',      emoji:'🎵', name:'Активный слушатель', desc:'Опубликуй 5 треков за неделю', aura:25, check:(u,w)=>w.tracksThisWeek>=5 },
+  { id:'react_3',       emoji:'❤️', name:'Реагируй',           desc:'Отправь 3 реакции за неделю',  aura:20, check:(u,w)=>w.reactionsGiven>=3 },
+  { id:'signal_1',      emoji:'📡', name:'Выйди на связь',     desc:'Отправь сигнал кому-нибудь',   aura:25, check:(u,w)=>w.signalsSent>=1 },
+  { id:'new_artist',    emoji:'🎸', name:'Новый вайб',         desc:'Послушай 3 разных артиста',    aura:20, check:(u,w)=>w.uniqueArtists>=3 },
+  { id:'morning_track', emoji:'☀️', name:'С добрым утром',     desc:'Опубликуй трек до 10:00',      aura:20, check:(u,w)=>w.morningTrack },
+  { id:'late_night',    emoji:'🌙', name:'Ночной слушатель',   desc:'Опубликуй трек после 23:00',   aura:20, check:(u,w)=>w.lateNightTrack },
+  { id:'react_back',    emoji:'🤝', name:'Взаимность',         desc:'Получи реакцию в ответ',       aura:25, check:(u,w)=>w.reactionsReceived>=1 },
+];
+function getWeeklyChallenges() {
+  const weekNum = Math.floor(Date.now()/(7*24*60*60*1000));
+  let s = (weekNum*2654435761)>>>0;
+  const idx=[];
+  while(idx.length<3){s=((s*1664525+1013904223)>>>0);const i=s%CHALLENGE_POOL.length;if(!idx.includes(i))idx.push(i);}
+  return idx.map(i=>CHALLENGE_POOL[i]);
+}
+function getChallengeProgress(id,w){
+  const m={streak_3:{cur:Math.min(w.tracksThisWeek||0,3),max:3},tracks_5:{cur:Math.min(w.tracksThisWeek||0,5),max:5},react_3:{cur:Math.min(w.reactionsGiven||0,3),max:3},signal_1:{cur:Math.min(w.signalsSent||0,1),max:1},new_artist:{cur:Math.min(w.uniqueArtists||0,3),max:3},morning_track:{cur:w.morningTrack?1:0,max:1},late_night:{cur:w.lateNightTrack?1:0,max:1},react_back:{cur:Math.min(w.reactionsReceived||0,1),max:1}};
+  return m[id]||{cur:0,max:1};
+}
+
 app.get("/api/challenges", requireAuth, async (req, res) => {
   try {
     const user = await db.findById(req.user.id);
@@ -926,7 +948,7 @@ app.get("/api/challenges", requireAuth, async (req, res) => {
       }
     } catch(_) {}
 
-    const defs = getWeeklyChallengeDefs();
+    const defs = getWeeklyChallenges();
     const challenges = defs.map(ch => {
       let completed = false;
       try { completed = !!ch.check(user, weekStats); } catch(_) {}
