@@ -281,41 +281,6 @@ function showNotice(msg, type = 'error') {
   const _fill = document.getElementById('auraBarFill');
   if (_fill) _fill.style.background = `linear-gradient(90deg, ${_ac.color}, ${_ac.glow})`;
 
-  // Mini achievement badges
-  fetch('/api/achievements').then(r=>r.json()).then(achR => {
-    if (!achR.ok) return;
-    // Обновляем ауру если новые ачивки
-    if (achR.auraPoints !== undefined && achR.auraPoints !== (user.auraPoints||0)) {
-      user.auraPoints = achR.auraPoints;
-      renderAura(achR.auraPoints);
-      const _ac2 = getAuraColor(achR.auraPoints);
-      const _ab2 = document.querySelector('.aura-block');
-      if (_ab2) { _ab2.style.borderColor = _ac2.color; _ab2.style.boxShadow = `0 0 20px ${_ac2.glow}`; }
-      const _f2 = document.getElementById('auraBarFill');
-      if (_f2) _f2.style.background = `linear-gradient(90deg,${_ac2.color},${_ac2.glow})`;
-    }
-    // Показываем заработанные бейджи
-    const earned = achR.achievements.filter(a=>a.earned);
-    const row = document.getElementById('miniBadgeRow');
-    const wrap = document.getElementById('miniBadges');
-    if (earned.length && row && wrap) {
-      wrap.style.display = '';
-      row.innerHTML = earned.map(a =>
-        `<span title="${a.name}" style="font-size:20px;line-height:1;cursor:default;" onclick="window.location='/aura'">${a.emoji}</span>`
-      ).join('');
-    }
-    if (achR.title) {
-      const tag = document.getElementById('usernameTag');
-      if (tag && !document.getElementById('profileTitle')) {
-        const t = document.createElement('span');
-        t.id='profileTitle';
-        t.style.cssText='font-size:11px;font-weight:700;color:rgba(255,140,0,0.85);margin-left:6px;';
-        t.textContent=achR.title;
-        tag.parentNode.appendChild(t);
-      }
-    }
-  }).catch(()=>{});
-
   // Stats
   const streakEl = document.getElementById('statStreak');
   if (streakEl) {
@@ -659,6 +624,88 @@ function showNotice(msg, type = 'error') {
 
   } catch(e) { console.error('[profile] init error:', e); }
 })();
+
+window.openAuraSheet = async function() {
+  const modal = document.getElementById('auraModal');
+  if (!modal) return;
+  modal.classList.add('open');
+
+  // Ничего не дублируем — просто грузим если ещё не загружено
+  if (modal.dataset.loaded) return;
+  modal.dataset.loaded = '1';
+
+  const user = window._profileUser;
+  const pts  = user?.auraPoints || 0;
+
+  // Заполняем hero
+  const RANKS = [
+    {min:0,name:'Новичок',emoji:'🌱'},{min:10,name:'Слушатель',emoji:'🎧'},
+    {min:30,name:'Меломан',emoji:'🎵'},{min:75,name:'Вибратор',emoji:'📡'},
+    {min:150,name:'Резонатор',emoji:'🌊'},{min:300,name:'Аурист',emoji:'✦'},
+    {min:600,name:'Легенда',emoji:'👑'},
+  ];
+  let rank = RANKS[0], next = RANKS[1];
+  for (let i = RANKS.length-1; i >= 0; i--) { if (pts >= RANKS[i].min) { rank=RANKS[i]; next=RANKS[i+1]||null; break; } }
+
+  const el = id => document.getElementById(id);
+  if (el('sheetAuraOrb'))  el('sheetAuraOrb').textContent  = rank.emoji;
+  if (el('sheetAuraPts'))  el('sheetAuraPts').textContent  = pts;
+  if (el('sheetAuraRank')) el('sheetAuraRank').textContent = rank.emoji + ' ' + rank.name;
+  if (next && el('sheetAuraBar')) {
+    const pct = Math.min(100, Math.round((pts-rank.min)/(next.min-rank.min)*100));
+    setTimeout(() => el('sheetAuraBar').style.width = pct+'%', 100);
+    if (el('sheetAuraNext')) el('sheetAuraNext').textContent = (next.min-pts) + ' до ' + next.name;
+  }
+
+  // Челленджи
+  try {
+    const chR = await fetch('/api/challenges').then(r=>r.json());
+    if (chR.ok) {
+      const daysLeft = ((8 - new Date().getDay()) % 7) || 7;
+      if (el('sheetResetBadge')) el('sheetResetBadge').textContent = 'сброс через ' + daysLeft + ' дн.';
+      if (el('sheetChallengesList')) el('sheetChallengesList').innerHTML = chR.challenges.map(ch => {
+        const done = ch.completed;
+        const prog = ch.progress || {cur:0,max:1};
+        const pct  = Math.min(100, Math.round(prog.cur/prog.max*100));
+        return `<div style="display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid ${done?'rgba(255,43,43,0.2)':'rgba(255,255,255,0.06)'};margin-bottom:6px;">
+          <span style="font-size:18px;">${ch.emoji}</span>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:700;color:${done?'rgba(255,255,255,0.9)':'rgba(255,255,255,0.7)'};">${ch.name}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.35);">${ch.desc}</div>
+            <div style="height:2px;border-radius:99px;background:rgba(255,255,255,0.07);margin-top:5px;overflow:hidden;"><div style="height:100%;width:${pct}%;border-radius:99px;background:${done?'#ff2b2b':'rgba(255,255,255,0.2)'};"></div></div>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:rgba(255,43,43,0.7);flex-shrink:0;">+${ch.aura} ✦</span>
+          ${done?'<span style="font-size:16px;">✅</span>':''}
+        </div>`;
+      }).join('');
+    }
+  } catch(_) {}
+
+  // Ачивки
+  try {
+    const achR = await fetch('/api/achievements').then(r=>r.json());
+    if (achR.ok) {
+      // Обновляем ауру если надо
+      if (achR.auraPoints && achR.auraPoints !== pts) {
+        if (el('sheetAuraPts')) el('sheetAuraPts').textContent = achR.auraPoints;
+        if (el('auraScore'))    el('auraScore').textContent    = achR.auraPoints;
+      }
+      const earned = achR.achievements.filter(a=>a.earned);
+      const locked = achR.achievements.filter(a=>!a.earned);
+      if (el('sheetAchEarned')) el('sheetAchEarned').innerHTML = earned.length
+        ? earned.map(a=>`<div title="${a.desc}" style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px;border-radius:12px;background:rgba(255,43,43,0.07);border:1px solid rgba(255,43,43,0.15);">
+            <div style="font-size:24px;line-height:1;">${a.emoji}</div>
+            <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.55);text-align:center;line-height:1.2;">${a.name}</div>
+          </div>`).join('')
+        : '<div style="grid-column:1/-1;font-size:12px;color:rgba(255,255,255,0.25);padding:4px 0;">Слушай музыку чтобы получить первые ачивки</div>';
+      if (el('sheetAchLocked')) el('sheetAchLocked').innerHTML = locked.map(a=>
+        `<div title="${a.desc}: +${a.aura} ауры" style="display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);">
+          <span style="font-size:13px;filter:grayscale(1);opacity:0.3;">${a.emoji}</span>
+          <span style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.2);">${a.name}</span>
+        </div>`).join('');
+    }
+  } catch(_) {}
+};
 
 window.copyRefCode = function() {};
 
