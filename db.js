@@ -152,7 +152,7 @@ async function pgUpdateUser(id, patch) {
   for (const [key, col] of Object.entries(map)) {
     if (patch[key] !== undefined) {
       sets.push(`${col}=$${i++}`);
-      vals.push(["currentTrack","photos","trackHistory"].includes(key) ? JSON.stringify(patch[key]) : patch[key]);
+      vals.push(["currentTrack","photos","trackHistory","achievements"].includes(key) ? JSON.stringify(patch[key]) : patch[key]);
     }
   }
 

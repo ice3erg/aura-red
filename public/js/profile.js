@@ -412,6 +412,8 @@ function showNotice(msg, type = 'error') {
     if (achR.ok) {
       // Обновляем счётчик ауры если сервер начислил бонусы за ачивки
       if (achR.auraPoints !== undefined && achR.auraPoints !== (user.auraPoints || 0)) {
+        const oldPts = user.auraPoints || 0;
+        const gained = achR.auraPoints - oldPts;
         user.auraPoints = achR.auraPoints;
         renderAura(achR.auraPoints);
         const _ac2 = getAuraColor(achR.auraPoints);
@@ -419,13 +421,9 @@ function showNotice(msg, type = 'error') {
         if (_ab2) { _ab2.style.borderColor = _ac2.color; _ab2.style.boxShadow = `0 0 20px ${_ac2.glow}`; }
         const _f2 = document.getElementById('auraBarFill');
         if (_f2) _f2.style.background = `linear-gradient(90deg, ${_ac2.color}, ${_ac2.glow})`;
-        // Кольцо аватара тоже обновляем
         const ring2 = document.getElementById('avatarRing');
         if (ring2) ring2.style.background = `conic-gradient(${_ac2.color}, ${_ac2.glow}, ${_ac2.color})`;
-        // Тост если получили новые ачивки
-        if (achR.newUnlocked > 0) {
-          showNotice(`+${achR.auraPoints - (user.auraPoints||0)} ауры за достижения! 🏆`, 'success');
-        }
+        if (gained > 0) showNotice(`+${gained} ауры за достижения! 🏆`, 'success');
       }
       const earned  = achR.achievements.filter(a => a.earned);
       const locked  = achR.achievements.filter(a => !a.earned);
