@@ -787,7 +787,7 @@ app.post("/api/chats/:id/messages", requireAuth, async (req, res) => {
 });
 
 // ── Ping (keep-alive) ──────────────────────────────────────
-app.get("/ping", (req, res) => res.json({ ok: true, ts: Date.now() }));
+app.get("/ping", (req, res) => res.json({ ok: true, ts: Date.now(), v: "2026-04-01-v4", routes: ["username","reactions","achievements","challenges"] }));
 
 // Само-пинг каждые 10 минут чтобы Render не засыпал
 if (process.env.RENDER_EXTERNAL_URL) {
@@ -872,7 +872,34 @@ app.get("/api/reactions", requireAuth, async (req, res) => {
 // ── Achievements ──────────────────────────────────────────
 app.get("/api/achievements", requireAuth, async (req, res) => {
   try {
-    const user = await db.findById(req.user.id);
+    let user = await db.findById(req.user.id);
+    if (!user) return res.json({ ok: true, achievements: [], title: '' });
+
+    // Обогащаем user статистикой сигналов для проверки ачивок
+    try {
+      const pool = db.pgPool();
+      if (pool) {
+        const [sent, accepted] = await Promise.all([
+          pool.query(`SELECT COUNT(*)::int as n FROM signals WHERE from_id=$1`, [user.id]).catch(()=>({rows:[{n:0}]})),
+          pool.query(`SELECT COUNT(*)::int as n FROM signals WHERE to_id=$1 AND status='accepted'`, [user.id]).catch(()=>({rows:[{n:0}]})),
+        ]);
+        user = { ...user, signalsSent: sent.rows[0]?.n||0, signalsAccepted: accepted.rows[0]?.n||0 };
+      }
+    } catch(_) {}
+
+    // Проверяем и выдаём новые достижения прямо здесь
+    const newOnes = checkAchievements(user);
+    if (newOnes.length > 0) {
+      const achBonus = newOnes.reduce((s, a) => {
+        const def = ACHIEVEMENTS.find(x => x.id === a.id);
+        return s + (def?.aura || 0);
+      }, 0);
+      user = await db.updateUser(user.id, {
+        achievements: [...(user.achievements || []), ...newOnes],
+        auraPoints: (user.auraPoints || 0) + achBonus,
+      });
+    }
+
     const earned = user?.achievements || [];
     const earnedIds = new Set(earned.map(a => a.id));
     const all = ACHIEVEMENTS.map(a => ({
@@ -881,10 +908,9 @@ app.get("/api/achievements", requireAuth, async (req, res) => {
       earnedAt: earned.find(e => e.id === a.id)?.ts || null,
     }));
     const title = getTitle(user?.auraPoints || 0);
-    res.json({ ok: true, achievements: all, title });
+    res.json({ ok: true, achievements: all, title, newUnlocked: newOnes.length });
   } catch(e) {
     console.error('[achievements]', e.message);
-    // Возвращаем пустой список — не падаем
     res.json({ ok: true, achievements: [], title: '' });
   }
 });
@@ -1005,7 +1031,6 @@ app.get("/api/weekly-recap", requireAuth, async (req, res) => {
 });
 
 
-app.get('/ping', (req, res) => res.json({ ok:true, v:'2026-03-30-v3', routes:['username','reactions','referral'] }));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`+aura запущен на http://127.0.0.1:${PORT}`));

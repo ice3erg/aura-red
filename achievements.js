@@ -2,8 +2,8 @@
 const ACHIEVEMENTS = [
   // Первые шаги
   { id: 'first_track',   emoji: '🎵', name: 'Первый трек',    desc: 'Опубликовал первый трек',          check: u => (u.trackHistory||[]).length >= 1,   aura: 10  },
-  { id: 'first_signal',  emoji: '📡', name: 'На связи',       desc: 'Отправил первый сигнал',           check: u => false, aura: 15  }, // проверяется отдельно
-  { id: 'first_chat',    emoji: '💬', name: 'Разговор',       desc: 'Первый принятый сигнал',           check: u => false, aura: 20  },
+  { id: 'first_signal',  emoji: '📡', name: 'На связи',       desc: 'Отправил первый сигнал',           check: u => (u.signalsSent||0) >= 1,    aura: 15  },
+  { id: 'first_chat',    emoji: '💬', name: 'Разговор',       desc: 'Первый принятый сигнал',           check: u => (u.signalsAccepted||0) >= 1, aura: 20  },
 
   // Музыкальная активность
   { id: 'tracks_10',     emoji: '🎧', name: 'Меломан',        desc: '10 треков в истории',              check: u => (u.trackHistory||[]).length >= 10,  aura: 20  },
@@ -16,8 +16,8 @@ const ACHIEVEMENTS = [
   { id: 'streak_30',     emoji: '💀', name: 'Одержимый',      desc: '30 дней подряд',                  check: u => (u.streakDays||0) >= 30,            aura: 200 },
 
   // Социальное
-  { id: 'signals_5',     emoji: '🌍', name: 'Радарный',       desc: '5 принятых сигналов',             check: u => false, aura: 50  },
-  { id: 'signals_10',    emoji: '🛸', name: 'Притяжение',     desc: '10 принятых сигналов',            check: u => false, aura: 100 },
+  { id: 'signals_5',     emoji: '🌍', name: 'Радарный',       desc: '5 принятых сигналов',             check: u => (u.signalsAccepted||0) >= 5,  aura: 50  },
+  { id: 'signals_10',    emoji: '🛸', name: 'Притяжение',     desc: '10 принятых сигналов',            check: u => (u.signalsAccepted||0) >= 10, aura: 100 },
 
   // Аура
   { id: 'aura_100',      emoji: '✨', name: 'Заряженный',     desc: '100 очков ауры',                  check: u => (u.auraPoints||0) >= 100,           aura: 0   },
