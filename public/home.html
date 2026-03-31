@@ -339,8 +339,12 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes youPulse {
-      0%,100% { box-shadow: inherit; transform: scale(1); }
-      50%      { transform: scale(1.06); }
+      0%,100% { transform: scale(1);    opacity: 0.9; }
+      50%      { transform: scale(1.07); opacity: 1;   }
+    }
+    @keyframes goldSpin {
+      from { filter: hue-rotate(0deg) brightness(1); }
+      to   { filter: hue-rotate(30deg) brightness(1.2); }
     }
     @keyframes pulse-dot {
       0%, 100% { box-shadow: 0 0 0 0 var(--red-glow); }

@@ -909,8 +909,8 @@ app.get("/api/challenges", requireAuth, async (req, res) => {
     // Реакции и сигналы за неделю из БД
     if (pool) {
       const [rxGiven, rxReceived, sigs] = await Promise.all([
-        pool.query(`SELECT COUNT(*) FROM reactions WHERE from_id=$1 AND created_at>$2`, [req.user.id, weekStartTs]),
-        pool.query(`SELECT COUNT(*) FROM reactions WHERE to_id=$1 AND created_at>$2`,   [req.user.id, weekStartTs]),
+        pool.query(`SELECT COUNT(*) FROM reactions WHERE from_id=$1 AND created_at>$2`, [req.user.id, weekStartTs]).catch(()=>({rows:[{count:0}]})),
+        pool.query(`SELECT COUNT(*) FROM reactions WHERE to_id=$1 AND created_at>$2`,   [req.user.id, weekStartTs]).catch(()=>({rows:[{count:0}]})),
         pool.query(`SELECT COUNT(*) FROM signals WHERE from_id=$1 AND created_at>$2`,   [req.user.id, weekStartTs]).catch(()=>({rows:[{count:0}]})),
       ]);
       weekStats.reactionsGiven    = parseInt(rxGiven.rows[0].count)||0;
@@ -919,12 +919,16 @@ app.get("/api/challenges", requireAuth, async (req, res) => {
     }
 
     const defs = getWeeklyChallengeDefs();
-    const challenges = defs.map(ch => ({
-      ...ch,
-      check: undefined,
-      completed: ch.check(user, weekStats),
-      progress: getProgress(ch.id, weekStats),
-    }));
+    const challenges = defs.map(ch => {
+      let completed = false;
+      try { completed = ch.check(user, weekStats); } catch(_) {}
+      return {
+        id: ch.id, emoji: ch.emoji, name: ch.name,
+        desc: ch.desc, aura: ch.aura,
+        completed,
+        progress: getProgress(ch.id, weekStats),
+      };
+    });
 
     res.json({ ok: true, challenges, weekStats });
   } catch(e) {

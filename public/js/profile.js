@@ -1,3 +1,13 @@
+// Стиль кольца по уровню ауры
+function getAuraRingStyle(pts, isPlaying) {
+  if (pts >= 600) return { border: '3px solid rgba(255,215,80,0.95)', shadow: '0 0 16px rgba(255,215,80,0.4)', anim: 'goldSpin 4s linear infinite' };
+  if (pts >= 300) return { border: '2.5px solid rgba(255,43,43,0.95)', shadow: '0 0 14px rgba(255,43,43,0.45)', anim: isPlaying ? 'ringPulse 1.3s ease-in-out infinite' : 'none' };
+  if (pts >= 150) return { border: '2px solid rgba(255,43,43,0.75)', shadow: '0 0 8px rgba(255,43,43,0.3)', anim: isPlaying ? 'ringPulse 1.6s ease-in-out infinite' : 'none' };
+  if (pts >= 75)  return { border: '2px solid rgba(255,43,43,0.5)', shadow: '0 0 5px rgba(255,43,43,0.15)', anim: isPlaying ? 'ringPulse 2s ease-in-out infinite' : 'none' };
+  if (pts >= 10)  return { border: '1.5px dashed rgba(255,255,255,0.3)', shadow: 'none', anim: 'none' };
+  return { border: '1.5px solid rgba(255,255,255,0.1)', shadow: 'none', anim: 'none' };
+}
+
 // Цвет ауры по очкам
 function getAuraColor(pts) {
   // Палитра +aura: белый → красный → ярко-красный → золотой
@@ -187,18 +197,19 @@ function showNotice(msg, type = 'error') {
   const ph  = document.getElementById('avatarPh');
   if (img && user.avatar) { img.src = user.avatar; img.className = 'avatar-img visible'; if (ph) ph.style.display = 'none'; }
 
-  // Цветное кольцо ауры вокруг аватарки
-  const auraColor = getAuraColor(user.auraPoints || 0);
+  // Кольцо ауры — стиль по уровню
   const ring = document.getElementById('avatarRing');
   if (ring) {
-    ring.style.background = `conic-gradient(${auraColor.color}, ${auraColor.glow}, ${auraColor.color})`;
-    ring.style.opacity = '0.85';
-    // Пульсирует только если играет трек
-    try {
-      const saved = localStorage.getItem('aura_last_track');
-      if (saved && JSON.parse(saved)?.name) ring.classList.add('playing');
-      else ring.style.animation = 'none'; // статичное кольцо
-    } catch(_) {}
+    let isPlaying = false;
+    try { const s = localStorage.getItem('aura_last_track'); isPlaying = !!(s && JSON.parse(s)?.name); } catch(_) {}
+    const rs = getAuraRingStyle(user.auraPoints || 0, isPlaying);
+    ring.style.border = rs.border;
+    ring.style.boxShadow = rs.shadow;
+    ring.style.animation = rs.anim;
+    ring.style.opacity = '1';
+    ring.style.inset = '-4px';
+    ring.style.background = 'transparent';
+    if (isPlaying) ring.classList.add('playing');
   }
 
   // Name + username

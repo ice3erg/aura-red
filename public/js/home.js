@@ -1,3 +1,33 @@
+// Стиль кольца по очкам ауры — уровни с разным визуалом
+function getAuraRing(pts, isPlaying) {
+  if (pts >= 600) return {
+    border: '3px solid rgba(255,215,80,0.95)',
+    shadow: '0 0 0 2px rgba(255,215,80,0.15),0 0 16px rgba(255,215,80,0.45)',
+    anim:   isPlaying ? 'youPulse 1.2s ease-in-out infinite' : 'goldSpin 4s linear infinite',
+  };
+  if (pts >= 300) return {
+    border: '2.5px solid rgba(255,43,43,0.95)',
+    shadow: '0 0 0 2px rgba(255,43,43,0.12),0 0 14px rgba(255,43,43,0.45)',
+    anim:   isPlaying ? 'youPulse 1.3s ease-in-out infinite' : 'none',
+  };
+  if (pts >= 150) return {
+    border: '2px solid rgba(255,43,43,0.75)',
+    shadow: '0 0 8px rgba(255,43,43,0.3)',
+    anim:   isPlaying ? 'youPulse 1.6s ease-in-out infinite' : 'none',
+  };
+  if (pts >= 75) return {
+    border: '2px solid rgba(255,43,43,0.5)',
+    shadow: '0 0 5px rgba(255,43,43,0.15)',
+    anim:   isPlaying ? 'youPulse 2s ease-in-out infinite' : 'none',
+  };
+  if (pts >= 10) return {
+    border: '1.5px dashed rgba(255,255,255,0.3)',
+    shadow: 'none',
+    anim:   'none',
+  };
+  return { border: '1.5px solid rgba(255,255,255,0.1)', shadow: 'none', anim: 'none' };
+}
+
 (function () {
   const U = window.AuraUtils;
   const DEFAULT = [59.9343, 30.3351];
@@ -41,17 +71,14 @@
   // ── You marker ───────────────────────────────────────────
   function makeYouIcon(user) {
     const size = 48;
-    const ap2 = user?.auraPoints || 0;
-    const yColor = ap2>=600?'rgba(255,220,100,0.9)':ap2>=300?'rgba(255,43,43,0.95)':ap2>=150?'rgba(255,80,43,0.85)':ap2>=75?'rgba(255,43,43,0.7)':ap2>=10?'rgba(255,255,255,0.6)':'rgba(255,255,255,0.25)';
-    const yGlow  = ap2>=300?'0 0 14px rgba(255,43,43,0.5)':ap2>=75?'0 0 10px rgba(255,43,43,0.3)':'0 0 6px rgba(255,255,255,0.15)';
     const isPlaying = !!_currentTrack?.name;
-    const yAnim = isPlaying ? 'animation:youPulse 1.4s ease-in-out infinite;' : '';
+    const yr = getAuraRing(user?.auraPoints || 0, isPlaying);
     const inner = user?.avatar
       ? `<img src="${user.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
       : `<div class="ava-init" style="font-size:18px;">${(user?.name || 'Я')[0].toUpperCase()}</div>`;
     return L.divIcon({
       className: '',
-      html: `<div class="you-marker" style="width:${size}px;height:${size}px;border-radius:50%;overflow:hidden;position:relative;border:2.5px solid ${yColor};box-shadow:${yGlow};${yAnim}">
+      html: `<div class="you-marker" style="width:${size}px;height:${size}px;border-radius:50%;overflow:hidden;position:relative;border:${yr.border};box-shadow:${yr.shadow};${yr.anim !== 'none' ? 'animation:' + yr.anim : ''}">
                ${inner}
              </div>`,
       iconSize: [size, size], iconAnchor: [size/2, size/2],
@@ -83,11 +110,8 @@
     const opacity = u.isDemo ? '0.45' : '1';
 
     // Кольцо цвета ауры — простая inline функция
-    const ap = u.auraPoints || 0;
-    // Цвета в стиле +aura: белый → красный → ярко-красный → золотой
-    const ringColor = ap>=600?'rgba(255,220,100,0.9)':ap>=300?'rgba(255,43,43,0.95)':ap>=150?'rgba(255,80,43,0.85)':ap>=75?'rgba(255,43,43,0.7)':ap>=10?'rgba(255,255,255,0.5)':'rgba(255,255,255,0.15)';
-    const ringGlow  = ap>=300?'rgba(255,43,43,0.5)':ap>=75?'rgba(255,43,43,0.25)':'transparent';
-    const auraRing = `<div style="position:absolute;inset:-3px;border-radius:50%;border:2px solid ${ringColor};box-shadow:0 0 6px ${ringGlow};pointer-events:none;z-index:0;"></div>`;
+    const mr = getAuraRing(u.auraPoints || 0, mt === 'same-track');
+    const auraRing = `<div style="position:absolute;inset:-3px;border-radius:50%;${mr.border.includes('dashed') ? 'border:' + mr.border : 'border:' + mr.border};box-shadow:${mr.shadow};${mr.anim !== 'none' ? 'animation:' + mr.anim : ''};pointer-events:none;z-index:0;"></div>`;
 
     return L.divIcon({
       className: '',
