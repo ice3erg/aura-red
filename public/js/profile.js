@@ -1,11 +1,37 @@
 // Стиль кольца по уровню ауры
 function getAuraRingStyle(pts, isPlaying) {
-  if (pts >= 600) return { border: '3px solid rgba(255,215,80,0.95)', shadow: '0 0 16px rgba(255,215,80,0.4)', anim: 'goldSpin 4s linear infinite' };
-  if (pts >= 300) return { border: '2.5px solid rgba(255,43,43,0.95)', shadow: '0 0 14px rgba(255,43,43,0.45)', anim: isPlaying ? 'ringPulse 1.3s ease-in-out infinite' : 'none' };
-  if (pts >= 150) return { border: '2px solid rgba(255,43,43,0.75)', shadow: '0 0 8px rgba(255,43,43,0.3)', anim: isPlaying ? 'ringPulse 1.6s ease-in-out infinite' : 'none' };
-  if (pts >= 75)  return { border: '2px solid rgba(255,43,43,0.5)', shadow: '0 0 5px rgba(255,43,43,0.15)', anim: isPlaying ? 'ringPulse 2s ease-in-out infinite' : 'none' };
-  if (pts >= 10)  return { border: '1.5px dashed rgba(255,255,255,0.3)', shadow: 'none', anim: 'none' };
-  return { border: '1.5px solid rgba(255,255,255,0.1)', shadow: 'none', anim: 'none' };
+  // 600+ : золотое вращающееся кольцо
+  if (pts >= 600) return {
+    border: '3px solid rgba(255,215,80,0.95)',
+    shadow: '0 0 0 1px rgba(255,215,80,0.2), 0 0 18px rgba(255,215,80,0.5)',
+    anim:   'goldSpin 3s linear infinite',
+  };
+  // 300-599 : яркий красный, пульсирует с треком
+  if (pts >= 300) return {
+    border: '2.5px solid rgba(255,43,43,0.95)',
+    shadow: '0 0 0 1px rgba(255,43,43,0.1), 0 0 14px rgba(255,43,43,0.5)',
+    anim:   isPlaying ? 'ringPulse 1.3s ease-in-out infinite' : 'ringBreath 3s ease-in-out infinite',
+  };
+  // 150-299 : красный, дышит
+  if (pts >= 150) return {
+    border: '2px solid rgba(255,43,43,0.75)',
+    shadow: '0 0 8px rgba(255,43,43,0.3)',
+    anim:   isPlaying ? 'ringPulse 1.6s ease-in-out infinite' : 'ringBreath 4s ease-in-out infinite',
+  };
+  // 75-149 : тонкий красный
+  if (pts >= 75) return {
+    border: '2px solid rgba(255,43,43,0.5)',
+    shadow: '0 0 5px rgba(255,43,43,0.15)',
+    anim:   isPlaying ? 'ringPulse 2s ease-in-out infinite' : 'none',
+  };
+  // 10-74 : пунктир вращается медленно
+  if (pts >= 10) return {
+    border: '2px dashed rgba(255,255,255,0.4)',
+    shadow: 'none',
+    anim:   'dashSpin 8s linear infinite',
+  };
+  // 0-9 : почти невидимый
+  return { border: '1px solid rgba(255,255,255,0.08)', shadow: 'none', anim: 'none' };
 }
 
 // Цвет ауры по очкам

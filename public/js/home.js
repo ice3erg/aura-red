@@ -1,19 +1,19 @@
-// Стиль кольца по очкам ауры — уровни с разным визуалом
+// Стиль кольца по очкам ауры
 function getAuraRing(pts, isPlaying) {
   if (pts >= 600) return {
     border: '3px solid rgba(255,215,80,0.95)',
-    shadow: '0 0 0 2px rgba(255,215,80,0.15),0 0 16px rgba(255,215,80,0.45)',
-    anim:   isPlaying ? 'youPulse 1.2s ease-in-out infinite' : 'goldSpin 4s linear infinite',
+    shadow: '0 0 0 2px rgba(255,215,80,0.15),0 0 16px rgba(255,215,80,0.5)',
+    anim:   'goldSpin 3s linear infinite',
   };
   if (pts >= 300) return {
     border: '2.5px solid rgba(255,43,43,0.95)',
-    shadow: '0 0 0 2px rgba(255,43,43,0.12),0 0 14px rgba(255,43,43,0.45)',
-    anim:   isPlaying ? 'youPulse 1.3s ease-in-out infinite' : 'none',
+    shadow: '0 0 0 1px rgba(255,43,43,0.1),0 0 14px rgba(255,43,43,0.5)',
+    anim:   isPlaying ? 'youPulse 1.3s ease-in-out infinite' : 'ringBreath 3s ease-in-out infinite',
   };
   if (pts >= 150) return {
     border: '2px solid rgba(255,43,43,0.75)',
     shadow: '0 0 8px rgba(255,43,43,0.3)',
-    anim:   isPlaying ? 'youPulse 1.6s ease-in-out infinite' : 'none',
+    anim:   isPlaying ? 'youPulse 1.6s ease-in-out infinite' : 'ringBreath 4s ease-in-out infinite',
   };
   if (pts >= 75) return {
     border: '2px solid rgba(255,43,43,0.5)',
@@ -21,11 +21,11 @@ function getAuraRing(pts, isPlaying) {
     anim:   isPlaying ? 'youPulse 2s ease-in-out infinite' : 'none',
   };
   if (pts >= 10) return {
-    border: '1.5px dashed rgba(255,255,255,0.3)',
+    border: '2px dashed rgba(255,255,255,0.4)',
     shadow: 'none',
-    anim:   'none',
+    anim:   'dashSpin 8s linear infinite',
   };
-  return { border: '1.5px solid rgba(255,255,255,0.1)', shadow: 'none', anim: 'none' };
+  return { border: '1px solid rgba(255,255,255,0.08)', shadow: 'none', anim: 'none' };
 }
 
 (function () {

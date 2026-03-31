@@ -353,11 +353,19 @@
 
     @keyframes youPulse {
       0%,100% { transform: scale(1);    opacity: 0.9; }
-      50%      { transform: scale(1.07); opacity: 1;   }
+      50%      { transform: scale(1.08); opacity: 1;   }
     }
     @keyframes goldSpin {
-      from { filter: hue-rotate(0deg) brightness(1); }
-      to   { filter: hue-rotate(30deg) brightness(1.2); }
+      from { filter: hue-rotate(0deg)   brightness(1);   }
+      to   { filter: hue-rotate(40deg)  brightness(1.2); }
+    }
+    @keyframes ringBreath {
+      0%,100% { opacity: 0.5; }
+      50%     { opacity: 1;   }
+    }
+    @keyframes dashSpin {
+      from { transform: rotate(0deg);   }
+      to   { transform: rotate(360deg); }
     }
     @keyframes pulse-dot {
       0%, 100% { box-shadow: 0 0 0 0 var(--red-glow); }
