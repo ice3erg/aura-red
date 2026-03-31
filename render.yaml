@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: aura-red
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    autoDeploy: true
