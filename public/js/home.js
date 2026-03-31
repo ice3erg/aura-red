@@ -53,6 +53,21 @@ function getAuraRing(pts, isPlaying) {
   let _currentTrack = null;
 
   // ── Geo ──────────────────────────────────────────────────
+  // Показываем город в левом верхнем углу
+  async function updateCityDisplay(lat, lng) {
+    try {
+      const r = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ru`,
+        { headers: { 'User-Agent': 'AuraApp/1.0' } }
+      ).then(r => r.json());
+      const city = r.address?.city || r.address?.town || r.address?.village || r.address?.county || '';
+      const chip = document.getElementById('cityName');
+      const wrap = document.getElementById('cityChip');
+      if (chip && city) chip.textContent = city;
+      if (wrap && city) wrap.style.display = 'flex';
+    } catch(_) {}
+  }
+
   function getGeo() {
     return new Promise(res => {
       if (!navigator.geolocation) { res(null); return; }
@@ -321,7 +336,7 @@ function getAuraRing(pts, isPlaying) {
 
       // Обновляем радар с новым треком
       const pos = await getGeo();
-      if (pos) loadRadar(pos.lat, pos.lng);
+      if (pos) { loadRadar(pos.lat, pos.lng); updateCityDisplay(pos.lat, pos.lng); }
 
     } else {
       pill.classList.remove('has-track');
@@ -465,6 +480,15 @@ function getAuraRing(pts, isPlaying) {
   document.getElementById('sheetClose')?.addEventListener('click', closeSheet);
   backdrop.addEventListener('click', e => { if (e.target === backdrop) closeSheet(); });
   map.on('click', closeSheet);
+
+  // Ripple эффект при клике на карту
+  map.on('click', function(e) {
+    const pt = map.latLngToContainerPoint(e.latlng);
+    const ripple = document.createElement('div');
+    ripple.style.cssText = `position:fixed;left:${pt.x}px;top:${pt.y}px;width:0;height:0;border-radius:50%;border:2px solid rgba(255,43,43,0.5);transform:translate(-50%,-50%);pointer-events:none;z-index:400;animation:mapRipple 0.7s ease-out forwards;`;
+    document.body.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 750);
+  });
 
   // Сигнал
   document.getElementById('sheetSignalBtn').addEventListener('click', async () => {
