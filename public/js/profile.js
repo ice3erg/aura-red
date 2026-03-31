@@ -160,14 +160,17 @@ function renderMusicStats(history) {
           <div class="artist-name">${a.name}</div>
         </div>`).join('');
 
-      // Асинхронно подгружаем фото артистов со страниц Last.fm
+      // Асинхронно подгружаем фото артистов через Deezer (браузер, без ключа)
       topArtists.forEach(async (a, i) => {
         try {
-          const r = await fetch(`/api/lastfm/artist-image?artist=${encodeURIComponent(a.name)}`).then(r=>r.json());
-          if (r.image) {
+          const r = await fetch(`https://api.deezer.com/search/artist?q=${encodeURIComponent(a.name)}&limit=1&output=jsonp`, { mode: 'no-cors' }).catch(() => null);
+          // Deezer CORS — используем через прокси сервера
+          const sr = await fetch(`/api/lastfm/artist-image?artist=${encodeURIComponent(a.name)}`).then(r=>r.json()).catch(()=>({image:''}));
+          const imgUrl = sr.image;
+          if (imgUrl) {
             const img = document.getElementById(`artist-img-${i}`);
             const ph  = document.getElementById(`artist-ph-${i}`);
-            if (img) { img.src = r.image; img.style.display = ''; }
+            if (img) { img.src = imgUrl; img.style.display = ''; }
             if (ph)  ph.style.display = 'none';
           }
         } catch(_) {}

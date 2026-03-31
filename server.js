@@ -346,24 +346,37 @@ app.post("/api/lastfm/sync", requireAuth, async (req, res) => {
   }
 });
 
-// Last.fm — фото артиста с его страницы
+// Фото артиста — Deezer (без ключа) с fallback на MusicBrainz
 app.get("/api/lastfm/artist-image", async (req, res) => {
   const { artist } = req.query;
   if (!artist) return res.json({ ok: false, image: "" });
-  const apiKey = process.env.LASTFM_API_KEY;
-  if (!apiKey) return res.json({ ok: false, image: "" });
   try {
-    const r = await axios.get("https://ws.audioscrobbler.com/2.0/", {
-      params: { method: "artist.getInfo", artist, api_key: apiKey, format: "json" },
-      timeout: 5000
+    // Deezer Search API — бесплатно, без ключа
+    const r = await axios.get("https://api.deezer.com/search/artist", {
+      params: { q: artist, limit: 3 },
+      timeout: 5000,
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; AuraApp/1.0)" }
     });
-    const images = r.data?.artist?.image || [];
-    const placeholder = "2a96cbd8b46e442fc41c2b86b821562f";
-    const img = images.find(i => i.size === "extralarge")?.["#text"]
-             || images.find(i => i.size === "large")?.["#text"] || "";
-    const valid = img && img.startsWith("https://") && !img.includes(placeholder) ? img : "";
-    res.json({ ok: true, image: valid });
+    const results = r.data?.data || [];
+    // Ищем точное совпадение или берём первый
+    const match = results.find(a => a.name.toLowerCase() === artist.toLowerCase()) || results[0];
+    const img = match?.picture_xl || match?.picture_big || match?.picture_medium || "";
+    return res.json({ ok: true, image: img });
   } catch(e) {
+    // Fallback: MusicBrainz cover art
+    try {
+      const mb = await axios.get("https://musicbrainz.org/ws/2/artist/", {
+        params: { query: artist, limit: 1, fmt: "json" },
+        headers: { "User-Agent": "AuraApp/1.0 (contact@aura.app)" },
+        timeout: 4000
+      });
+      const mbid = mb.data?.artists?.[0]?.id;
+      if (mbid) {
+        const fa = await axios.get(`https://coverartarchive.org/release-group/${mbid}`, { timeout: 3000 }).catch(()=>null);
+        const img = fa?.data?.images?.[0]?.thumbnails?.large || "";
+        return res.json({ ok: true, image: img });
+      }
+    } catch(_) {}
     res.json({ ok: false, image: "" });
   }
 });
