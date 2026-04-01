@@ -61,6 +61,22 @@ if (USE_PG) {
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS title TEXT DEFAULT ''`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS vk_connected BOOLEAN DEFAULT false`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS genres JSONB DEFAULT '[]'`))
+      .then(() => pgPool.query(`
+        CREATE TABLE IF NOT EXISTS vibe_zones (
+          id TEXT PRIMARY KEY,
+          creator_id TEXT NOT NULL,
+          name TEXT NOT NULL,
+          emoji TEXT DEFAULT '🔥',
+          lat DOUBLE PRECISION NOT NULL,
+          lng DOUBLE PRECISION NOT NULL,
+          radius_m INTEGER DEFAULT 300,
+          track TEXT DEFAULT '',
+          artist TEXT DEFAULT '',
+          genre TEXT DEFAULT '',
+          created_at BIGINT DEFAULT 0,
+          expires_at BIGINT DEFAULT 0
+        )
+      `))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS vk_username TEXT DEFAULT ''`))
       .then(() => pgPool.query(`
         CREATE TABLE IF NOT EXISTS friends (

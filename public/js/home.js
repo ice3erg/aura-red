@@ -51,6 +51,11 @@ function getAuraRing(pts, isPlaying) {
   let _acceptedSignalTo = new Set();
   let _lastPos = null;
   let _currentTrack = null;
+  let _zoneMarkers = [];
+  let _zoneCreatePos = null;
+  let _selectedZoneEmoji = '🔥';
+  let _myZoneId = null;
+  let _longPressTimer = null;
 
   // ── Geo ──────────────────────────────────────────────────
   // Показываем город в стиле Zenly
@@ -362,7 +367,7 @@ function getAuraRing(pts, isPlaying) {
 
       // Обновляем радар с новым треком
       const pos = await getGeo();
-      if (pos) { loadRadar(pos.lat, pos.lng); updateCityDisplay(pos.lat, pos.lng); }
+      if (pos) { loadRadar(pos.lat, pos.lng); updateCityDisplay(pos.lat, pos.lng); loadZones(); }
 
     } else {
       pill.classList.remove('has-track');
@@ -515,6 +520,29 @@ function getAuraRing(pts, isPlaying) {
   document.getElementById('sheetClose')?.addEventListener('click', closeSheet);
   backdrop.addEventListener('click', e => { if (e.target === backdrop) closeSheet(); });
   map.on('click', closeSheet);
+
+  // ── Long press для создания зоны ───────────────────────
+  map.on('mousedown touchstart', function(e) {
+    _longPressTimer = setTimeout(() => {
+      const latlng = e.latlng || map.mouseEventToLatLng(e.originalEvent);
+      if (!latlng) return;
+      _zoneCreatePos = latlng;
+      // Ripple в точке
+      const pt = map.latLngToContainerPoint(latlng);
+      const r = document.createElement('div');
+      r.style.cssText = `position:fixed;left:${pt.x}px;top:${pt.y}px;width:0;height:0;border-radius:50%;border:2px solid rgba(255,43,43,0.8);transform:translate(-50%,-50%);pointer-events:none;z-index:400;animation:mapRipple 0.5s ease-out forwards;`;
+      document.body.appendChild(r);
+      setTimeout(() => r.remove(), 550);
+      // Открываем шторку создания
+      setTimeout(() => {
+        const bd = document.getElementById('zoneCreateBackdrop');
+        if (bd) { bd.style.display = 'flex'; document.getElementById('zoneNameInput').focus(); }
+      }, 200);
+      navigator.vibrate?.([30, 20, 60]);
+    }, 600);
+  });
+  map.on('mouseup touchend touchcancel', () => clearTimeout(_longPressTimer));
+  map.on('drag', () => clearTimeout(_longPressTimer));
 
   // Ripple эффект при клике на карту
   map.on('click', function(e) {
@@ -913,6 +941,110 @@ function getAuraRing(pts, isPlaying) {
 
   // ── Init ─────────────────────────────────────────────────
   // ── Reactions ────────────────────────────────────────────
+  // ── Zone functions ───────────────────────────────────────
+  window.selectZoneEmoji = function(btn) {
+    document.querySelectorAll('.zone-emoji-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    _selectedZoneEmoji = btn.dataset.emoji;
+  };
+
+  window.closeZoneCreate = function() {
+    const bd = document.getElementById('zoneCreateBackdrop');
+    if (bd) bd.style.display = 'none';
+    _zoneCreatePos = null;
+  };
+
+  window.createZone = async function() {
+    const name = document.getElementById('zoneNameInput')?.value.trim();
+    if (!name) { document.getElementById('zoneNameInput')?.focus(); return; }
+    const genre = document.getElementById('zoneGenreInput')?.value.trim() || '';
+    const radius = parseInt(document.getElementById('zoneRadiusSlider')?.value) || 300;
+    const pos = _zoneCreatePos || _lastPos;
+    if (!pos) return;
+
+    try {
+      const r = await fetch('/api/zones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name, emoji: _selectedZoneEmoji, genre, radius_m: radius,
+          lat: pos.lat, lng: pos.lng,
+          track: _currentTrack?.name || '', artist: _currentTrack?.artists || ''
+        })
+      }).then(r => r.json());
+
+      if (r.ok) {
+        _myZoneId = r.id;
+        window.closeZoneCreate();
+        document.getElementById('zoneNameInput').value = '';
+        document.getElementById('zoneGenreInput').value = '';
+        showMapToast(`${_selectedZoneEmoji} Тусовка создана на 4 часа!`);
+        loadZones(); // перерисовываем
+      }
+    } catch(e) { console.error('[createZone]', e); }
+  };
+
+  async function loadZones() {
+    const pos = _lastPos;
+    if (!pos) return;
+    try {
+      const r = await fetch(`/api/zones?lat=${pos.lat}&lng=${pos.lng}`).then(r => r.json());
+      if (!r.ok) return;
+
+      // Убираем старые
+      _zoneMarkers.forEach(m => {
+        if (m.circle) map.removeLayer(m.circle);
+        if (m.marker) map.removeLayer(m.marker);
+      });
+      _zoneMarkers = [];
+
+      r.zones.forEach(zone => {
+        // Круг зоны
+        const color = zone.emoji === '🔥' ? '#ff4500' :
+                      zone.emoji === '🎵' ? '#8b5cf6' :
+                      zone.emoji === '🌊' ? '#06b6d4' :
+                      zone.emoji === '🎉' ? '#f59e0b' : '#ff2b2b';
+
+        const circle = L.circle([zone.lat, zone.lng], {
+          radius: zone.radius,
+          color: color,
+          fillColor: color,
+          fillOpacity: 0.06,
+          weight: 1.5,
+          opacity: 0.4,
+          dashArray: '6 4',
+        }).addTo(map);
+
+        // Иконка-метка зоны
+        const timeLeft = Math.max(0, Math.round((zone.expiresAt - Date.now()) / 3600000 * 10) / 10);
+        const label = L.divIcon({
+          className: '',
+          html: `<div class="zone-label" onclick="event.stopPropagation()">
+                   <div style="font-size:18px;line-height:1;">${zone.emoji}</div>
+                   <div style="font-size:11px;font-weight:700;margin-top:2px;">${zone.name}</div>
+                   <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:1px;">⏱ ${timeLeft}ч</div>
+                 </div>`,
+          iconSize: [80, 60], iconAnchor: [40, 60],
+        });
+        const marker = L.marker([zone.lat, zone.lng], { icon: label, zIndexOffset: 500 }).addTo(map);
+        marker.on('click', e => {
+          L.DomEvent.stopPropagation(e);
+          showMapToast(`${zone.emoji} ${zone.name} · ${zone.creatorName}${zone.genre ? ' · ' + zone.genre : ''}`);
+          // Если это моя зона — предлагаем удалить
+          if (zone.id === _myZoneId || (_user && zone.creatorName === _user.name)) {
+            setTimeout(() => {
+              if (confirm(`Удалить тусовку "${zone.name}"?`)) {
+                fetch('/api/zones/' + zone.id, { method: 'DELETE' }).then(() => { _myZoneId = null; loadZones(); });
+              }
+            }, 300);
+          }
+        });
+
+        _zoneMarkers.push({ circle, marker });
+      });
+    } catch(e) { console.error('[loadZones]', e); }
+  }
+
   window.sendReaction = async function(emoji) {
     const t = window._reactionTarget;
     if (!t?.toId) return;

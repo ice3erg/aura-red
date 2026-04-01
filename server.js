@@ -1172,6 +1172,59 @@ app.get("/api/challenges", requireAuth, async (req, res) => {
 });
 
 
+// ── Vibe Zones ────────────────────────────────────────────
+app.post("/api/zones", requireAuth, async (req, res) => {
+  const { name, emoji, lat, lng, radius_m, track, artist, genre } = req.body;
+  if (!name || !lat || !lng) return res.status(400).json({ ok:false, error:"Нужны name, lat, lng" });
+  const pool = db.pgPool();
+  if (!pool) return res.json({ ok:false, error:"БД недоступна" });
+  try {
+    const id = 'zone_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+    const expiresAt = Date.now() + 4 * 60 * 60 * 1000; // 4 часа
+    await pool.query(
+      `INSERT INTO vibe_zones(id,creator_id,name,emoji,lat,lng,radius_m,track,artist,genre,created_at,expires_at)
+       VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+      [id, req.user.id, String(name).slice(0,50), emoji||'🔥',
+       parseFloat(lat), parseFloat(lng), Math.min(parseInt(radius_m)||300, 1000),
+       track||'', artist||'', genre||'', Date.now(), expiresAt]
+    );
+    res.json({ ok:true, id, expiresAt });
+  } catch(e) { console.error('[zones POST]', e.message); res.status(500).json({ ok:false }); }
+});
+
+app.get("/api/zones", requireAuth, async (req, res) => {
+  const { lat, lng } = req.query;
+  const pool = db.pgPool();
+  if (!pool) return res.json({ ok:true, zones:[] });
+  try {
+    // Активные зоны — не просроченные
+    const r = await pool.query(
+      `SELECT z.*, u.name as creator_name, u.avatar as creator_avatar
+       FROM vibe_zones z JOIN users u ON u.id=z.creator_id
+       WHERE z.expires_at > $1
+       ORDER BY z.created_at DESC LIMIT 50`,
+      [Date.now()]
+    );
+    const zones = r.rows.map(z => ({
+      id: z.id, name: z.name, emoji: z.emoji,
+      lat: z.lat, lng: z.lng, radius: z.radius_m,
+      track: z.track, artist: z.artist, genre: z.genre,
+      creatorName: z.creator_name, creatorAvatar: z.creator_avatar,
+      createdAt: z.created_at, expiresAt: z.expires_at,
+    }));
+    res.json({ ok:true, zones });
+  } catch(e) { res.json({ ok:true, zones:[] }); }
+});
+
+app.delete("/api/zones/:id", requireAuth, async (req, res) => {
+  const pool = db.pgPool();
+  if (!pool) return res.json({ ok:false });
+  try {
+    await pool.query(`DELETE FROM vibe_zones WHERE id=$1 AND creator_id=$2`, [req.params.id, req.user.id]);
+    res.json({ ok:true });
+  } catch(e) { res.json({ ok:false }); }
+});
+
 // ── Referral ───────────────────────────────────────────────
 app.post("/api/referral/use", requireAuth, async (req, res) => {
   const { code } = req.body;
