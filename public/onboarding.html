@@ -2,49 +2,274 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Профиль — +aura</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>+aura</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--red:#ff2b2b;--bg:#060608;--surface:rgba(255,255,255,0.05);--border:rgba(255,255,255,0.08);--text:#fff;--muted:rgba(255,255,255,0.45)}
+    html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+
+    /* Фон */
+    .bg-glow{position:fixed;top:-20%;left:50%;transform:translateX(-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(255,43,43,0.1) 0%,transparent 70%);pointer-events:none}
+
+    /* Слайды */
+    .slides{position:fixed;inset:0;display:flex;transition:transform 0.45s cubic-bezier(0.4,0,0.2,1)}
+    .slide{min-width:100vw;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 32px calc(40px + env(safe-area-inset-bottom));position:relative}
+
+    /* Прогресс */
+    .progress{position:fixed;top:calc(env(safe-area-inset-top)+16px);left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:10}
+    .prog-dot{width:20px;height:3px;border-radius:99px;background:rgba(255,255,255,0.15);transition:all 0.3s}
+    .prog-dot.active{width:32px;background:#ff2b2b}
+    .prog-dot.done{background:rgba(255,43,43,0.4)}
+
+    /* Общие стили слайдов */
+    .slide-icon{font-size:56px;margin-bottom:20px;line-height:1}
+    .slide-title{font-size:28px;font-weight:900;letter-spacing:-0.5px;text-align:center;line-height:1.2;margin-bottom:10px}
+    .slide-sub{font-size:15px;color:var(--muted);text-align:center;line-height:1.6;max-width:300px}
+
+    /* Кнопки */
+    .btn-primary{width:100%;padding:17px;border-radius:16px;background:var(--red);color:#fff;font:800 16px/1 'Inter',sans-serif;border:none;cursor:pointer;transition:opacity 0.15s,transform 0.1s;letter-spacing:-0.2px;margin-top:24px}
+    .btn-primary:active{transform:scale(0.98)}
+    .btn-primary:disabled{opacity:0.4;cursor:default}
+    .btn-skip{background:none;border:none;color:rgba(255,255,255,0.3);font:600 14px/1 'Inter',sans-serif;cursor:pointer;margin-top:14px;padding:8px}
+
+    /* Инпуты */
+    .input-wrap{position:relative;width:100%;margin-top:20px}
+    .input-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:8px;display:block}
+    .input-field{width:100%;padding:16px 18px;border-radius:14px;background:var(--surface);border:1px solid var(--border);color:#fff;font:700 16px/1 'Inter',sans-serif;outline:none;-webkit-appearance:none}
+    .input-field:focus{border-color:rgba(255,43,43,0.4)}
+    .input-field::placeholder{color:rgba(255,255,255,0.2);font-weight:500}
+
+    /* Слайд 1 — Welcome */
+    .logo-text{font-size:48px;font-weight:900;letter-spacing:-2px;margin-bottom:8px}
+    .logo-text span{color:var(--red)}
+
+    /* Слайд 2 — How it works */
+    .steps{width:100%;margin-top:24px;display:flex;flex-direction:column;gap:12px}
+    .step-item{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:16px;background:var(--surface);border:1px solid var(--border)}
+    .step-emoji{font-size:24px;flex-shrink:0;width:40px;text-align:center}
+    .step-text{font-size:14px;font-weight:600;color:rgba(255,255,255,0.8);line-height:1.4}
+
+    /* Слайд 3 — Имя */
+    /* Слайд 4 — Музыка */
+    .music-option{width:100%;padding:16px;border-radius:16px;background:var(--surface);border:2px solid var(--border);cursor:pointer;transition:border-color 0.2s,background 0.2s;margin-bottom:10px;display:flex;align-items:center;gap:14px}
+    .music-option.selected{border-color:rgba(255,43,43,0.5);background:rgba(255,43,43,0.07)}
+    .music-option-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+    .music-option-text{text-align:left}
+    .music-option-name{font-size:15px;font-weight:700}
+    .music-option-desc{font-size:12px;color:var(--muted);margin-top:2px}
+    .lastfm-input{display:none;margin-top:-4px;margin-bottom:10px;padding:12px 16px;border-radius:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)}
+    .lastfm-input.show{display:block}
+
+    /* Слайд 5 — Ready */
+    @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+    .ready-orb{width:100px;height:100px;border-radius:50%;background:rgba(255,43,43,0.15);border:2px solid rgba(255,43,43,0.4);display:flex;align-items:center;justify-content:center;font-size:44px;margin-bottom:24px;animation:pulse 2s ease-in-out infinite}
+  </style>
 </head>
-<body class="red-mode auth-page">
-  <main class="auth-shell">
-    <section class="auth-card">
-      <div class="logo">+aura</div>
-      <h1>Создание профиля</h1>
-      <p class="auth-subtitle">Заполни базовую информацию о себе.</p>
+<body>
+<div class="bg-glow"></div>
 
-      <form data-onboarding-form class="auth-form">
-        <label class="field">
-          <span>Имя</span>
-          <input type="text" name="name" placeholder="Как тебя зовут" required />
-        </label>
+<!-- Прогресс -->
+<div class="progress" id="progress">
+  <div class="prog-dot active" id="dot0"></div>
+  <div class="prog-dot" id="dot1"></div>
+  <div class="prog-dot" id="dot2"></div>
+  <div class="prog-dot" id="dot3"></div>
+  <div class="prog-dot" id="dot4"></div>
+</div>
 
-        <label class="field">
-          <span>Возраст</span>
-          <input type="number" name="age" placeholder="Сколько тебе лет" required />
-        </label>
+<div class="slides" id="slides">
 
-        <label class="field">
-          <span>Город</span>
-          <input type="text" name="city" placeholder="Твой город" required />
-        </label>
+  <!-- Слайд 0: Welcome -->
+  <div class="slide">
+    <div class="logo-text">+<span>aura</span></div>
+    <div class="slide-title">Музыкальный<br>радар</div>
+    <div class="slide-sub">Находи людей с похожим вкусом рядом с тобой — в реальном времени</div>
+    <button class="btn-primary" onclick="next()">Начать →</button>
+  </div>
 
-        <label class="field">
-          <span>О себе</span>
-          <textarea name="bio" placeholder="Пару слов о себе"></textarea>
-        </label>
+  <!-- Слайд 1: Как работает -->
+  <div class="slide">
+    <div class="slide-title">Как это работает</div>
+    <div class="steps">
+      <div class="step-item">
+        <div class="step-emoji">🎵</div>
+        <div class="step-text">Подключи музыку — Last.fm, Spotify или вводи вручную</div>
+      </div>
+      <div class="step-item">
+        <div class="step-emoji">📍</div>
+        <div class="step-text">Появляешься на карте рядом с теми кто слушает похожее</div>
+      </div>
+      <div class="step-item">
+        <div class="step-emoji">📡</div>
+        <div class="step-text">Отправляй сигналы, получай реакции, добавляй в друзья</div>
+      </div>
+      <div class="step-item">
+        <div class="step-emoji">✦</div>
+        <div class="step-text">Слушай больше — набирай ауру и открывай достижения</div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="next()">Понятно →</button>
+  </div>
 
-        <div data-form-notice class="notice hidden"></div>
+  <!-- Слайд 2: Имя -->
+  <div class="slide">
+    <div class="slide-icon">👋</div>
+    <div class="slide-title">Как тебя зовут?</div>
+    <div class="slide-sub">Это будет видно другим пользователям на карте</div>
+    <div class="input-wrap">
+      <label class="input-label">Имя</label>
+      <input class="input-field" id="inputName" type="text" placeholder="Максим" maxlength="40" autocomplete="off" />
+    </div>
+    <div class="input-wrap" style="margin-top:10px;">
+      <label class="input-label">Город</label>
+      <input class="input-field" id="inputCity" type="text" placeholder="Санкт-Петербург" maxlength="60" autocomplete="off" />
+    </div>
+    <button class="btn-primary" id="btnName" onclick="saveName()" disabled>Далее →</button>
+    <button class="btn-skip" onclick="next()">Пропустить</button>
+  </div>
 
-        <button type="submit" class="primary-btn">Сохранить профиль</button>
-      </form>
-    </section>
-  </main>
+  <!-- Слайд 3: Музыка -->
+  <div class="slide">
+    <div class="slide-icon">🎧</div>
+    <div class="slide-title">Подключи музыку</div>
+    <div class="slide-sub">Чтобы появиться на карте нужен источник треков</div>
 
-  <script src="/js/utils.js"></script>
-  <script src="/js/onboarding.js"></script>
+    <div style="width:100%;margin-top:20px;">
+      <div class="music-option" id="opt-lastfm" onclick="selectMusic('lastfm')">
+        <div class="music-option-icon" style="background:rgba(188,0,0,0.15);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#bc0000"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm-1.318 17.523l-.87-2.37s-.44.492-1.102.492c-1.46 0-1.46-2.792-.075-2.792.896 0 1.168.773 1.168.773l.543 1.637s.543-2.41 2.48-2.41c1.936 0 2.025 3.147.697 3.147-.817 0-1.134-.83-1.134-.83L11.682 17.523zm5.204-2.553c.26-.26.695-.26.956 0 .261.26.261.695 0 .955l-1.72 1.72c-.13.13-.3.195-.478.195-.172 0-.346-.065-.477-.195-.26-.26-.26-.696 0-.956l1.719-1.72z"/></svg>
+        </div>
+        <div class="music-option-text">
+          <div class="music-option-name">Last.fm</div>
+          <div class="music-option-desc">Скробблинг из любого плеера</div>
+        </div>
+      </div>
+      <div class="lastfm-input" id="lastfm-input">
+        <input class="input-field" id="inputLastfm" type="text" placeholder="твой username на Last.fm" autocomplete="off" autocorrect="off" autocapitalize="none" style="margin:0;" />
+      </div>
+
+      <div class="music-option" id="opt-spotify" onclick="selectMusic('spotify')">
+        <div class="music-option-icon" style="background:rgba(29,185,84,0.12);">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#1DB954"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.435-5.305-1.76-8.786-.963-.335.077-.67-.133-.746-.469-.077-.336.132-.67.469-.746 3.809-.87 7.077-.496 9.713 1.115.293.18.386.563.207.856z"/></svg>
+        </div>
+        <div class="music-option-text">
+          <div class="music-option-name">Spotify</div>
+          <div class="music-option-desc">Автоматически что играет</div>
+        </div>
+      </div>
+
+      <div class="music-option" id="opt-manual" onclick="selectMusic('manual')">
+        <div class="music-option-icon" style="background:rgba(255,255,255,0.06);">✏️</div>
+        <div class="music-option-text">
+          <div class="music-option-name">Вручную</div>
+          <div class="music-option-desc">Буду вводить треки сам на карте</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="btnMusic" onclick="saveMusic()">Готово →</button>
+    <button class="btn-skip" onclick="next()">Пропустить</button>
+  </div>
+
+  <!-- Слайд 4: Ready -->
+  <div class="slide">
+    <div class="ready-orb">✦</div>
+    <div class="slide-title">Всё готово!</div>
+    <div class="slide-sub">Открываем радар — найди кто рядом слушает похожую музыку</div>
+    <button class="btn-primary" onclick="finish()">Открыть карту 🗺️</button>
+  </div>
+
+</div>
+
+<script src="/js/utils.js"></script>
+<script>
+const U = window.AuraUtils;
+let _step = 0;
+const TOTAL = 5;
+
+function updateDots() {
+  for (let i = 0; i < TOTAL; i++) {
+    const d = document.getElementById('dot'+i);
+    if (!d) continue;
+    d.className = 'prog-dot' + (i === _step ? ' active' : i < _step ? ' done' : '');
+  }
+}
+
+function next() {
+  if (_step < TOTAL - 1) {
+    _step++;
+    document.getElementById('slides').style.transform = `translateX(-${_step * 100}vw)`;
+    updateDots();
+  }
+}
+
+// Слайд 2 — Имя
+document.getElementById('inputName').addEventListener('input', () => {
+  const name = document.getElementById('inputName').value.trim();
+  document.getElementById('btnName').disabled = name.length < 2;
+});
+
+async function saveName() {
+  const name = document.getElementById('inputName').value.trim();
+  const city = document.getElementById('inputCity').value.trim();
+  if (!name) return;
+  try {
+    await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, city })
+    });
+  } catch(_) {}
+  next();
+}
+
+// Слайд 3 — Музыка
+let _selectedMusic = null;
+
+function selectMusic(type) {
+  _selectedMusic = type;
+  ['lastfm','spotify','manual'].forEach(t => {
+    document.getElementById('opt-'+t).classList.toggle('selected', t === type);
+  });
+  document.getElementById('lastfm-input').classList.toggle('show', type === 'lastfm');
+  if (type === 'lastfm') document.getElementById('inputLastfm').focus();
+}
+
+async function saveMusic() {
+  if (_selectedMusic === 'lastfm') {
+    const un = document.getElementById('inputLastfm').value.trim();
+    if (un) {
+      try {
+        await fetch('/api/profile', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lastfmConnected: true, lastfmUsername: un.toLowerCase() })
+        });
+        // Сразу синкаем треки
+        fetch('/api/lastfm/sync', { method: 'POST' }).catch(() => {});
+      } catch(_) {}
+    }
+  } else if (_selectedMusic === 'spotify') {
+    window.location.href = '/spotify/login';
+    return;
+  }
+  next();
+}
+
+function finish() {
+  // Даём +10 ауры за прохождение онбординга
+  fetch('/api/profile', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ onboardingDone: true })
+  }).catch(() => {});
+  window.location.href = '/home';
+}
+</script>
 </body>
 </html>
