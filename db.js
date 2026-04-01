@@ -63,7 +63,16 @@ if (USE_PG) {
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS genres JSONB DEFAULT '[]'`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS vk_username TEXT DEFAULT ''`))
       .then(() => pgPool.query(`
-        CREATE TABLE IF NOT EXISTS reactions (
+        CREATE TABLE IF NOT EXISTS friends (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          friend_id TEXT NOT NULL,
+          status TEXT DEFAULT 'pending',
+          created_at BIGINT DEFAULT 0,
+          UNIQUE(user_id, friend_id)
+        )
+      `))
+      .then(() => pgPool.query(`CREATE TABLE IF NOT EXISTS reactions (
           id TEXT PRIMARY KEY,
           from_id TEXT NOT NULL,
           to_id TEXT NOT NULL,

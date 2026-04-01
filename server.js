@@ -598,10 +598,12 @@ app.post("/api/now-playing", requireAuth, async (req, res) => {
   };
   if (data.lat !== null && (isNaN(data.lat)||data.lat<-90 ||data.lat>90))  data.lat=null;
   if (data.lng !== null && (isNaN(data.lng)||data.lng<-180||data.lng>180)) data.lng=null;
-  db.setNowPlaying(req.user.id, data);
-
-  // Загружаем пользователя один раз
+  // Загружаем пользователя и читаем lastPush ДО setNowPlaying
   const user = await db.findById(req.user.id);
+  const lastPush = db.getMyNowPlaying(req.user.id); // читаем ДО обновления!
+  
+  db.setNowPlaying(req.user.id, data); // теперь обновляем
+
   const history = Array.isArray(user?.trackHistory) ? user.trackHistory : [];
   const entry = { track: data.track, artist: data.artist, image: data.image, ts: Date.now() };
   const last = history[0];
@@ -622,7 +624,6 @@ app.post("/api/now-playing", requireAuth, async (req, res) => {
   let streakBonus = 0;
 
   // +1 за публикацию (раз в 10 мин)
-  const lastPush = db.getMyNowPlaying(req.user.id);
   const tenMin = 10 * 60 * 1000;
   if (!lastPush || Date.now() - (lastPush.updatedAt || 0) > tenMin) {
     auraGain += 1;
@@ -669,6 +670,33 @@ app.get("/api/radar/nearby", requireAuth, async (req, res) => {
   const radius = Math.min(parseFloat(req.query.radius)||50, 100);
   if (isNaN(lat)||isNaN(lng)) return res.status(400).json({ ok:false, error:"Нужны lat и lng" });
   const nearby = await db.getNearbyUsers(lat, lng, radius, req.user.id);
+  
+  // Добавляем друзей — они всегда видны на карте
+  try {
+    const pool = db.pgPool();
+    if (pool) {
+      const friendRows = await pool.query(
+        `SELECT f.friend_id FROM friends f WHERE f.user_id=$1 AND f.status='accepted'`,
+        [req.user.id]
+      );
+      for (const row of friendRows.rows) {
+        const fid = row.friend_id;
+        if (nearby.find(u => u.userId === fid)) continue; // уже есть
+        const fNowPlaying = db.getMyNowPlaying(fid);
+        if (!fNowPlaying) continue; // не на карте
+        const fu = await db.findById(fid);
+        if (!fu) continue;
+        nearby.push({
+          userId: fid, name: fu.name||'', avatar: fu.avatar||null,
+          track: fNowPlaying.track||'', artist: fNowPlaying.artist||'',
+          image: fNowPlaying.image||'', source: fNowPlaying.source||'',
+          lat: fNowPlaying.lat||lat, lng: fNowPlaying.lng||lng,
+          distKm: null, isFriend: true, auraPoints: fu.auraPoints||0,
+          genres: fu.genres||[]
+        });
+      }
+    }
+  } catch(_) {}
 
   // Берём мой трек из радара (свежее) или из базы (fallback)
   const myRadar  = db.getMyNowPlaying(req.user.id);
@@ -917,6 +945,68 @@ app.post("/api/username/check", requireAuth, async (req, res) => {
     );
     res.json({ ok: true, available: r.rows.length === 0, username: clean });
   } catch(e) { res.status(500).json({ ok: false }); }
+});
+
+// ── Friends ───────────────────────────────────────────────
+app.post("/api/friends/add", requireAuth, async (req, res) => {
+  const { toId } = req.body;
+  if (!toId) return res.status(400).json({ ok:false });
+  const pool = db.pgPool();
+  if (!pool) return res.json({ ok:false, error:"БД недоступна" });
+  try {
+    const id = 'fr_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+    await pool.query(
+      `INSERT INTO friends(id,user_id,friend_id,status,created_at) VALUES($1,$2,$3,'accepted',$4) ON CONFLICT(user_id,friend_id) DO NOTHING`,
+      [id, req.user.id, toId, Date.now()]
+    );
+    // Взаимная дружба
+    const id2 = 'fr_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+    await pool.query(
+      `INSERT INTO friends(id,user_id,friend_id,status,created_at) VALUES($1,$2,$3,'accepted',$4) ON CONFLICT(user_id,friend_id) DO NOTHING`,
+      [id2, toId, req.user.id, Date.now()]
+    );
+    res.json({ ok:true });
+  } catch(e) { console.error('[friends/add]', e.message); res.status(500).json({ ok:false }); }
+});
+
+app.post("/api/friends/remove", requireAuth, async (req, res) => {
+  const { toId } = req.body;
+  const pool = db.pgPool();
+  if (!pool) return res.json({ ok:false });
+  try {
+    await pool.query(`DELETE FROM friends WHERE (user_id=$1 AND friend_id=$2) OR (user_id=$2 AND friend_id=$1)`, [req.user.id, toId]);
+    res.json({ ok:true });
+  } catch(e) { res.status(500).json({ ok:false }); }
+});
+
+app.get("/api/friends", requireAuth, async (req, res) => {
+  const pool = db.pgPool();
+  if (!pool) return res.json({ ok:true, friends:[] });
+  try {
+    const r = await pool.query(
+      `SELECT f.friend_id, u.name, u.avatar, u.current_track, u.aura_points, u.username
+       FROM friends f JOIN users u ON u.id=f.friend_id
+       WHERE f.user_id=$1 AND f.status='accepted'`,
+      [req.user.id]
+    );
+    res.json({ ok:true, friends: r.rows.map(row => ({
+      id: row.friend_id, name: row.name, avatar: row.avatar,
+      currentTrack: row.current_track, auraPoints: row.aura_points,
+      username: row.username,
+    }))});
+  } catch(e) { res.status(500).json({ ok:true, friends:[] }); }
+});
+
+app.get("/api/friends/check/:userId", requireAuth, async (req, res) => {
+  const pool = db.pgPool();
+  if (!pool) return res.json({ isFriend: false });
+  try {
+    const r = await pool.query(
+      `SELECT 1 FROM friends WHERE user_id=$1 AND friend_id=$2 AND status='accepted'`,
+      [req.user.id, req.params.userId]
+    );
+    res.json({ isFriend: r.rows.length > 0 });
+  } catch(e) { res.json({ isFriend: false }); }
 });
 
 // ── Reactions ──────────────────────────────────────────────

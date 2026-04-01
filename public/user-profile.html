@@ -87,6 +87,10 @@
     /* Notice */
     .toast{position:fixed;top:calc(env(safe-area-inset-top)+16px);left:50%;transform:translateX(-50%);background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#86efac;border-radius:14px;padding:12px 20px;font:700 13px/1 Inter,sans-serif;z-index:999;backdrop-filter:blur(20px);display:none;white-space:nowrap}
 
+    .react-btn{background:none;border:none;font-size:24px;cursor:pointer;padding:4px;border-radius:8px;transition:transform 0.15s}
+    .react-btn:active{transform:scale(0.8)}
+    @keyframes buzzAnim{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+    .buzzing{animation:buzzAnim 0.4s ease}
     @keyframes fadeInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
     .info,.now-playing,.signal-section,.section{animation:fadeInUp 0.35s ease both}
   </style>
@@ -158,7 +162,11 @@
           </div>
         </div>
       </div>
-      <button class="signal-btn" id="signalBtn">📡 Отправить сигнал</button>
+      <div style="display:flex;gap:8px;">
+        <button class="signal-btn" id="signalBtn" style="flex:1;">📡 Сигнал</button>
+        <button id="friendBtn" style="width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:20px;" title="Добавить в друзья">🤝</button>
+        <button id="buzzBtn" style="width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:20px;" title="Buzz!">💢</button>
+      </div>
     </div>
 
     <!-- Track history -->
@@ -371,6 +379,52 @@
               btn.disabled = false; btn.textContent = '📡 Отправить сигнал';
             }
           } catch { btn.disabled = false; btn.textContent = '📡 Отправить сигнал'; }
+        });
+      }
+
+      // Friend + Buzz buttons
+      if (!isMe && me) {
+        const friendBtn = document.getElementById('friendBtn');
+        const buzzBtn   = document.getElementById('buzzBtn');
+
+        // Проверяем дружбу
+        try {
+          const fr = await fetch(`/api/friends/check/${profileUser.id}`).then(r=>r.json());
+          if (fr.isFriend) {
+            friendBtn.textContent = '✅';
+            friendBtn.title = 'Уже друзья';
+            friendBtn.style.borderColor = 'rgba(34,197,94,0.3)';
+          }
+        } catch(_) {}
+
+        friendBtn?.addEventListener('click', async () => {
+          const isFriend = friendBtn.textContent === '✅';
+          if (isFriend) {
+            await fetch('/api/friends/remove', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ toId: profileUser.id }) });
+            friendBtn.textContent = '🤝';
+            friendBtn.style.borderColor = '';
+            showToast('Удалён из друзей');
+          } else {
+            const r = await fetch('/api/friends/add', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ toId: profileUser.id }) });
+            if ((await r.json()).ok) {
+              friendBtn.textContent = '✅';
+              friendBtn.style.borderColor = 'rgba(34,197,94,0.3)';
+              showToast(`${profileUser.name} теперь твой друг!`);
+            }
+          }
+        });
+
+        // Buzz — вибрация + эффект
+        buzzBtn?.addEventListener('click', async () => {
+          navigator.vibrate?.([50, 30, 50, 30, 100]);
+          buzzBtn.classList.add('buzzing');
+          setTimeout(() => buzzBtn.classList.remove('buzzing'), 400);
+          // Отправляем реакцию 💢 как buzz
+          await fetch('/api/reactions', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ toId: profileUser.id, track: ct?.track||'', artist: ct?.artist||'', emoji: '💢' })
+          }).catch(()=>{});
+          showToast(`Buzz отправлен ${profileUser.name}!`);
         });
       }
 
