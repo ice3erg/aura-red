@@ -144,16 +144,33 @@ function getAuraRing(pts, isPlaying) {
       ? `<div class="ar" style="position:absolute;inset:-3px;border-radius:50%;border:2.5px solid #a855f7;box-shadow:0 0 8px rgba(168,85,247,0.5);pointer-events:none;z-index:0;"></div>`
       : `<div class="ar ar-${rl_}"></div>`;
 
+    // Время активности
+    const ago = u.updatedAt
+      ? (Date.now() - u.updatedAt < 60000 ? 'сейчас'
+        : Date.now() - u.updatedAt < 3600000 ? Math.floor((Date.now()-u.updatedAt)/60000)+'м'
+        : Math.floor((Date.now()-u.updatedAt)/3600000)+'ч')
+      : '';
+
+    // Метка под маркером — имя (только для друзей и same-track)
+    const nameLabel = (u.isFriend || mt === 'same-track')
+      ? `<div style="position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:10px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.8);pointer-events:none;">${(u.name||'').split(' ')[0]}${ago?' · '+ago:''}</div>`
+      : '';
+
+    const totalH = size + (nameLabel ? 20 : 0);
+
     return L.divIcon({
       className: '',
-      html: `<div class="ava-marker ${mt}" style="width:${size}px;height:${size}px;position:relative;opacity:${opacity};">
-               ${auraRing}
-               <div class="ava-pulse"></div>
-               ${inner}
-               ${sentBadge}
-               ${bubble}
+      html: `<div style="position:relative;width:${size}px;height:${totalH}px;">
+               <div class="ava-marker ${mt}" style="width:${size}px;height:${size}px;position:relative;opacity:${opacity};">
+                 ${auraRing}
+                 <div class="ava-pulse"></div>
+                 ${inner}
+                 ${sentBadge}
+                 ${bubble}
+               </div>
+               ${nameLabel}
              </div>`,
-      iconSize: [size, size], iconAnchor: [size/2, size/2],
+      iconSize: [size, totalH], iconAnchor: [size/2, size/2],
     });
   }
 
@@ -395,7 +412,16 @@ function getAuraRing(pts, isPlaying) {
       : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;">${(u.name||'?')[0]}</div>`;
 
     document.getElementById('sheetName').textContent  = u.name || '—';
-    document.getElementById('sheetCity').textContent  = u.city ? `📍 ${u.city}` : '';
+    // Время активности в шторке
+    const sheetCityEl = document.getElementById('sheetCity');
+    if (sheetCityEl) {
+      const agoMs = u.updatedAt ? Date.now() - u.updatedAt : null;
+      const agoStr = !agoMs ? '' :
+        agoMs < 60000   ? '🟢 онлайн' :
+        agoMs < 3600000 ? `${Math.floor(agoMs/60000)} мин назад` :
+        agoMs < 86400000? `${Math.floor(agoMs/3600000)} ч назад` : 'давно';
+      sheetCityEl.textContent = [u.city ? `📍 ${u.city}` : '', agoStr].filter(Boolean).join('  ');
+    }
     const badge = document.getElementById('sheetBadge');
     badge.textContent = BADGES[mt] || '';
     badge.className = 'match-badge ' + mt;
