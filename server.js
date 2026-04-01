@@ -636,6 +636,7 @@ app.post("/api/now-playing", requireAuth, async (req, res) => {
     else if (newStreak % 7 === 0)      { streakBonus = 10; auraGain += 10; }
   }
 
+  console.log(`[now-playing] user=${req.user.id} auraGain=${auraGain} currentPts=${user.auraPoints} lastPush=${lastPush?.updatedAt} streakBonus=${streakBonus}`);
   // Одно обновление — все поля сразу
   const updatedUser = await db.updateUser(req.user.id, {
     currentTrack: data, trackHistory: newHistory,
