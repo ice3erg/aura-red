@@ -234,6 +234,12 @@ function showNotice(msg, type = 'error') {
   if (!user) return;
   window._profileUser = user; // для removeCollagePhoto
 
+  // Убираем skeleton — показываем реальный профиль
+  const sk = document.getElementById('profileSkeleton');
+  const pg = document.getElementById('profilePage');
+  if (sk) { sk.style.transition = 'opacity 0.25s'; sk.style.opacity = '0'; setTimeout(() => sk.remove(), 250); }
+  if (pg) setTimeout(() => { pg.style.opacity = '1'; }, 50);
+
   // Collage
   renderCollage(user.photos || []);
 

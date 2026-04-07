@@ -82,11 +82,38 @@ function getAuraRing(pts, isPlaying) {
 
   function getGeo() {
     return new Promise(res => {
+      // Мгновенно возвращаем кэш из localStorage (< 10 мин)
+      try {
+        const saved = localStorage.getItem('aura_last_pos');
+        if (saved) {
+          const p = JSON.parse(saved);
+          if (p && Date.now() - p.ts < 10 * 60 * 1000) {
+            _lastPos = p;
+            res(p); // мгновенный ответ!
+            // Обновляем в фоне
+            navigator.geolocation?.getCurrentPosition(pos => {
+              const fresh = { lat: pos.coords.latitude, lng: pos.coords.longitude, ts: Date.now() };
+              _lastPos = fresh;
+              localStorage.setItem('aura_last_pos', JSON.stringify(fresh));
+              // Тихо обновляем маркер и радар если позиция сильно изменилась
+              const dist = Math.abs(fresh.lat - p.lat) + Math.abs(fresh.lng - p.lng);
+              if (dist > 0.001) {
+                _youMarker?.setLatLng([fresh.lat, fresh.lng]);
+                loadRadar(fresh.lat, fresh.lng);
+                updateCityDisplay(fresh.lat, fresh.lng);
+              }
+            }, () => {}, { timeout: 8000, maximumAge: 30000, enableHighAccuracy: false });
+            return;
+          }
+        }
+      } catch(_) {}
+
       if (!navigator.geolocation) { res(null); return; }
       if (_lastPos && Date.now() - _lastPos.ts < 120000) { res(_lastPos); return; }
       navigator.geolocation.getCurrentPosition(
         p => {
           _lastPos = { lat: p.coords.latitude, lng: p.coords.longitude, ts: Date.now() };
+          try { localStorage.setItem('aura_last_pos', JSON.stringify(_lastPos)); } catch(_) {}
           res(_lastPos);
         },
         () => res(_lastPos),
@@ -1070,6 +1097,18 @@ function getAuraRing(pts, isPlaying) {
   };
 
   async function init() {
+    // Мгновенно центрируем карту из кэша геолокации
+    try {
+      const savedPos = localStorage.getItem('aura_last_pos');
+      if (savedPos) {
+        const p = JSON.parse(savedPos);
+        if (p && Date.now() - p.ts < 30 * 60 * 1000) {
+          map.setView([p.lat, p.lng], 14, { animate: false });
+          updateCityDisplay(p.lat, p.lng);
+        }
+      }
+    } catch(_) {}
+
     _user = await U.requireAuth();
     if (!_user) return;
 
@@ -1095,6 +1134,12 @@ function getAuraRing(pts, isPlaying) {
     } catch(_) {}
 
     // You marker
+    // Убираем skeleton — карта и юзер загружены
+    const skeleton = document.getElementById('appSkeleton');
+    const overlay  = document.getElementById('mapOverlay');
+    if (skeleton) { skeleton.style.opacity = '0'; setTimeout(() => skeleton.remove(), 400); }
+    if (overlay)  { overlay.style.opacity  = '0'; setTimeout(() => overlay.remove(),  600); }
+
     _youMarker = L.marker(DEFAULT, { icon: makeYouIcon(_user), zIndexOffset: 1000 }).addTo(map);
 
     // Sent signals
