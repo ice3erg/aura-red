@@ -5,9 +5,17 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build": "echo \"Static build done\"",
+    "cap:sync": "cap sync",
+    "cap:android": "cap open android",
+    "cap:ios": "cap open ios"
   },
   "dependencies": {
+    "@capacitor/android": "8.3.0",
+    "@capacitor/cli": "8.3.0",
+    "@capacitor/core": "8.3.0",
+    "@capacitor/ios": "8.3.0",
     "axios": "^1.13.6",
     "bcryptjs": "^3.0.3",
     "connect-pg-simple": "^10.0.0",
@@ -16,5 +24,14 @@
     "express": "^4.22.1",
     "express-session": "^1.19.0",
     "pg": "^8.13.0"
+  },
+  "capacitor": {
+    "appId": "com.aura.app",
+    "appName": "+aura",
+    "webDir": "public",
+    "server": {
+      "url": "https://aura-red.onrender.com",
+      "cleartext": false
+    }
   }
 }
