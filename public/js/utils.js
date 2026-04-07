@@ -2,17 +2,52 @@
   let _me = null;
 
   async function fetchMe() {
+    // Мгновенно возвращаем кэш из sessionStorage
+    if (!_me) {
+      try {
+        const cached = sessionStorage.getItem('aura_me');
+        if (cached) _me = JSON.parse(cached);
+      } catch(_) {}
+    }
+
+    // Параллельно обновляем с сервера
     try {
       const r = await fetch("/api/auth/me");
       const d = await r.json();
-      if (r.ok && d.ok) { _me = d.user; return d.user; }
+      if (r.ok && d.ok) {
+        _me = d.user;
+        try { sessionStorage.setItem('aura_me', JSON.stringify(d.user)); } catch(_) {}
+        return d.user;
+      }
+      // 401 — чистим кэш
+      if (r.status === 401) {
+        _me = null;
+        try { sessionStorage.removeItem('aura_me'); } catch(_) {}
+      }
     } catch (_) {}
-    return null;
+
+    // Если сеть недоступна — возвращаем кэш
+    return _me || null;
   }
 
   function getCurrentUser() { return _me; }
 
   async function requireAuth() {
+    // Сначала проверяем кэш
+    try {
+      const cached = sessionStorage.getItem('aura_me');
+      if (cached) {
+        const u = JSON.parse(cached);
+        if (u?.id) {
+          _me = u;
+          // Тихо обновляем в фоне
+          fetchMe().catch(() => {});
+          return u;
+        }
+      }
+    } catch(_) {}
+
+    // Нет кэша — ждём сеть
     const u = await fetchMe();
     if (!u) { go("/login"); return null; }
     return u;

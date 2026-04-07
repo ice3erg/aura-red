@@ -840,6 +840,7 @@ app.post("/api/notifications/seen", requireAuth, async (req, res) => {
 
 app.get("/api/unread", requireAuth, async (req, res) => {
   try {
+  const pool = db.pgPool();
   const [rawChats, rawSignals, sentSignals] = await Promise.all([
     db.getChatsForUser(req.user.id),
     db.getSignalsForUser(req.user.id),
@@ -847,27 +848,51 @@ app.get("/api/unread", requireAuth, async (req, res) => {
   ]);
   const pendingSignals  = rawSignals.filter(s => s.status === "pending").length;
   const unseenAccepted  = sentSignals.filter(s => s.status === "accepted" && !s.seenByFrom).length;
+
+  // Получаем когда последний раз читал каждый чат
+  let readMap = {};
+  if (pool) {
+    try {
+      const rr = await pool.query(`SELECT chat_id, read_at FROM chat_reads WHERE user_id=$1`, [req.user.id]);
+      for (const row of rr.rows) readMap[row.chat_id] = Number(row.read_at);
+    } catch(_) {}
+  }
+
   let unreadMessages = 0;
-  const cutoff = Date.now() - 24 * 60 * 60 * 1000; // последние 24 часа
   for (const chat of rawChats) {
     const msgs = chat.messages || [];
+    const lastRead = readMap[chat.id] || 0;
     // Находим последнее моё сообщение
     let lastMyTs = 0;
     for (let i = msgs.length - 1; i >= 0; i--) {
       if (msgs[i].fromId === req.user.id) { lastMyTs = msgs[i].createdAt || 0; break; }
     }
-    // Новые = чужие сообщения после моего последнего И за последние 24ч
-    const newMsgs = msgs.filter(m =>
+    // Непрочитанные: чужие сообщения после последнего прочтения ИЛИ после моего последнего
+    const seenTs = Math.max(lastRead, lastMyTs);
+    const hasUnread = msgs.some(m =>
       m.fromId !== req.user.id &&
       m.fromId !== "system" &&
-      (m.createdAt || 0) > lastMyTs &&
-      (m.createdAt || 0) > cutoff
+      (m.createdAt || 0) > seenTs
     );
-    if (newMsgs.length > 0) unreadMessages++;
+    if (hasUnread) unreadMessages++;
   }
   const total = unreadMessages + pendingSignals + unseenAccepted;
   res.json({ ok:true, total, unreadMessages, pendingSignals, unseenAccepted });
   } catch(e) { console.error("[unread]", e.message); res.json({ ok:true, total:0, unreadMessages:0, pendingSignals:0, unseenAccepted:0 }); }
+});
+
+// Отмечаем чат прочитанным
+app.post("/api/chats/:id/read", requireAuth, async (req, res) => {
+  const pool = db.pgPool();
+  if (!pool) return res.json({ ok: false });
+  try {
+    await pool.query(
+      `INSERT INTO chat_reads(user_id, chat_id, read_at) VALUES($1,$2,$3)
+       ON CONFLICT(user_id,chat_id) DO UPDATE SET read_at=$3`,
+      [req.user.id, req.params.id, Date.now()]
+    );
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ ok: false }); }
 });
 
 app.get("/api/chats", requireAuth, async (req, res) => {

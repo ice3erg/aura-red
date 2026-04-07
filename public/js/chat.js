@@ -247,7 +247,10 @@
   // ── Chat dialog ────────────────────────────────────────
   // Храним время последнего прочтения каждого чата
   function markRead(chatId) {
-    try { localStorage.setItem('read_' + chatId, Date.now()); } catch(_) {}
+    const now = Date.now();
+    try { localStorage.setItem('read_' + chatId, now); } catch(_) {}
+    // Сообщаем серверу — это исправляет счётчик непрочитанных
+    fetch(`/api/chats/${chatId}/read`, { method: 'POST' }).catch(() => {});
   }
   function getLastRead(chatId) {
     try { return parseInt(localStorage.getItem('read_' + chatId) || '0'); } catch(_) { return 0; }

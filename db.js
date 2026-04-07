@@ -62,6 +62,14 @@ if (USE_PG) {
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS vk_connected BOOLEAN DEFAULT false`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS genres JSONB DEFAULT '[]'`))
       .then(() => pgPool.query(`
+        CREATE TABLE IF NOT EXISTS chat_reads (
+          user_id TEXT NOT NULL,
+          chat_id TEXT NOT NULL,
+          read_at BIGINT DEFAULT 0,
+          PRIMARY KEY(user_id, chat_id)
+        )
+      `))
+      .then(() => pgPool.query(`
         CREATE TABLE IF NOT EXISTS vibe_zones (
           id TEXT PRIMARY KEY,
           creator_id TEXT NOT NULL,
