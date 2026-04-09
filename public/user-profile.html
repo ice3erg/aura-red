@@ -3,471 +3,562 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>+aura</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{--red:#ff2b2b;--red-dim:rgba(255,43,43,0.15);--bg:#060608;--surface:rgba(255,255,255,0.04);--border:rgba(255,255,255,0.07);--text:#fff;--muted:rgba(255,255,255,0.45)}
     html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
-    body{padding-bottom:calc(32px + env(safe-area-inset-bottom))}
-
-    .bg-glow{position:fixed;top:-10%;left:50%;transform:translateX(-50%);width:500px;height:300px;background:radial-gradient(ellipse,rgba(255,43,43,0.08) 0%,transparent 70%);pointer-events:none;z-index:0}
-
+    body{padding-bottom:40px}
+    .bg-glow{position:fixed;top:-10%;left:50%;transform:translateX(-50%);width:500px;height:300px;background:radial-gradient(ellipse,rgba(255,43,43,0.07) 0%,transparent 70%);pointer-events:none;z-index:0}
     .page{position:relative;z-index:1;max-width:480px;margin:0 auto}
 
-    /* Cover / Collage */
+    /* Collage */
     .cover{position:relative;height:220px;background:#0d0d12;overflow:hidden}
-    .cover-img{width:100%;height:100%;object-fit:cover;display:none}
-    .cover-img.visible{display:block}
-    .cover-ph{width:100%;height:100%;background:linear-gradient(135deg,#0d0d16 0%,#1a1a2e 100%)}
-    .cover-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(6,6,8,1) 0%,rgba(6,6,8,0.3) 60%,transparent 100%)}
-    /* Photo collage */
     .collage-grid{width:100%;height:100%;display:grid;gap:2px;position:absolute;inset:0}
-    .collage-grid.n1{grid-template-columns:1fr}
-    .collage-grid.n2{grid-template-columns:1fr 1fr}
+    .collage-grid.n1{grid-template-columns:1fr}.collage-grid.n2{grid-template-columns:1fr 1fr}
     .collage-grid.n3{grid-template-columns:2fr 1fr;grid-template-rows:1fr 1fr}
     .collage-grid.n4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
     .collage-grid.n5,.collage-grid.n6{grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr}
-    .collage-cell{overflow:hidden;background:#1a1a22}
-    .collage-cell.span2{grid-row:span 2}
+    .collage-cell{overflow:hidden;background:#1a1a22}.collage-cell.span2{grid-row:span 2}
     .collage-cell img{width:100%;height:100%;object-fit:cover;display:block}
-
-    /* Back button */
+    .cover-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(6,6,8,1) 0%,rgba(6,6,8,0.2) 55%,transparent 100%);pointer-events:none}
     .back-btn{position:absolute;top:calc(env(safe-area-inset-top)+12px);left:14px;z-index:10;width:36px;height:36px;border-radius:50%;background:rgba(6,6,8,0.7);border:1px solid rgba(255,255,255,0.1);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none}
 
     /* Avatar */
-    .avatar-wrap{width:92px;height:92px;border-radius:50%;border:3px solid var(--bg);background:#1a1a22;overflow:hidden;flex-shrink:0}
+    .avatar-wrap{width:88px;height:88px;border-radius:50%;border:3px solid var(--bg);background:#1a1a22;overflow:hidden;flex-shrink:0;position:relative}
     .avatar-wrap img{width:100%;height:100%;object-fit:cover}
-    .avatar-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;color:rgba(255,255,255,0.4)}
-
-    /* Share btn */
-    .share-btn{display:flex;align-items:center;gap:6px;padding:9px 16px;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);font:700 12px/1 Inter,sans-serif;color:rgba(255,255,255,0.6);cursor:pointer;transition:color 0.2s,border-color 0.2s}
-    .share-btn:hover{color:#fff;border-color:rgba(255,255,255,0.2)}
+    .avatar-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;color:rgba(255,255,255,0.4)}
+    .avatar-ring{position:absolute;inset:-4px;border-radius:50%;pointer-events:none}
 
     /* Info */
-    .info{padding:14px 20px 0}
-    .name{font-size:26px;font-weight:900;letter-spacing:-0.4px;line-height:1.1}
-    .meta{font-size:13px;color:var(--muted);margin-top:5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .meta-dot{width:3px;height:3px;border-radius:50%;background:var(--muted)}
-    .bio{font-size:14px;line-height:1.6;color:rgba(255,255,255,0.7);margin-top:12px}
+    .name{font-size:24px;font-weight:900;letter-spacing:-0.4px;line-height:1.1}
+    .username-tag{font-size:13px;color:var(--muted);font-weight:600;margin-top:3px}
+    .bio{font-size:14px;line-height:1.6;color:rgba(255,255,255,0.65);margin-top:8px}
+
+    /* Aura block */
+    .aura-block{margin:14px 20px 0;padding:16px 18px;border-radius:20px;background:linear-gradient(135deg,rgba(255,43,43,0.1),rgba(255,43,43,0.04));border:1px solid rgba(255,43,43,0.18);display:flex;align-items:center;gap:14px}
+    .aura-icon{font-size:26px;flex-shrink:0}
+    .aura-score{font-size:26px;font-weight:900;letter-spacing:-0.5px;line-height:1}
+    .aura-rank{font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px}
+    .aura-bar-bg{flex:1;height:4px;border-radius:99px;background:rgba(255,255,255,0.08);overflow:hidden}
+    .aura-bar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--red),rgba(255,100,100,0.8));transition:width 0.8s cubic-bezier(0.34,1.56,0.64,1)}
+
+    /* Stats */
+    .stats-row{display:flex;margin:10px 20px 0;border-radius:14px;overflow:hidden;border:1px solid var(--border);background:var(--surface)}
+    .stat-item{flex:1;padding:11px 8px;text-align:center;border-right:1px solid var(--border)}
+    .stat-item:last-child{border-right:none}
+    .stat-val{font-size:17px;font-weight:900;letter-spacing:-0.3px}
+    .stat-val.red{color:var(--red)}
+    .stat-lbl{font-size:9px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-top:2px}
 
     /* Now playing */
-    .now-playing{margin:16px 20px 0;padding:14px 16px;border-radius:18px;background:rgba(255,43,43,0.06);border:1px solid rgba(255,43,43,0.2);display:none;align-items:center;gap:12px}
+    .now-playing{margin:12px 20px 0;padding:13px 15px;border-radius:16px;background:rgba(255,43,43,0.06);border:1px solid rgba(255,43,43,0.2);display:none;align-items:center;gap:12px}
     .now-playing.visible{display:flex}
-    .np-cover{width:44px;height:44px;border-radius:10px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,0.06)}
+    .np-cover{width:42px;height:42px;border-radius:10px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,0.06)}
     .np-dot{width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red);flex-shrink:0;animation:pulseDot 1.8s ease-in-out infinite}
     @keyframes pulseDot{0%,100%{box-shadow:0 0 0 0 rgba(255,43,43,0.6)}50%{box-shadow:0 0 0 5px transparent}}
     .np-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--red)}
-    .np-title{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+    .np-title{font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .np-artist{font-size:12px;color:var(--muted);margin-top:1px}
 
-    /* Signal button */
-    .signal-section{margin:16px 20px 0}
-    .signal-btn{width:100%;padding:16px;border-radius:16px;background:var(--red);color:#fff;border:none;font:800 15px/1 Inter,sans-serif;cursor:pointer;transition:opacity 0.15s,transform 0.1s;letter-spacing:-0.1px}
-    .signal-btn:hover{opacity:0.92}
-    .signal-btn:active{transform:scale(0.98)}
-    .signal-btn:disabled{opacity:0.4;cursor:default;transform:none}
-    .signal-btn.sent{background:rgba(34,197,94,0.15);color:#86efac;border:1px solid rgba(34,197,94,0.25)}
+    /* Compat */
+    .compat-block{margin:10px 20px 0;padding:13px 15px;border-radius:16px;background:var(--surface);border:1px solid var(--border)}
 
-    /* Track history */
-    .section{margin:20px 20px 0}
-    .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:10px;padding:0 2px}
-    .track-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:var(--surface);border:1px solid var(--border);margin-bottom:6px}
-    .track-cover{width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,0.06)}
-    .track-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .track-artist{font-size:11px;color:var(--muted);margin-top:2px}
-    .track-ago{font-size:11px;color:rgba(255,255,255,0.25);flex-shrink:0}
-
-    /* Photos */
-    .photos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;border-radius:16px;overflow:hidden}
-    .photos-grid img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
-
-    /* Notice */
-    .toast{position:fixed;top:calc(env(safe-area-inset-top)+16px);left:50%;transform:translateX(-50%);background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#86efac;border-radius:14px;padding:12px 20px;font:700 13px/1 Inter,sans-serif;z-index:999;backdrop-filter:blur(20px);display:none;white-space:nowrap}
-
-    .react-btn{background:none;border:none;font-size:24px;cursor:pointer;padding:4px;border-radius:8px;transition:transform 0.15s}
-    .react-btn:active{transform:scale(0.8)}
-    @keyframes buzzAnim{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+    /* Actions */
+    .actions{margin:12px 20px 0;display:flex;gap:8px}
+    .btn-signal{flex:1;padding:14px;border-radius:14px;background:var(--red);color:#fff;border:none;font:800 14px/1 Inter,sans-serif;cursor:pointer}
+    .btn-signal.sent{background:rgba(34,197,94,0.15);color:#86efac;border:1px solid rgba(34,197,94,0.25)}
+    .btn-icon{width:46px;height:46px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;flex-shrink:0}
+    @keyframes buzzAnim{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
     .buzzing{animation:buzzAnim 0.4s ease}
-    @keyframes fadeInUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-    .info,.now-playing,.signal-section,.section{animation:fadeInUp 0.35s ease both}
+
+    /* Top artists */
+    .sec-wrap{margin-top:20px}
+    .sec-bg-title{display:block;font-size:64px;font-weight:900;letter-spacing:-2px;text-transform:lowercase;line-height:0.85;pointer-events:none;user-select:none;padding-left:18px;margin-bottom:-8px}
+    .sec-content{position:relative}
+    .artists-row{display:flex;gap:0;padding:0 20px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+    .artists-row::-webkit-scrollbar{display:none}
+    .artist-card{flex-shrink:0;width:84px;margin-right:12px;text-align:center}
+    .artist-img{position:relative;width:84px;height:84px;border-radius:50%;background:#1a1a22;margin-bottom:6px;overflow:hidden}
+    .artist-img img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+    .artist-rank-badge{position:absolute;bottom:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(10,10,14,0.95);color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,0.15)}
+    .artist-name{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:rgba(255,255,255,0.8)}
+
+    /* On repeat */
+    .repeat-row{display:flex;padding:0 20px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+    .repeat-row::-webkit-scrollbar{display:none}
+    .repeat-card{flex-shrink:0;width:128px;margin-right:12px}
+    .repeat-cover{position:relative;width:128px;height:128px;border-radius:14px;overflow:hidden;background:#1a1a22;margin-bottom:8px;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
+    .repeat-cover img{width:100%;height:100%;object-fit:cover}
+    .repeat-count{position:absolute;bottom:7px;left:7px;padding:3px 9px;border-radius:99px;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);font-size:11px;font-weight:700;color:rgba(255,255,255,0.85)}
+    .repeat-title{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .repeat-artist{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+
+    /* Genres */
+    .genres-wrap{padding:0 20px;margin-top:8px;display:flex;flex-wrap:nowrap;gap:8px;overflow:hidden}
+    .genre-tag{font-size:13px;font-weight:600;color:rgba(255,255,255,0.5);flex-shrink:0}
+
+    /* Ticker */
+    .ticker-section{margin:14px 20px 0}
+    .ticker-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:7px}
+    .ticker-wrap{overflow:hidden;border-radius:12px;background:var(--surface);border:1px solid var(--border);padding:9px 0;position:relative}
+    .ticker-wrap::before,.ticker-wrap::after{content:'';position:absolute;top:0;bottom:0;width:28px;z-index:2;pointer-events:none}
+    .ticker-wrap::before{left:0;background:linear-gradient(to right,rgba(6,6,8,1),transparent)}
+    .ticker-wrap::after{right:0;background:linear-gradient(to left,rgba(6,6,8,1),transparent)}
+    .ticker-track{display:flex;width:max-content;animation:ticker 25s linear infinite}
+    @keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+    .ticker-item{display:flex;align-items:center;gap:8px;padding:0 14px;flex-shrink:0;white-space:nowrap}
+    .ticker-cover{width:26px;height:26px;border-radius:6px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,0.08)}
+    .ticker-text{font-size:12px;font-weight:700;color:rgba(255,255,255,0.7)}
+    .ticker-artist{font-size:11px;color:var(--muted);margin-left:2px}
+
+    /* Badges */
+    .badges-row{display:flex;gap:8px;padding:0 20px;margin-top:12px;flex-wrap:nowrap;overflow:hidden}
+
+    /* Toast */
+    .toast{position:fixed;top:calc(env(safe-area-inset-top)+16px);left:50%;transform:translateX(-50%);padding:10px 18px;border-radius:14px;font:700 13px/1 Inter,sans-serif;z-index:999;backdrop-filter:blur(20px);display:none;white-space:nowrap;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#86efac}
+
+    @keyframes fadeInUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   </style>
-  <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#060608">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="+aura">
-  <link rel="apple-touch-icon" href="/icon-192.png">
 </head>
 <body>
-  <div class="bg-glow"></div>
-  <div class="toast" id="toast"></div>
+<div class="bg-glow"></div>
+<div class="toast" id="toast"></div>
 
-  <div class="page">
-    <div class="cover" id="coverBlock">
-      <div class="cover-ph" id="coverPh"></div>
-      <img class="cover-img" id="coverImg" src="" alt="" />
-      <div class="cover-overlay"></div>
-      <a class="back-btn" href="/home">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-      </a>
-    </div>
-
-    <!-- Avatar row — вне cover чтобы не срезался -->
-    <div style="position:relative;padding:0 20px;margin-top:-46px;margin-bottom:0;display:flex;align-items:flex-end;justify-content:space-between;">
-      <div class="avatar-wrap" id="avatarWrap" style="position:relative;bottom:0;left:0;flex-shrink:0;">
-        <div class="avatar-ph" id="avatarPh">?</div>
-        <img id="avatarImg" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;" />
-      </div>
-      <button class="share-btn" id="shareBtn" onclick="shareProfile()" style="position:relative;bottom:0;right:0;margin-bottom:4px;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-        Поделиться
-      </button>
-    </div>
-
-    <div class="info" id="infoBlock">
-      <div class="name" id="userName">—</div>
-      <div class="meta" id="userMeta"></div>
-      <div class="bio" id="userBio" style="display:none"></div>
-    </div>
-
-    <!-- Now playing -->
-    <div class="now-playing" id="nowPlayingBlock">
-      <img class="np-cover" id="npCover" src="" alt="" />
-      <div class="np-dot"></div>
-      <div style="flex:1;min-width:0;">
-        <div class="np-label">сейчас играет</div>
-        <div class="np-title" id="npTitle">—</div>
-        <div class="np-artist" id="npArtist">—</div>
-      </div>
-    </div>
-
-    <!-- Signal button (скрыт для себя) -->
-    <div class="signal-section" id="signalSection" style="display:none">
-      <!-- Совместимость вкусов -->
-      <div id="compatBlock" style="display:none;margin-bottom:12px;padding:14px 16px;border-radius:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.35);margin-bottom:10px;">Совместимость вкусов</div>
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div style="text-align:center;flex-shrink:0;">
-            <div id="compatPct" style="font-size:34px;font-weight:900;letter-spacing:-1px;color:#ff2b2b;">—</div>
-            <div style="font-size:10px;color:rgba(255,255,255,0.35);font-weight:600;margin-top:2px;">совпадение</div>
-          </div>
-          <div style="flex:1;min-width:0;">
-            <div style="height:5px;border-radius:99px;background:rgba(255,255,255,0.08);overflow:hidden;margin-bottom:8px;">
-              <div id="compatFill" style="height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,#ff2b2b,#ff8c00);transition:width 1s cubic-bezier(0.34,1.56,0.64,1);"></div>
-            </div>
-            <div id="compatLabel" style="font-size:12px;color:rgba(255,255,255,0.5);line-height:1.5;"></div>
-          </div>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="signal-btn" id="signalBtn" style="flex:1;">📡 Сигнал</button>
-        <button id="friendBtn" style="width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:20px;" title="Добавить в друзья">🤝</button>
-        <button id="buzzBtn" style="width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:20px;" title="Buzz!">💢</button>
-      </div>
-    </div>
-
-    <!-- Track history -->
-    <div class="section" id="historySection" style="display:none">
-      <div class="section-title">Недавно слушал</div>
-      <div id="trackList"></div>
-    </div>
-
-    <!-- Photos показываются как коллаж сверху -->
+<div class="page">
+  <!-- Collage / Cover -->
+  <div class="cover" id="coverBlock">
+    <div id="collageGrid"></div>
+    <div class="cover-overlay"></div>
+    <a class="back-btn" id="backBtn" href="/home">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+    </a>
   </div>
 
-  <script src="/js/utils.js"></script>
-  <script>
-  (function() {
-    const U = window.AuraUtils;
+  <!-- Avatar row -->
+  <div style="position:relative;padding:0 20px;margin-top:-44px;display:flex;align-items:flex-end;justify-content:space-between;">
+    <div class="avatar-wrap" id="avatarWrap">
+      <div class="avatar-ph" id="avatarPh">?</div>
+      <img id="avatarImg" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;" />
+      <div class="avatar-ring" id="avatarRing"></div>
+    </div>
+    <button onclick="shareProfile()" style="display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:12px;background:var(--surface);border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;margin-bottom:4px;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+      Поделиться
+    </button>
+  </div>
 
-    function timeAgo(ts) {
-      const d = Math.floor((Date.now() - ts) / 1000);
-      if (d < 60)    return 'только что';
-      if (d < 3600)  return Math.floor(d/60) + ' мин';
-      if (d < 86400) return Math.floor(d/3600) + ' ч';
-      return Math.floor(d/86400) + ' д';
+  <!-- Name + username -->
+  <div style="padding:10px 20px 0;">
+    <div class="name" id="userName">—</div>
+    <div class="username-tag" id="userUsername"></div>
+    <div id="userTitle" style="font-size:12px;font-weight:700;color:rgba(255,140,0,0.9);margin-top:3px;display:none;"></div>
+    <div class="bio" id="userBio" style="display:none;"></div>
+  </div>
+
+  <!-- Aura -->
+  <div class="aura-block" id="auraBlock" style="display:none;">
+    <div class="aura-icon" id="auraIcon">✦</div>
+    <div style="flex:1;min-width:0;">
+      <div class="aura-score" id="auraScore">0</div>
+      <div class="aura-rank" id="auraRank">Новичок</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0;min-width:80px;">
+      <div class="aura-bar-bg"><div class="aura-bar-fill" id="auraBarFill" style="width:0%"></div></div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.25);font-weight:600;" id="auraNext"></div>
+    </div>
+  </div>
+
+  <!-- Achievement badges -->
+  <div class="badges-row" id="badgesRow" style="display:none;"></div>
+
+  <!-- Stats -->
+  <div class="stats-row" id="statsRow" style="display:none;">
+    <div class="stat-item"><div class="stat-val red" id="statSignals">0</div><div class="stat-lbl">Сигналы</div></div>
+    <div class="stat-item"><div class="stat-val" id="statStreak">0</div><div class="stat-lbl">🔥 Стрик</div></div>
+    <div class="stat-item"><div class="stat-val" id="statTracks">0</div><div class="stat-lbl">Треков</div></div>
+  </div>
+
+  <!-- Now playing -->
+  <div class="now-playing" id="nowPlayingBlock">
+    <img class="np-cover" id="npCover" src="" alt="" style="display:none;" />
+    <div class="np-dot"></div>
+    <div style="flex:1;min-width:0;">
+      <div class="np-label">сейчас играет</div>
+      <div class="np-title" id="npTitle">—</div>
+      <div class="np-artist" id="npArtist"></div>
+    </div>
+  </div>
+
+  <!-- Compat + Actions (только не для себя) -->
+  <div id="actionsSection" style="display:none;">
+    <div class="compat-block" id="compatBlock" style="display:none;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.3);margin-bottom:8px;">Совместимость вкусов</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="font-size:32px;font-weight:900;letter-spacing:-1px;color:#ff2b2b;" id="compatPct">—</div>
+        <div style="flex:1;">
+          <div style="height:4px;border-radius:99px;background:rgba(255,255,255,0.08);overflow:hidden;margin-bottom:6px;"><div id="compatFill" style="height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,#ff2b2b,#ff8c00);transition:width 1s cubic-bezier(0.34,1.56,0.64,1);"></div></div>
+          <div id="compatLabel" style="font-size:12px;color:rgba(255,255,255,0.45);line-height:1.5;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn-signal" id="signalBtn">📡 Сигнал</button>
+      <button class="btn-icon" id="friendBtn" title="Добавить в друзья">🤝</button>
+      <button class="btn-icon buzzing-target" id="buzzBtn" title="Buzz!">💢</button>
+    </div>
+  </div>
+
+  <!-- Ticker -->
+  <div class="ticker-section" id="tickerSection" style="display:none;">
+    <div class="ticker-label">Недавно слушал</div>
+    <div class="ticker-wrap"><div class="ticker-track" id="tickerTrack"></div></div>
+  </div>
+
+  <!-- Top Artists -->
+  <div class="sec-wrap" id="topArtistsSection" style="display:none;">
+    <div class="sec-bg-title" style="color:rgba(255,255,255,0.04);">топ<br>артисты</div>
+    <div class="sec-content">
+      <div class="artists-row" id="topArtistsRow"></div>
+    </div>
+  </div>
+
+  <!-- On Repeat -->
+  <div class="sec-wrap" id="onRepeatSection" style="display:none;">
+    <div class="sec-bg-title" style="color:rgba(255,43,43,0.07);">на<br>повторе</div>
+    <div class="sec-content">
+      <div class="repeat-row" id="onRepeatRow"></div>
+    </div>
+  </div>
+
+  <!-- Genres -->
+  <div class="genres-wrap" id="genresWrap" style="display:none;"></div>
+
+</div>
+
+<script src="/js/utils.js"></script>
+<script>
+(function() {
+  const U = window.AuraUtils;
+  let me = null, profileUser = null;
+
+  function showToast(text) {
+    const t = document.getElementById('toast');
+    t.textContent = text; t.style.display = 'block';
+    clearTimeout(t._t); t._t = setTimeout(() => t.style.display = 'none', 2500);
+  }
+
+  function timeAgo(ts) {
+    const d = Math.floor((Date.now()-ts)/1000);
+    if (d < 60) return 'только что';
+    if (d < 3600) return Math.floor(d/60)+' мин';
+    if (d < 86400) return Math.floor(d/3600)+' ч';
+    return Math.floor(d/86400)+' д';
+  }
+
+  const RANKS = [
+    {min:0,name:'Новичок',emoji:'🌱',color:'rgba(255,255,255,0.2)'},
+    {min:10,name:'Слушатель',emoji:'🎧',color:'#60a5fa'},
+    {min:30,name:'Меломан',emoji:'🎵',color:'#c084fc'},
+    {min:75,name:'Вибратор',emoji:'📡',color:'#ff8c00'},
+    {min:150,name:'Резонатор',emoji:'🌊',color:'#ff6b35'},
+    {min:300,name:'Аурист',emoji:'✦',color:'#ff2b2b'},
+    {min:600,name:'Легенда',emoji:'👑',color:'#ffd700'},
+  ];
+  function getRank(pts) {
+    for (let i=RANKS.length-1;i>=0;i--) if(pts>=RANKS[i].min) return {rank:RANKS[i],next:RANKS[i+1]||null};
+    return {rank:RANKS[0],next:RANKS[1]};
+  }
+
+  function renderAura(pts) {
+    const {rank,next} = getRank(pts);
+    const block = document.getElementById('auraBlock');
+    if (block) block.style.display = '';
+    document.getElementById('auraScore').textContent = pts;
+    document.getElementById('auraRank').textContent  = rank.emoji+' '+rank.name;
+    document.getElementById('auraIcon').textContent  = rank.emoji;
+    if (next) {
+      const pct = Math.min(100,Math.round((pts-rank.min)/(next.min-rank.min)*100));
+      setTimeout(()=>document.getElementById('auraBarFill').style.width=pct+'%',300);
+      document.getElementById('auraNext').textContent=(next.min-pts)+' до '+next.name;
     }
-
-    function showToast(text, color = '#86efac', border = 'rgba(34,197,94,0.3)') {
-      const t = document.getElementById('toast');
-      t.textContent = text;
-      t.style.background = `rgba(34,197,94,0.15)`;
-      t.style.borderColor = border;
-      t.style.color = color;
-      t.style.display = 'block';
-      setTimeout(() => t.style.display = 'none', 3000);
+    // Цвет кольца аватара
+    const ring = document.getElementById('avatarRing');
+    if (ring) {
+      ring.style.cssText=`position:absolute;inset:-4px;border-radius:50%;border:2.5px solid ${rank.color};box-shadow:0 0 10px ${rank.color}40;pointer-events:none;`;
     }
+    // Цвет блока ауры
+    const ab = document.getElementById('auraBlock');
+    if (ab) { ab.style.borderColor=rank.color; ab.style.boxShadow=`0 0 16px ${rank.color}25`; }
+    const fill=document.getElementById('auraBarFill');
+    if (fill) fill.style.background=`linear-gradient(90deg,${rank.color},${rank.color}88)`;
+  }
 
-    function shareProfile() {
-      const url = location.href;
-      if (navigator.share) {
-        navigator.share({ title: '+aura', url });
-      } else {
-        navigator.clipboard?.writeText(url);
-        showToast('Ссылка скопирована!');
-      }
-    }
-    window.shareProfile = shareProfile;
+  function renderCollage(photos) {
+    const grid = document.getElementById('collageGrid');
+    if (!grid) return;
+    const n = (photos||[]).length;
+    grid.className='collage-grid n'+Math.min(n,6);
+    grid.style.cssText='width:100%;height:100%;display:grid;gap:2px;position:absolute;inset:0;';
+    if (!n) { grid.innerHTML='<div style="width:100%;height:100%;background:linear-gradient(135deg,#0d0d16,#1a0a1a);"></div>'; return; }
+    photos.slice(0,6).forEach((src,i)=>{
+      const cell=document.createElement('div');
+      cell.className='collage-cell'+(i===0&&n===3?' span2':'');
+      cell.innerHTML=`<img src="${src}" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;" />`;
+      grid.appendChild(cell);
+    });
+  }
 
-    async function init() {
-      // Получаем имя из URL /u/:name
-      const nameFromUrl = decodeURIComponent(location.pathname.split('/u/')[1] || '');
-      if (!nameFromUrl) { location.href = '/home'; return; }
+  function renderMusicStats(history) {
+    if (!history?.length) return;
+    const artistMap={}, trackMap={};
+    history.forEach(t=>{
+      if(t.artist){ if(!artistMap[t.artist]) artistMap[t.artist]={name:t.artist,image:'',count:0}; artistMap[t.artist].count++; if(t.image&&!artistMap[t.artist].image) artistMap[t.artist].image=t.image; }
+      const key=t.track+'::'+t.artist;
+      if(!trackMap[key]) trackMap[key]={track:t.track,artist:t.artist,image:t.image||'',count:0};
+      trackMap[key].count++;
+    });
+    const topArtists=Object.values(artistMap).sort((a,b)=>b.count-a.count).slice(0,6);
+    const topTracks=Object.values(trackMap).sort((a,b)=>b.count-a.count).slice(0,8);
 
-      // Грузим профиль
-      let profileUser = null;
-      try {
-        const r = await fetch(`/api/user/${encodeURIComponent(nameFromUrl)}`);
-        const d = await r.json();
-        if (!d.ok) { location.href = '/home'; return; }
-        profileUser = d.user;
-      } catch { location.href = '/home'; return; }
-
-      // Текущий пользователь
-      const me = await U.fetchMe().catch(() => null);
-
-      // Заполняем
-      document.title = `${profileUser.name} — +aura`;
-
-      // Cover / Photo collage
-      const photos = Array.isArray(profileUser.photos) ? profileUser.photos : [];
-      const coverBlock = document.getElementById('coverBlock');
-      if (photos.length > 0) {
-        // Строим коллаж из фото
-        document.getElementById('coverPh').style.display = 'none';
-        const n = Math.min(photos.length, 6);
-        const grid = document.createElement('div');
-        grid.className = `collage-grid n${n}`;
-        photos.slice(0, n).forEach((src, i) => {
-          const cell = document.createElement('div');
-          cell.className = 'collage-cell' + (n === 3 && i === 0 ? ' span2' : '');
-          const img = document.createElement('img');
-          img.src = src; img.alt = '';
-          cell.appendChild(img);
-          grid.appendChild(cell);
+    // Top artists
+    if(topArtists.length>=1){
+      const sec=document.getElementById('topArtistsSection');
+      const row=document.getElementById('topArtistsRow');
+      if(sec) sec.style.display='';
+      if(row){
+        row.innerHTML=topArtists.map((a,i)=>`
+          <div class="artist-card">
+            <div class="artist-img">
+              <img id="up-art-${i}" src="${a.image||''}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;${a.image?'':'display:none'}" />
+              <div id="up-art-ph-${i}" style="position:absolute;inset:0;border-radius:50%;background:rgba(255,255,255,0.06);display:${a.image?'none':'flex'};align-items:center;justify-content:center;">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+              </div>
+              <div class="artist-rank-badge">${i+1}</div>
+            </div>
+            <div class="artist-name">${a.name}</div>
+          </div>`).join('');
+        // Загружаем фото с Deezer
+        topArtists.forEach(async(a,i)=>{
+          try{
+            const r=await fetch(`/api/lastfm/artist-image?artist=${encodeURIComponent(a.name)}`).then(r=>r.json());
+            if(r.image){
+              const img=document.getElementById(`up-art-${i}`);
+              const ph=document.getElementById(`up-art-ph-${i}`);
+              if(img){img.src=r.image;img.style.display='';}
+              if(ph) ph.style.display='none';
+            }
+          }catch(_){}
         });
-        coverBlock.insertBefore(grid, coverBlock.firstChild);
-      } else if (profileUser.cover) {
-        const ci = document.getElementById('coverImg');
-        ci.src = profileUser.cover; ci.classList.add('visible');
-        document.getElementById('coverPh').style.display = 'none';
       }
+    }
 
-      // Avatar
-      const ai = document.getElementById('avatarImg');
-      const ap = document.getElementById('avatarPh');
-      if (profileUser.avatar) {
-        ai.src = profileUser.avatar; ai.style.display = 'block';
-        ap.style.display = 'none';
-      } else {
-        ap.textContent = (profileUser.name || '?')[0].toUpperCase();
-      }
+    // On repeat
+    if(topTracks.length>=1){
+      const sec=document.getElementById('onRepeatSection');
+      const row=document.getElementById('onRepeatRow');
+      if(sec) sec.style.display='';
+      if(row) row.innerHTML=topTracks.map(t=>`
+        <div class="repeat-card">
+          <div class="repeat-cover">
+            ${t.image?`<img src="${t.image}" style="width:100%;height:100%;object-fit:cover;" />`:'<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>'}
+            <div class="repeat-count">${t.count} раз${t.count>1?'а':''}</div>
+          </div>
+          <div class="repeat-title">${t.track}</div>
+          <div class="repeat-artist">${t.artist}</div>
+        </div>`).join('');
+    }
 
-      // Name + meta
-      document.getElementById('userName').textContent = profileUser.name || '—';
-      const meta = [];
-      if (profileUser.city) meta.push(`📍 ${profileUser.city}`);
-      if (profileUser.age)  meta.push(`${profileUser.age} лет`);
-      const metaEl = document.getElementById('userMeta');
-      metaEl.innerHTML = meta.map((m,i) => i > 0 ? `<span class="meta-dot"></span>${m}` : m).join('');
+    // Ticker
+    const tSec=document.getElementById('tickerSection');
+    const tTrack=document.getElementById('tickerTrack');
+    if(tSec&&tTrack&&history.length){
+      tSec.style.display='';
+      const items=history.slice(0,15).map(t=>`
+        <div class="ticker-item">
+          ${t.image?`<img class="ticker-cover" src="${t.image}" />`:''}
+          <span class="ticker-text">${t.track||'?'}</span>
+          <span class="ticker-artist">${t.artist||''}</span>
+          <span style="color:rgba(255,255,255,0.1);margin:0 6px;">·</span>
+        </div>`).join('');
+      tTrack.innerHTML=items+items;
+    }
 
-      // Bio
-      if (profileUser.bio) {
-        const bioEl = document.getElementById('userBio');
-        bioEl.textContent = profileUser.bio;
-        bioEl.style.display = '';
-      }
+    // Stat tracks
+    document.getElementById('statTracks').textContent=history.length;
+  }
 
-      // Now playing
-      const ct = profileUser.currentTrack;
-      if (ct?.track) {
-        const npBlock = document.getElementById('nowPlayingBlock');
-        npBlock.classList.add('visible');
-        document.getElementById('npTitle').textContent  = ct.track;
-        document.getElementById('npArtist').textContent = ct.artist || '—';
-        const npCover = document.getElementById('npCover');
-        if (ct.image) { npCover.src = ct.image; npCover.style.display = 'block'; }
-        else npCover.style.display = 'none';
-      }
+  async function init() {
+    me = await U.requireAuth().catch(()=>null);
 
-      // Signal button (не показываем себе)
-      const isMe = me && me.id === profileUser.id;
+    // Получаем профиль
+    const path  = window.location.pathname;
+    const nameOrId = path.startsWith('/u/') ? path.slice(3) : null;
+    if (!nameOrId) { window.location.href='/home'; return; }
 
-      // Совместимость вкусов
-      if (!isMe && me) {
-        const myH    = Array.isArray(me.trackHistory)          ? me.trackHistory          : [];
-        const theirH = Array.isArray(profileUser.trackHistory) ? profileUser.trackHistory : [];
-        if (myH.length && theirH.length) {
-          const myArt    = new Set(myH.map(t => t.artist?.toLowerCase()).filter(Boolean));
-          const theirArt = new Set(theirH.map(t => t.artist?.toLowerCase()).filter(Boolean));
-          const common   = [...myArt].filter(a => theirArt.has(a));
-          const total    = new Set([...myArt, ...theirArt]).size;
-          const pct      = total > 0 ? Math.round(common.length / total * 100) : 0;
+    const r = await fetch(`/api/user/${encodeURIComponent(nameOrId)}`).then(r=>r.json()).catch(()=>null);
+    if (!r?.ok || !r.user) { document.getElementById('userName').textContent='Профиль не найден'; return; }
+    profileUser = r.user;
 
-          if (pct > 0 || myH.length > 2) {
-            document.getElementById('compatBlock').style.display = '';
-            document.getElementById('compatPct').textContent = pct + '%';
-            setTimeout(() => {
-              document.getElementById('compatFill').style.width = pct + '%';
-            }, 400);
-            const label = pct >= 70 ? '🔥 Очень похожие вкусы!' :
-                          pct >= 40 ? '✨ Много общего' :
-                          pct >= 15 ? '🎵 Есть пересечения' : '🌍 Разные вкусы';
-            const commonNames = common.slice(0,3).map(a =>
-              myH.find(t => t.artist?.toLowerCase() === a)?.artist || a
-            );
-            document.getElementById('compatLabel').innerHTML =
-              `<b style="color:#fff">${label}</b>${common.length ? '<br>Оба слушают: ' + commonNames.join(', ') + (common.length > 3 ? ` +${common.length-3}` : '') : ''}`;
-          }
+    const isMe = me && me.id === profileUser.id;
+
+    // Back button — если пришли из приложения
+    const backBtn = document.getElementById('backBtn');
+    if (document.referrer && new URL(document.referrer).origin === location.origin) {
+      backBtn.href='javascript:history.back()';
+    }
+
+    // Collage
+    renderCollage(profileUser.photos||[]);
+
+    // Avatar
+    const ai=document.getElementById('avatarImg');
+    const ap=document.getElementById('avatarPh');
+    if(profileUser.avatar){ai.src=profileUser.avatar;ai.style.display='block';ap.style.display='none';}
+    else ap.textContent=(profileUser.name||'?')[0].toUpperCase();
+
+    // Name
+    document.getElementById('userName').textContent=profileUser.name||'—';
+    if(profileUser.username){
+      const ut=document.getElementById('userUsername');
+      ut.textContent='@'+profileUser.username;
+    }
+
+    // Aura
+    if((profileUser.auraPoints||0)>0 || profileUser.title) {
+      renderAura(profileUser.auraPoints||0);
+    }
+
+    // Title
+    if(profileUser.title){
+      const te=document.getElementById('userTitle');
+      te.textContent=profileUser.title; te.style.display='';
+    }
+
+    // Bio
+    if(profileUser.bio){
+      const be=document.getElementById('userBio');
+      be.textContent=profileUser.bio; be.style.display='';
+    }
+
+    // Achievements badges
+    if((profileUser.achievements||[]).length){
+      const br=document.getElementById('badgesRow');
+      br.style.display='flex';
+      br.innerHTML=profileUser.achievements.slice(0,8).map(a=>{
+        const def={first_track:'🎵',tracks_10:'🎧',tracks_50:'🎼',tracks_100:'⚡',streak_3:'🔥',streak_7:'💫',streak_30:'💀',has_avatar:'🖼️',has_bio:'📝',has_photos:'📸',has_username:'🏷️',aura_100:'✨',aura_300:'🌊',aura_600:'👑',first_signal:'📡',first_chat:'💬',signals_5:'🌍',signals_10:'🛸'};
+        const emoji=def[a.id]||'🏆';
+        return `<span style="font-size:22px;" title="${a.id}">${emoji}</span>`;
+      }).join('');
+    }
+
+    // Stats
+    if(profileUser.streakDays||profileUser.trackHistory?.length){
+      document.getElementById('statsRow').style.display='flex';
+      document.getElementById('statStreak').textContent=profileUser.streakDays||0;
+    }
+
+    // Now playing
+    const ct=profileUser.currentTrack;
+    if(ct?.track){
+      const block=document.getElementById('nowPlayingBlock');
+      block.classList.add('visible');
+      document.getElementById('npTitle').textContent=ct.track;
+      document.getElementById('npArtist').textContent=ct.artist||'';
+      if(ct.image){const ci=document.getElementById('npCover');ci.src=ct.image;ci.style.display='block';}
+    }
+
+    // Music stats
+    renderMusicStats(profileUser.trackHistory||[]);
+
+    // Genres
+    if((profileUser.genres||[]).length){
+      const gw=document.getElementById('genresWrap');
+      gw.style.display='flex';
+      const unique=[...new Set(profileUser.genres)].slice(0,6);
+      gw.innerHTML=unique.map((g,i)=>`<span class="genre-tag" style="color:rgba(255,255,255,${i===0?'0.6':'0.35'})">${g}</span>${i<unique.length-1?'<span style="color:rgba(255,255,255,0.1);font-size:11px;">·</span>':''}`).join('');
+    }
+
+    // Actions (не для себя)
+    if (!isMe && me) {
+      document.getElementById('actionsSection').style.display='';
+
+      // Совместимость
+      const myH=(me.trackHistory||[]).map(t=>t.artist?.toLowerCase()).filter(Boolean);
+      const thH=(profileUser.trackHistory||[]).map(t=>t.artist?.toLowerCase()).filter(Boolean);
+      if(myH.length&&thH.length){
+        const s1=new Set(myH),s2=new Set(thH);
+        const common=[...s1].filter(a=>s2.has(a)).length;
+        const total=new Set([...s1,...s2]).size;
+        const pct=total>0?Math.round(common/total*100):0;
+        if(pct>0){
+          document.getElementById('compatBlock').style.display='';
+          document.getElementById('compatPct').textContent=pct+'%';
+          setTimeout(()=>document.getElementById('compatFill').style.width=pct+'%',300);
+          document.getElementById('compatLabel').textContent=pct>=70?'🔴 Почти одно и то же':pct>=40?'🟠 Похожие вкусы':pct>=15?'🟡 Есть пересечения':'⚫ Разные вкусы';
         }
       }
-      if (!isMe && me) {
-        const section = document.getElementById('signalSection');
-        const btn = document.getElementById('signalBtn');
-        section.style.display = '';
 
-        // Проверяем не отправлен ли уже сигнал
-        try {
-          const sr = await fetch('/api/signals?direction=sent');
-          const sd = await sr.json();
-          const already = (sd.sentSignals || []).some(s =>
-            s.toId === profileUser.id && s.status === 'pending'
-          );
-          if (already) {
-            btn.textContent = '✓ Сигнал отправлен';
-            btn.className = 'signal-btn sent';
-            btn.disabled = true;
-          }
-        } catch {}
+      // Signal
+      const signalBtn=document.getElementById('signalBtn');
+      try{
+        const sd=await fetch('/api/signals?direction=sent').then(r=>r.json());
+        const chats=await fetch('/api/chats').then(r=>r.json());
+        if((sd.sentSignals||[]).some(s=>s.toId===profileUser.id&&s.status==='pending')){
+          signalBtn.textContent='✓ Сигнал отправлен'; signalBtn.className='btn-signal sent'; signalBtn.disabled=true;
+        } else if((chats.chats||[]).some(c=>c.other?.id===profileUser.id)){
+          signalBtn.textContent='💬 Уже общаемся'; signalBtn.className='btn-signal sent'; signalBtn.disabled=true;
+        }
+      }catch(_){}
+      signalBtn.addEventListener('click',async()=>{
+        if(signalBtn.disabled) return;
+        signalBtn.disabled=true; signalBtn.textContent='...';
+        try{
+          const rr=await fetch('/api/signals',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toId:profileUser.id,type:'wave',track:ct?.track||'',artist:ct?.artist||'',matchType:'same-vibe'})});
+          const d=await rr.json();
+          if(rr.ok&&d.ok){signalBtn.textContent='✓ Отправлен';signalBtn.className='btn-signal sent';showToast('Сигнал отправлен!');}
+          else if(rr.status===409){signalBtn.textContent='✓ Уже отправлен';signalBtn.className='btn-signal sent';}
+          else{signalBtn.disabled=false;signalBtn.textContent='📡 Сигнал';}
+        }catch(_){signalBtn.disabled=false;signalBtn.textContent='📡 Сигнал';}
+      });
 
-        // Проверяем не в чате ли уже
-        try {
-          const chatsR = await fetch('/api/chats').then(r=>r.json());
-          if (chatsR.ok) {
-            const hasChat = (chatsR.chats||[]).some(ch => ch.other?.id === profileUser.id);
-            if (hasChat) {
-              btn.textContent = '💬 Уже общаемся';
-              btn.className = 'signal-btn sent';
-              btn.disabled = true;
-            }
-          }
-        } catch {}
+      // Friend
+      const friendBtn=document.getElementById('friendBtn');
+      try{const fr=await fetch(`/api/friends/check/${profileUser.id}`).then(r=>r.json());if(fr.isFriend){friendBtn.textContent='✅';friendBtn.style.borderColor='rgba(34,197,94,0.3)';}}catch(_){}
+      friendBtn.addEventListener('click',async()=>{
+        const isFr=friendBtn.textContent==='✅';
+        if(isFr){await fetch('/api/friends/remove',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toId:profileUser.id})});friendBtn.textContent='🤝';friendBtn.style.borderColor='';showToast('Удалён из друзей');}
+        else{const rr=await fetch('/api/friends/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toId:profileUser.id})});if((await rr.json()).ok){friendBtn.textContent='✅';friendBtn.style.borderColor='rgba(34,197,94,0.3)';showToast(profileUser.name+' теперь твой друг!');}}
+      });
 
-        btn.addEventListener('click', async () => {
-          if (btn.disabled) return;
-          btn.disabled = true; btn.textContent = 'Отправляем...';
-          try {
-            const track = ct?.track || '';
-            const artist = ct?.artist || '';
-            const r = await fetch('/api/signals', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ toId: profileUser.id, type: 'wave', track, artist, matchType: 'same-vibe' })
-            });
-            const d = await r.json();
-            if (r.ok && d.ok) {
-              btn.textContent = '✓ Сигнал отправлен';
-              btn.className = 'signal-btn sent';
-              showToast(`Сигнал отправлен ${profileUser.name}!`);
-            } else if (r.status === 409) {
-              btn.textContent = '✓ Уже отправлен';
-              btn.className = 'signal-btn sent';
-            } else {
-              btn.disabled = false; btn.textContent = '📡 Отправить сигнал';
-            }
-          } catch { btn.disabled = false; btn.textContent = '📡 Отправить сигнал'; }
-        });
-      }
-
-      // Friend + Buzz buttons
-      if (!isMe && me) {
-        const friendBtn = document.getElementById('friendBtn');
-        const buzzBtn   = document.getElementById('buzzBtn');
-
-        // Проверяем дружбу
-        try {
-          const fr = await fetch(`/api/friends/check/${profileUser.id}`).then(r=>r.json());
-          if (fr.isFriend) {
-            friendBtn.textContent = '✅';
-            friendBtn.title = 'Уже друзья';
-            friendBtn.style.borderColor = 'rgba(34,197,94,0.3)';
-          }
-        } catch(_) {}
-
-        friendBtn?.addEventListener('click', async () => {
-          const isFriend = friendBtn.textContent === '✅';
-          if (isFriend) {
-            await fetch('/api/friends/remove', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ toId: profileUser.id }) });
-            friendBtn.textContent = '🤝';
-            friendBtn.style.borderColor = '';
-            showToast('Удалён из друзей');
-          } else {
-            const r = await fetch('/api/friends/add', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ toId: profileUser.id }) });
-            if ((await r.json()).ok) {
-              friendBtn.textContent = '✅';
-              friendBtn.style.borderColor = 'rgba(34,197,94,0.3)';
-              showToast(`${profileUser.name} теперь твой друг!`);
-            }
-          }
-        });
-
-        // Buzz — вибрация + эффект
-        buzzBtn?.addEventListener('click', async () => {
-          navigator.vibrate?.([50, 30, 50, 30, 100]);
-          buzzBtn.classList.add('buzzing');
-          setTimeout(() => buzzBtn.classList.remove('buzzing'), 400);
-          // Отправляем реакцию 💢 как buzz
-          await fetch('/api/reactions', {
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ toId: profileUser.id, track: ct?.track||'', artist: ct?.artist||'', emoji: '💢' })
-          }).catch(()=>{});
-          showToast(`Buzz отправлен ${profileUser.name}!`);
-        });
-      }
-
-      // Track history
-      const history = Array.isArray(profileUser.trackHistory) ? profileUser.trackHistory : [];
-      if (history.length) {
-        const sec = document.getElementById('historySection');
-        const list = document.getElementById('trackList');
-        sec.style.display = '';
-        list.innerHTML = history.slice(0, 5).map(t => `
-          <div class="track-item">
-            ${t.image
-              ? `<img class="track-cover" src="${t.image}" alt="" />`
-              : `<div class="track-cover" style="display:flex;align-items:center;justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`
-            }
-            <div style="flex:1;min-width:0;">
-              <div class="track-name">${t.track}</div>
-              <div class="track-artist">${t.artist}</div>
-            </div>
-            <div class="track-ago">${timeAgo(t.ts)}</div>
-          </div>
-        `).join('');
-      }
-
-
-
-      // Если это мой профиль — кнопка редактировать
-      if (isMe) {
-        const editBtn = document.createElement('a');
-        editBtn.href = '/profile';
-        editBtn.style.cssText = 'display:block;margin:16px 20px 0;padding:14px;border-radius:14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);text-align:center;font:700 13px/1 Inter,sans-serif;color:rgba(255,255,255,0.6);text-decoration:none;';
-        editBtn.textContent = '✏️ Редактировать профиль';
-        document.querySelector('.page').appendChild(editBtn);
-      }
+      // Buzz
+      document.getElementById('buzzBtn').addEventListener('click',async()=>{
+        navigator.vibrate?.([50,30,50,30,100]);
+        document.querySelector('.buzzing-target').classList.add('buzzing');
+        setTimeout(()=>document.querySelector('.buzzing-target').classList.remove('buzzing'),400);
+        await fetch('/api/reactions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toId:profileUser.id,track:ct?.track||'',artist:ct?.artist||'',emoji:'💢'})}).catch(()=>{});
+        showToast('Buzz отправлен '+profileUser.name+'!');
+      });
+    } else if (isMe) {
+      // Для себя — кнопка редактировать
+      const act=document.getElementById('actionsSection');
+      act.style.display='';
+      act.innerHTML=`<div style="margin:0 0 16px;"><a href="/profile" style="display:block;padding:14px;border-radius:14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);text-align:center;font:700 13px/1 Inter,sans-serif;color:rgba(255,255,255,0.6);text-decoration:none;">✏️ Редактировать профиль</a></div>`;
     }
+  }
 
-    init();
-  })();
-  </script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    }
-  </script>
+  window.shareProfile = function() {
+    const url = location.href;
+    if(navigator.share) navigator.share({title:'+aura',url});
+    else { navigator.clipboard?.writeText(url); showToast('Ссылка скопирована!'); }
+  };
+
+  init();
+})();
+</script>
 </body>
 </html>
