@@ -160,17 +160,18 @@ function renderMusicStats(history) {
           <div class="artist-name">${a.name}</div>
         </div>`).join('');
 
-      // Асинхронно подгружаем фото артистов через Deezer (браузер, без ключа)
+      // Фото артистов — кэш в памяти, один запрос на артиста
+      const _ic = window._aImgCache = window._aImgCache || {};
       topArtists.forEach(async (a, i) => {
         try {
-          const r = await fetch(`https://api.deezer.com/search/artist?q=${encodeURIComponent(a.name)}&limit=1&output=jsonp`, { mode: 'no-cors' }).catch(() => null);
-          // Deezer CORS — используем через прокси сервера
-          const sr = await fetch(`/api/lastfm/artist-image?artist=${encodeURIComponent(a.name)}`).then(r=>r.json()).catch(()=>({image:''}));
-          const imgUrl = sr.image;
-          if (imgUrl) {
+          if (_ic[a.name] === undefined) {
+            const sr = await fetch(`/api/lastfm/artist-image?artist=${encodeURIComponent(a.name)}`).then(r=>r.json()).catch(()=>({image:''}));
+            _ic[a.name] = sr.image || '';
+          }
+          if (_ic[a.name]) {
             const img = document.getElementById(`artist-img-${i}`);
             const ph  = document.getElementById(`artist-ph-${i}`);
-            if (img) { img.src = imgUrl; img.style.display = ''; }
+            if (img) { img.src = _ic[a.name]; img.style.display = ''; }
             if (ph)  ph.style.display = 'none';
           }
         } catch(_) {}
@@ -315,19 +316,22 @@ function showNotice(msg, type = 'error') {
   renderMusicStats(user.trackHistory || []);
   renderTicker(user.trackHistory || []);
 
-  // Если Last.fm подключён — синкаем последние треки в фоне
+  // Если Last.fm подключён — синкаем последние треки в фоне (без повторного рендера артистов)
   if (user.lastfmConnected && user.lastfmUsername) {
     fetch('/api/lastfm/sync', { method: 'POST' })
       .then(r => r.json())
       .then(async d => {
         if (d.ok && d.synced > 0) {
-          // Перезагружаем данные и обновляем статистику
           const fresh = await fetch('/api/auth/me').then(r => r.json());
           if (fresh.ok && fresh.user) {
+            const oldLen = user.trackHistory?.length || 0;
             user.trackHistory = fresh.user.trackHistory || [];
             window._profileUser = user;
-            renderMusicStats(user.trackHistory);
-            renderTicker(user.trackHistory);
+            // Рендерим заново только если появились новые треки
+            if (user.trackHistory.length !== oldLen) {
+              renderMusicStats(user.trackHistory);
+              renderTicker(user.trackHistory);
+            }
             const tracksEl = document.getElementById('statTracks');
             if (tracksEl) tracksEl.textContent = user.trackHistory.length;
           }

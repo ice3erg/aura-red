@@ -969,6 +969,66 @@ function getAuraRing(pts, isPlaying) {
   // ── Init ─────────────────────────────────────────────────
   // ── Reactions ────────────────────────────────────────────
   // ── Zone functions ───────────────────────────────────────
+  // Шторка просмотра зоны
+  window.openZoneSheet = function(zone, isMyZone) {
+    const timeLeft = Math.max(0, Math.round((zone.expiresAt - Date.now()) / 60000));
+    const h = Math.floor(timeLeft / 60), m = timeLeft % 60;
+    const timeStr = h > 0 ? `${h}ч ${m}м` : `${m}м`;
+
+    // Создаём временную шторку
+    const existing = document.getElementById('zoneViewSheet');
+    if (existing) existing.remove();
+
+    const bd = document.createElement('div');
+    bd.id = 'zoneViewSheet';
+    bd.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);display:flex;align-items:flex-end;';
+    bd.innerHTML = `
+      <div style="width:100%;background:rgba(10,10,14,0.99);border:1px solid rgba(255,255,255,0.08);border-bottom:none;border-radius:28px 28px 0 0;padding:16px 20px calc(32px + env(safe-area-inset-bottom));animation:slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1) both;">
+        <div style="width:36px;height:4px;border-radius:99px;background:rgba(255,255,255,0.12);margin:0 auto 16px;"></div>
+        <div style="font-size:36px;text-align:center;margin-bottom:8px;">${zone.emoji}</div>
+        <div style="font-size:20px;font-weight:900;text-align:center;margin-bottom:4px;">${zone.name}</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.4);text-align:center;margin-bottom:4px;">от ${zone.creatorName}</div>
+        ${zone.genre ? `<div style="font-size:12px;color:rgba(255,255,255,0.3);text-align:center;margin-bottom:8px;">${zone.genre}</div>` : ''}
+        <div style="font-size:12px;color:rgba(255,43,43,0.7);text-align:center;font-weight:700;margin-bottom:20px;">⏱ осталось ${timeStr}</div>
+
+        ${isMyZone ? `
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <input id="zoneEditName" value="${zone.name}" style="flex:1;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#fff;font:700 14px/1 Inter,sans-serif;outline:none;" />
+          <button onclick="saveZoneName('${zone.id}')" style="padding:12px 16px;border-radius:12px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;font:700 13px/1 Inter,sans-serif;cursor:pointer;white-space:nowrap;">Сохранить</button>
+        </div>
+        <button onclick="deleteZone('${zone.id}')" style="width:100%;padding:13px;border-radius:14px;background:rgba(255,43,43,0.1);border:1px solid rgba(255,43,43,0.2);color:#ff6b6b;font:700 14px/1 Inter,sans-serif;cursor:pointer;margin-bottom:8px;">Удалить тусовку</button>
+        ` : ''}
+        <button onclick="document.getElementById('zoneViewSheet').remove()" style="width:100%;padding:13px;border-radius:14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);font:700 14px/1 Inter,sans-serif;cursor:pointer;">Закрыть</button>
+      </div>`;
+    bd.addEventListener('click', e => { if (e.target === bd) bd.remove(); });
+    document.body.appendChild(bd);
+  };
+
+  window.saveZoneName = async function(id) {
+    const name = document.getElementById('zoneEditName')?.value.trim();
+    if (!name) return;
+    try {
+      await fetch(`/api/zones/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      document.getElementById('zoneViewSheet')?.remove();
+      showMapToast('✅ Название обновлено');
+      loadZones();
+    } catch(_) {}
+  };
+
+  window.deleteZone = async function(id) {
+    try {
+      await fetch('/api/zones/' + id, { method: 'DELETE' });
+      _myZoneId = null;
+      document.getElementById('zoneViewSheet')?.remove();
+      showMapToast('Тусовка удалена');
+      loadZones();
+    } catch(_) {}
+  };
+
   window.selectZoneEmoji = function(btn) {
     document.querySelectorAll('.zone-emoji-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -1013,9 +1073,9 @@ function getAuraRing(pts, isPlaying) {
 
   async function loadZones() {
     const pos = _lastPos;
-    if (!pos) return;
     try {
-      const r = await fetch(`/api/zones?lat=${pos.lat}&lng=${pos.lng}`).then(r => r.json());
+      const url = pos ? `/api/zones?lat=${pos.lat}&lng=${pos.lng}` : '/api/zones';
+      const r = await fetch(url).then(r => r.json());
       if (!r.ok) return;
 
       // Убираем старые
@@ -1056,15 +1116,8 @@ function getAuraRing(pts, isPlaying) {
         const marker = L.marker([zone.lat, zone.lng], { icon: label, zIndexOffset: 500 }).addTo(map);
         marker.on('click', e => {
           L.DomEvent.stopPropagation(e);
-          showMapToast(`${zone.emoji} ${zone.name} · ${zone.creatorName}${zone.genre ? ' · ' + zone.genre : ''}`);
-          // Если это моя зона — предлагаем удалить
-          if (zone.id === _myZoneId || (_user && zone.creatorName === _user.name)) {
-            setTimeout(() => {
-              if (confirm(`Удалить тусовку "${zone.name}"?`)) {
-                fetch('/api/zones/' + zone.id, { method: 'DELETE' }).then(() => { _myZoneId = null; loadZones(); });
-              }
-            }, 300);
-          }
+          const isMyZone = zone.id === _myZoneId || (_user && zone.creatorName === _user.name);
+          openZoneSheet(zone, isMyZone);
         });
 
         _zoneMarkers.push({ circle, marker });

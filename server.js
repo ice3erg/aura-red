@@ -33,7 +33,7 @@ const REDIRECT_URI  = process.env.SPOTIFY_REDIRECT_URI;
 
 // ── Pages ──────────────────────────────────────────────────
 const pages = {
-  "/":"index.html", "/login":"login.html", "/signup":"signup.html", "/aura":"aura.html",
+  "/":"index.html", "/login":"login.html", "/signup":"signup.html", "/aura":"aura.html", "/friends":"friends.html",
   "/onboarding":"onboarding.html", "/connect-music":"connect-music.html",
   "/connect-success":"connect-success.html", "/home":"home.html",
   "/profile":"profile.html", "/map":"map.html", "/chat":"chat.html"
@@ -898,12 +898,35 @@ app.post("/api/chats/:id/read", requireAuth, async (req, res) => {
 app.get("/api/chats", requireAuth, async (req, res) => {
   try {
     const rawChats = await db.getChatsForUser(req.user.id);
+    const pool = db.pgPool();
+
+    // Читаем когда последний раз открывал каждый чат
+    let readMap = {};
+    if (pool) {
+      try {
+        const rr = await pool.query(`SELECT chat_id, read_at FROM chat_reads WHERE user_id=$1`, [req.user.id]);
+        for (const row of rr.rows) readMap[row.chat_id] = Number(row.read_at);
+      } catch(_) {}
+    }
+
     const chats = await Promise.all(rawChats.map(async chat => {
       const otherId = (chat.userIds || []).find(id => id !== req.user.id);
       const other   = otherId ? await db.findById(otherId) : null;
       const msgs    = chat.messages || [];
       const lastMsg = msgs[msgs.length - 1];
-      const unread  = msgs.filter(m => m.fromId !== req.user.id && m.fromId !== "system").length;
+
+      // Последнее моё сообщение
+      let lastMyTs = 0;
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        if (msgs[i].fromId === req.user.id) { lastMyTs = msgs[i].createdAt || 0; break; }
+      }
+      const seenTs = Math.max(readMap[chat.id] || 0, lastMyTs);
+      const unread = msgs.filter(m =>
+        m.fromId !== req.user.id &&
+        m.fromId !== "system" &&
+        (m.createdAt || 0) > seenTs
+      ).length;
+
       return { id:chat.id, other:other ? db.publicProfile(other) : null,
         lastMsg:lastMsg ? { text:lastMsg.text, fromId:lastMsg.fromId, createdAt:lastMsg.createdAt } : null,
         unread, createdAt:chat.createdAt };
@@ -1012,12 +1035,14 @@ app.get("/api/friends", requireAuth, async (req, res) => {
     const r = await pool.query(
       `SELECT f.friend_id, u.name, u.avatar, u.current_track, u.aura_points, u.username
        FROM friends f JOIN users u ON u.id=f.friend_id
-       WHERE f.user_id=$1 AND f.status='accepted'`,
+       WHERE f.user_id=$1 AND f.status='accepted'
+       ORDER BY u.updated_at DESC NULLS LAST`,
       [req.user.id]
     );
     res.json({ ok:true, friends: r.rows.map(row => ({
       id: row.friend_id, name: row.name, avatar: row.avatar,
-      currentTrack: row.current_track, auraPoints: row.aura_points,
+      currentTrack: row.current_track,
+      auraPoints: row.aura_points,
       username: row.username,
     }))});
   } catch(e) { res.status(500).json({ ok:true, friends:[] }); }
@@ -1239,6 +1264,21 @@ app.get("/api/zones", requireAuth, async (req, res) => {
     }));
     res.json({ ok:true, zones });
   } catch(e) { res.json({ ok:true, zones:[] }); }
+});
+
+app.patch("/api/zones/:id", requireAuth, async (req, res) => {
+  const pool = db.pgPool();
+  if (!pool) return res.json({ ok:false });
+  const { name, emoji } = req.body;
+  try {
+    const sets = []; const vals = [];
+    if (name)  { sets.push(`name=$${vals.push(String(name).slice(0,50))}`); }
+    if (emoji) { sets.push(`emoji=$${vals.push(emoji)}`); }
+    if (!sets.length) return res.json({ ok:true });
+    vals.push(req.params.id); vals.push(req.user.id);
+    await pool.query(`UPDATE vibe_zones SET ${sets.join(',')} WHERE id=$${vals.length-1} AND creator_id=$${vals.length}`, vals);
+    res.json({ ok:true });
+  } catch(e) { res.json({ ok:false }); }
 });
 
 app.delete("/api/zones/:id", requireAuth, async (req, res) => {
