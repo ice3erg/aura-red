@@ -73,8 +73,12 @@
     .btn-signal{flex:1;padding:14px;border-radius:14px;background:var(--red);color:#fff;border:none;font:800 14px/1 Inter,sans-serif;cursor:pointer}
     .btn-signal.sent{background:rgba(34,197,94,0.15);color:#86efac;border:1px solid rgba(34,197,94,0.25)}
     .btn-icon{width:46px;height:46px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;flex-shrink:0}
-    @keyframes buzzAnim{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
-    .buzzing{animation:buzzAnim 0.4s ease}
+    .react-picker{position:absolute;bottom:60px;right:20px;background:rgba(14,14,18,0.97);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:10px 14px;display:none;gap:6px;backdrop-filter:blur(20px);z-index:50}
+    .react-picker.show{display:flex}
+    .react-emoji{font-size:26px;cursor:pointer;padding:4px 6px;border-radius:10px;transition:transform 0.15s,background 0.15s}
+    .react-emoji:active{transform:scale(0.8);background:rgba(255,255,255,0.1)}
+    .react-label{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);white-space:nowrap;display:none}
+    .react-emoji:hover .react-label{display:block}
 
     /* Top artists */
     .sec-wrap{margin-top:20px}
@@ -192,6 +196,16 @@
       <div class="np-title" id="npTitle">—</div>
       <div class="np-artist" id="npArtist"></div>
     </div>
+  </div>
+
+  <!-- React picker -->
+  <div class="react-picker" id="reactPicker">
+    <div class="react-emoji" data-emoji="🔥" data-label="Огонь" title="Огонь">🔥</div>
+    <div class="react-emoji" data-emoji="❤️" data-label="Нравится" title="Нравится">❤️</div>
+    <div class="react-emoji" data-emoji="😮" data-label="Вау" title="Вау">😮</div>
+    <div class="react-emoji" data-emoji="🎵" data-label="В плейлист" title="В плейлист">🎵</div>
+    <div class="react-emoji" data-emoji="👎" data-label="Не моё" title="Не моё">👎</div>
+    <div class="react-emoji" data-emoji="💢" data-label="Buzz" title="Buzz">💢</div>
   </div>
 
   <!-- Compat + Actions (только не для себя) -->
@@ -535,13 +549,25 @@
         else{const rr=await fetch('/api/friends/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toId:profileUser.id})});if((await rr.json()).ok){friendBtn.textContent='✅';friendBtn.style.borderColor='rgba(34,197,94,0.3)';showToast(profileUser.name+' теперь твой друг!');}}
       });
 
-      // Buzz
-      document.getElementById('buzzBtn').addEventListener('click',async()=>{
-        navigator.vibrate?.([50,30,50,30,100]);
-        document.querySelector('.buzzing-target').classList.add('buzzing');
-        setTimeout(()=>document.querySelector('.buzzing-target').classList.remove('buzzing'),400);
-        await fetch('/api/reactions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toId:profileUser.id,track:ct?.track||'',artist:ct?.artist||'',emoji:'💢'})}).catch(()=>{});
-        showToast('Buzz отправлен '+profileUser.name+'!');
+      // Реакции на трек
+      const reactPicker = document.getElementById('reactPicker');
+      document.getElementById('reactBtn')?.addEventListener('click', e => {
+        e.stopPropagation();
+        reactPicker?.classList.toggle('show');
+      });
+      document.addEventListener('click', () => reactPicker?.classList.remove('show'));
+      document.querySelectorAll('.react-emoji').forEach(el => {
+        el.addEventListener('click', async e => {
+          e.stopPropagation();
+          const emoji = el.dataset.emoji;
+          const label = el.dataset.label;
+          reactPicker?.classList.remove('show');
+          const reactBtn = document.getElementById('reactBtn');
+          if (reactBtn) { reactBtn.textContent = emoji; setTimeout(()=>{reactBtn.textContent='❤️';}, 2000); }
+          if (emoji === '💢') navigator.vibrate?.([50,30,50,30,100]);
+          await fetch('/api/reactions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toId:profileUser.id,track:ct?.track||'',artist:ct?.artist||'',emoji})}).catch(()=>{});
+          showToast(`${emoji} ${label}${ct?.track?' на «'+ct.track+'»':''}`);
+        });
       });
     } else if (isMe) {
       // Для себя — кнопка редактировать

@@ -149,7 +149,15 @@
       const d = await r.json();
       if (!r.ok || !d.ok) return;
       // Поддерживаем оба варианта ответа сервера
-      _sentSignals = (d.sentSignals || d.signals || []).filter(s => s.status === 'pending' && (!s.direction || s.direction === 'sent'));
+      const rawSent = (d.sentSignals || d.signals || []).filter(s => s.status === 'pending' && (!s.direction || s.direction === 'sent'));
+      // Убираем сигналы если уже есть чат с этим человеком
+      try {
+        const chatsR = await fetch('/api/chats').then(r=>r.json()).catch(()=>({chats:[]}));
+        const chatPartners = new Set((chatsR.chats||[]).map(ch=>ch.other?.id).filter(Boolean));
+        _sentSignals = rawSent.filter(s => !chatPartners.has(s.toId || s.to?.id));
+      } catch(_) {
+        _sentSignals = rawSent;
+      }
       const banner = document.getElementById('sentSignalsBanner');
       const badge  = document.getElementById('sentCount');
       const sub    = document.getElementById('sentSubText');
@@ -284,6 +292,23 @@
       const dlgAva  = document.getElementById('dlgAva');
       if (dlgName) dlgName.textContent = other?.name || 'Аноним';
       if (dlgAva)  dlgAva.innerHTML    = ava(other, 36);
+
+      // Кнопка "Добавить в друзья" в диалоге
+      const dlgFriendBtn = document.getElementById('dlgFriendBtn');
+      if (dlgFriendBtn && other?.id) {
+        dlgFriendBtn.style.display = '';
+        fetch(`/api/friends/check/${other.id}`).then(r=>r.json()).then(fr => {
+          dlgFriendBtn.textContent = fr.isFriend ? '✅' : '🤝';
+          dlgFriendBtn.title = fr.isFriend ? 'Уже друзья' : 'Добавить в друзья';
+          dlgFriendBtn.onclick = async (e) => {
+            e.stopPropagation();
+            if (fr.isFriend) return;
+            await fetch('/api/friends/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toId:other.id})});
+            dlgFriendBtn.textContent = '✅';
+            fr.isFriend = true;
+          };
+        }).catch(()=>{});
+      }
 
       // Переход на профиль только по аватарке и имени, НЕ по всему хедеру
       const dlgAvaEl = document.getElementById('dlgAva');
