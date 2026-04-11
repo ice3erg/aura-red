@@ -260,7 +260,12 @@
         </div>
       </div>
       <div class="avatar-side">
-        <!-- Поделиться -->
+        <!-- Share aura -->
+        <button id="shareAuraBtn" style="display:flex;align-items:center;gap:6px;padding:8px 13px;border-radius:12px;background:rgba(255,43,43,0.08);border:1px solid rgba(255,43,43,0.2);font-size:12px;font-weight:700;color:rgba(255,100,100,0.9);cursor:pointer;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          Share aura
+        </button>
+        <!-- Поделиться профилем -->
         <button class="share-link-btn" id="shareBtn" style="display:flex;align-items:center;gap:6px;padding:8px 13px;border-radius:12px;background:var(--surface);border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;text-decoration:none;">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
           Поделиться
@@ -466,6 +471,65 @@
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.3);margin-bottom:8px;">Достижения</div>
       <div id="sheetAchEarned" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;"></div>
       <div id="sheetAchLocked" style="display:flex;flex-wrap:wrap;gap:5px;"></div>
+    </div>
+  </div>
+
+  <!-- Share Aura modal -->
+  <div id="shareAuraModal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.85);backdrop-filter:blur(16px);flex-direction:column;align-items:center;justify-content:center;">
+    <div style="position:relative;width:320px;">
+      <!-- Карточка -->
+      <div id="shareAuraCard" style="width:320px;border-radius:24px;overflow:hidden;background:#080809;border:1px solid rgba(255,43,43,0.25);position:relative;">
+        <!-- Glow bg -->
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(255,43,43,0.15),transparent 65%);pointer-events:none;"></div>
+        <div style="padding:28px 24px 24px;position:relative;">
+          <!-- Logo -->
+          <div style="font-size:11px;font-weight:800;color:rgba(255,43,43,0.7);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:20px;">+aura</div>
+          <!-- Aura orb -->
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+            <div id="saOrb" style="width:64px;height:64px;border-radius:50%;background:rgba(255,43,43,0.12);border:2px solid rgba(255,43,43,0.3);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;">✦</div>
+            <div>
+              <div id="saPts" style="font-size:40px;font-weight:900;letter-spacing:-2px;line-height:1;color:#fff;">0</div>
+              <div id="saRank" style="font-size:13px;color:rgba(255,255,255,0.5);margin-top:3px;font-weight:600;"></div>
+            </div>
+          </div>
+          <!-- Genre / track row -->
+          <div id="saGenres" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;"></div>
+          <!-- Now playing -->
+          <div id="saNowPlaying" style="display:none;padding:10px 12px;border-radius:12px;background:rgba(255,43,43,0.06);border:1px solid rgba(255,43,43,0.15);margin-bottom:16px;">
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:rgba(255,43,43,0.7);margin-bottom:4px;">сейчас играет</div>
+            <div id="saNowTrack" style="font-size:13px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+            <div id="saNowArtist" style="font-size:11px;color:rgba(255,255,255,0.45);margin-top:2px;"></div>
+          </div>
+          <!-- Stats row -->
+          <div style="display:flex;gap:8px;margin-bottom:20px;">
+            <div id="saStreak" style="flex:1;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);text-align:center;">
+              <div style="font-size:16px;font-weight:900;color:#fff;">0</div>
+              <div style="font-size:9px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.07em;margin-top:2px;">🔥 Стрик</div>
+            </div>
+            <div id="saArtists" style="flex:1;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);text-align:center;">
+              <div style="font-size:16px;font-weight:900;color:#fff;">0</div>
+              <div style="font-size:9px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.07em;margin-top:2px;">Артистов</div>
+            </div>
+            <div id="saTracks" style="flex:1;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);text-align:center;">
+              <div style="font-size:16px;font-weight:900;color:#fff;">0</div>
+              <div style="font-size:9px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:0.07em;margin-top:2px;">Треков</div>
+            </div>
+          </div>
+          <!-- Username + CTA -->
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div id="saName" style="font-size:14px;font-weight:800;color:#fff;"></div>
+              <div id="saUsername" style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px;"></div>
+            </div>
+            <div style="padding:6px 12px;border-radius:99px;background:rgba(255,43,43,0.15);border:1px solid rgba(255,43,43,0.3);font-size:10px;font-weight:700;color:rgba(255,100,100,0.9);">aura-red.onrender.com</div>
+          </div>
+        </div>
+      </div>
+      <!-- Buttons -->
+      <div style="display:flex;gap:8px;margin-top:14px;">
+        <button onclick="doShareAura()" style="flex:1;padding:13px;border-radius:14px;background:#ff2b2b;color:#fff;border:none;font:800 14px/1 Inter,sans-serif;cursor:pointer;">Поделиться ↗</button>
+        <button onclick="document.getElementById('shareAuraModal').style.display='none'" style="padding:13px 16px;border-radius:14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);font:700 14px/1 Inter,sans-serif;cursor:pointer;">✕</button>
+      </div>
     </div>
   </div>
 

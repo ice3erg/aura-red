@@ -717,6 +717,82 @@ window.openAuraSheet = async function() {
   } catch(_) {}
 };
 
+window.shareAura = function() {
+  if (!window._profileUser) return;
+  const user = window._profileUser;
+  const modal = document.getElementById('shareAuraModal');
+  if (!modal) return;
+
+  const { rank } = getRank(user.auraPoints || 0);
+  const ac = getAuraColor(user.auraPoints || 0);
+
+  // Заполняем карточку
+  const orb = document.getElementById('saOrb');
+  if (orb) { orb.textContent = rank.emoji; orb.style.borderColor = ac.color; orb.style.background = ac.color.replace(')', ',0.12)').replace('rgba(','rgba('); }
+  const pts = document.getElementById('saPts');
+  if (pts) { pts.textContent = user.auraPoints || 0; pts.style.color = ac.color; }
+  const rnk = document.getElementById('saRank');
+  if (rnk) rnk.textContent = rank.emoji + ' ' + rank.name;
+  const nm = document.getElementById('saName');
+  if (nm) nm.textContent = user.name || '';
+  const un = document.getElementById('saUsername');
+  if (un) un.textContent = user.username ? '@' + user.username : '';
+
+  // Стрик и треки
+  const strEl = document.getElementById('saStreak');
+  if (strEl) strEl.querySelector('div').textContent = user.streakDays || 0;
+  const history = user.trackHistory || [];
+  const trEl = document.getElementById('saTracks');
+  if (trEl) trEl.querySelector('div').textContent = history.length;
+  // Уникальные артисты
+  const artSet = new Set(history.map(t => t.artist).filter(Boolean));
+  const artEl = document.getElementById('saArtists');
+  if (artEl) artEl.querySelector('div').textContent = artSet.size;
+
+  // Now playing
+  const ct = user.currentTrack;
+  const npBlock = document.getElementById('saNowPlaying');
+  if (ct?.track && npBlock) {
+    npBlock.style.display = '';
+    const el = document.getElementById('saNowTrack');
+    const ea = document.getElementById('saNowArtist');
+    if (el) el.textContent = ct.track;
+    if (ea) ea.textContent = ct.artist || '';
+  } else if (npBlock) {
+    npBlock.style.display = 'none';
+  }
+
+  // Жанры
+  const gWrap = document.getElementById('saGenres');
+  if (gWrap && (user.genres||[]).length) {
+    gWrap.innerHTML = (user.genres||[]).slice(0,4).map(g =>
+      `<div style="padding:3px 10px;border-radius:99px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);font-size:11px;font-weight:600;color:rgba(255,255,255,0.5);">${g}</div>`
+    ).join('');
+  }
+
+  modal.style.display = 'flex';
+};
+
+window.doShareAura = function() {
+  const user = window._profileUser;
+  const rankInfo = getRank(user?.auraPoints||0).rank;
+  const url = 'https://aura-red.onrender.com/u/' + (user?.username || user?.id || '');
+  const text = 'Моя аура: ' + (user?.auraPoints||0) + ' очков ' + rankInfo.emoji + ' ' + rankInfo.name;
+  if (navigator.share) {
+    navigator.share({ title: '+aura', text: text, url: url }).catch(function(){});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(url);
+    document.getElementById('shareAuraModal').style.display = 'none';
+    showNotice('Скопировано!', 'success');
+  }
+};
+
+// Закрытие по клику на фон
+document.getElementById('shareAuraModal')?.addEventListener('click', function(e) {
+  if (e.target === this) this.style.display = 'none';
+});
+document.getElementById('shareAuraBtn')?.addEventListener('click', window.shareAura);
+
 window.copyRefCode = function() {};
 
 // Показ тоста о новом достижении
