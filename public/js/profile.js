@@ -726,49 +726,78 @@ window.shareAura = function() {
   const { rank } = getRank(user.auraPoints || 0);
   const ac = getAuraColor(user.auraPoints || 0);
 
-  // Заполняем карточку
+  // Орб и очки
   const orb = document.getElementById('saOrb');
-  if (orb) { orb.textContent = rank.emoji; orb.style.borderColor = ac.color; orb.style.background = ac.color.replace(')', ',0.12)').replace('rgba(','rgba('); }
+  if (orb) { orb.textContent = rank.emoji; orb.style.borderColor = ac.color; }
   const pts = document.getElementById('saPts');
   if (pts) { pts.textContent = user.auraPoints || 0; pts.style.color = ac.color; }
   const rnk = document.getElementById('saRank');
   if (rnk) rnk.textContent = rank.emoji + ' ' + rank.name;
-  const nm = document.getElementById('saName');
-  if (nm) nm.textContent = user.name || '';
-  const un = document.getElementById('saUsername');
-  if (un) un.textContent = user.username ? '@' + user.username : '';
+  const nm  = document.getElementById('saName');
+  if (nm)  nm.textContent  = user.name || '';
+  const un  = document.getElementById('saUsername');
+  if (un)  un.textContent  = user.username ? '@' + user.username : '';
 
-  // Стрик и треки
-  const strEl = document.getElementById('saStreak');
-  if (strEl) strEl.querySelector('div').textContent = user.streakDays || 0;
-  const history = user.trackHistory || [];
-  const trEl = document.getElementById('saTracks');
-  if (trEl) trEl.querySelector('div').textContent = history.length;
-  // Уникальные артисты
-  const artSet = new Set(history.map(t => t.artist).filter(Boolean));
-  const artEl = document.getElementById('saArtists');
-  if (artEl) artEl.querySelector('div').textContent = artSet.size;
+  // Стрик
+  const snEl = document.getElementById('saStreakNum');
+  if (snEl) snEl.textContent = user.streakDays || 0;
+
+  // Жанры — одна строка без переноса
+  const gWrap = document.getElementById('saGenres');
+  if (gWrap) {
+    const genres = (user.genres||[]).slice(0,4);
+    gWrap.innerHTML = genres.length
+      ? genres.map(g => `<div style="padding:3px 10px;border-radius:99px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.09);font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);flex-shrink:0;">${g}</div>`).join('')
+      : '';
+  }
 
   // Now playing
   const ct = user.currentTrack;
   const npBlock = document.getElementById('saNowPlaying');
   if (ct?.track && npBlock) {
     npBlock.style.display = '';
-    const el = document.getElementById('saNowTrack');
-    const ea = document.getElementById('saNowArtist');
-    if (el) el.textContent = ct.track;
-    if (ea) ea.textContent = ct.artist || '';
-  } else if (npBlock) {
-    npBlock.style.display = 'none';
-  }
+    const el = document.getElementById('saNowTrack'); if (el) el.textContent = ct.track;
+    const ea = document.getElementById('saNowArtist'); if (ea) ea.textContent = ct.artist || '';
+  } else if (npBlock) npBlock.style.display = 'none';
 
-  // Жанры
-  const gWrap = document.getElementById('saGenres');
-  if (gWrap && (user.genres||[]).length) {
-    gWrap.innerHTML = (user.genres||[]).slice(0,4).map(g =>
-      `<div style="padding:3px 10px;border-radius:99px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);font-size:11px;font-weight:600;color:rgba(255,255,255,0.5);">${g}</div>`
+  // Топ артисты из истории
+  const history = user.trackHistory || [];
+  const artistMap = {};
+  history.forEach(t => { if (t.artist) artistMap[t.artist] = (artistMap[t.artist]||0)+1; });
+  const topArtists = Object.entries(artistMap).sort((a,b)=>b[1]-a[1]).slice(0,3);
+
+  const artBlock = document.getElementById('saArtistsBlock');
+  const artList  = document.getElementById('saArtistsList');
+  if (artBlock && artList && topArtists.length) {
+    artBlock.style.display = '';
+    artList.innerHTML = topArtists.map(([name,cnt],i) =>
+      `<div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:16px;font-size:10px;font-weight:800;color:rgba(255,43,43,0.6);text-align:right;flex-shrink:0;">${i+1}</div>
+        <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.85);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.3);flex-shrink:0;">${cnt} раз</div>
+      </div>`
     ).join('');
-  }
+  } else if (artBlock) artBlock.style.display = 'none';
+
+  // Топ треки на повторе
+  const trackMap = {};
+  history.forEach(t => { if(t.track&&t.artist){ const k=t.track+'||'+t.artist; trackMap[k]=(trackMap[k]||{track:t.track,artist:t.artist,cnt:0}); trackMap[k].cnt++; } });
+  const topTracks = Object.values(trackMap).sort((a,b)=>b.cnt-a.cnt).filter(t=>t.cnt>=2).slice(0,3);
+
+  const trBlock = document.getElementById('saTracksBlock');
+  const trList  = document.getElementById('saTracksList');
+  if (trBlock && trList && topTracks.length) {
+    trBlock.style.display = '';
+    trList.innerHTML = topTracks.map(t =>
+      `<div style="display:flex;align-items:center;gap:8px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.track}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.artist}</div>
+        </div>
+        <div style="font-size:10px;font-weight:700;color:rgba(255,43,43,0.6);flex-shrink:0;">${t.cnt}×</div>
+      </div>`
+    ).join('');
+  } else if (trBlock) trBlock.style.display = 'none';
 
   modal.style.display = 'flex';
 };
