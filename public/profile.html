@@ -170,6 +170,7 @@
     .music-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px}
     .music-icon.lastfm{background:rgba(188,0,0,0.15)}
     .music-icon.spotify{background:rgba(29,185,84,0.12)}
+    .music-icon.yandex{background:rgba(255,204,0,0.12)}
     .music-info{flex:1;min-width:0}
     .music-name{font-size:13px;font-weight:700}
     .music-status{font-size:12px;color:var(--muted);margin-top:1px}
@@ -396,6 +397,29 @@
           <button id="lastfmSaveBtn" style="padding:10px 16px;border-radius:10px;background:var(--red);color:#fff;border:none;font:700 13px/1 Inter,sans-serif;cursor:pointer;white-space:nowrap;">Сохранить</button>
         </div>
       </div>
+      <!-- Яндекс Музыка -->
+      <div class="music-card" id="yandexCard">
+        <div class="music-icon yandex">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#FFCC00"><path d="M13.24 3H11v8.6H9.3c-2.16 0-3.9 1.7-3.9 3.8 0 2.1 1.74 3.8 3.9 3.8 2.15 0 3.9-1.7 3.9-3.8V3zm-3.94 14.2c-1.06 0-1.9-.84-1.9-1.8s.84-1.8 1.9-1.8H11v1.8c0 .96-.85 1.8-1.7 1.8z"/></svg>
+        </div>
+        <div class="music-info">
+          <div class="music-name">Яндекс Музыка</div>
+          <div class="music-status" id="yandexStatus">Не подключено</div>
+        </div>
+        <button class="music-action connect" id="yandexBtn">Подключить</button>
+      </div>
+      <div id="yandexInputWrap" style="display:none;margin-top:-2px;margin-bottom:8px;padding:12px 14px;border-radius:14px;background:rgba(255,204,0,0.03);border:1px solid rgba(255,204,0,0.12);">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,204,0,0.6);margin-bottom:8px;">OAuth Токен</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <input id="yandexTokenField" type="text" placeholder="AQAAAAxxxxxx..." autocomplete="off" autocorrect="off" autocapitalize="none"
+            style="flex:1;padding:10px 13px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,204,0,0.2);color:#fff;font:600 13px/1 Inter,sans-serif;outline:none;" />
+          <button id="yandexSaveBtn" style="padding:10px 16px;border-radius:10px;background:#FFCC00;color:#000;border:none;font:700 13px/1 Inter,sans-serif;cursor:pointer;white-space:nowrap;">Сохранить</button>
+        </div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.3);line-height:1.5;">
+          Нет токена? <a href="/get-ym-token" target="_blank" style="color:#FFCC00;text-decoration:none;">Получить токен →</a>
+        </div>
+      </div>
+
       <div class="music-card" id="spotifyCard">
         <div class="music-icon spotify">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="#1DB954"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.35-1.435-5.305-1.76-8.786-.963-.335.077-.67-.133-.746-.469-.077-.336.132-.67.469-.746 3.809-.87 7.077-.496 9.713 1.115.293.18.386.563.207.856zm1.223-2.722c-.226.367-.706.482-1.072.257-2.687-1.652-6.785-2.131-9.965-1.166-.413.127-.848-.105-.975-.517-.127-.413.104-.848.517-.975 3.632-1.102 8.147-.568 11.238 1.329.366.226.48.707.257 1.072zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71c-.493.15-1.016-.129-1.165-.623-.148-.495.13-1.016.624-1.165 3.552-1.077 9.457-.869 13.19 1.37.448.267.595.847.328 1.294-.266.448-.846.595-1.293.328z"/></svg>

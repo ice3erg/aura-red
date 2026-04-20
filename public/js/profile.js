@@ -580,6 +580,58 @@ function showNotice(msg, type = 'error') {
   });
 
   // ── Music: Spotify ────────────────────────────────────────
+  // ── Яндекс Музыка ──────────────────────────────────────────
+  const yandexCard   = document.getElementById('yandexCard');
+  const yandexStatus = document.getElementById('yandexStatus');
+  const yandexBtn    = document.getElementById('yandexBtn');
+  const yandexWrap   = document.getElementById('yandexInputWrap');
+
+  function renderYandex(connected, hasToken) {
+    if (connected || hasToken) {
+      yandexCard?.classList.add('connected');
+      if (yandexStatus) { yandexStatus.textContent = 'Подключено'; yandexStatus.classList.add('connected'); }
+      if (yandexBtn)    { yandexBtn.textContent = 'Отключить'; yandexBtn.className = 'music-action disconnect'; }
+      if (yandexWrap)   yandexWrap.style.display = 'none';
+    } else {
+      yandexCard?.classList.remove('connected');
+      if (yandexStatus) { yandexStatus.textContent = 'Не подключено'; yandexStatus.classList.remove('connected'); }
+      if (yandexBtn)    { yandexBtn.textContent = 'Подключить'; yandexBtn.className = 'music-action connect'; }
+    }
+  }
+  renderYandex(false, !!(user.yandexToken));
+
+  yandexBtn?.addEventListener('click', async () => {
+    if (user.yandexToken) {
+      await fetch('/api/yandex/disconnect', { method: 'POST' });
+      user.yandexToken = ''; renderYandex(false, false);
+    } else {
+      if (yandexWrap) yandexWrap.style.display = yandexWrap.style.display === 'none' ? 'block' : 'none';
+    }
+  });
+
+  document.getElementById('yandexSaveBtn')?.addEventListener('click', async () => {
+    const token = (document.getElementById('yandexTokenField')?.value || '').trim();
+    if (!token) return;
+    const btn = document.getElementById('yandexSaveBtn');
+    btn.disabled = true; btn.textContent = '...';
+    try {
+      const r = await fetch('/api/yandex/connect', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ token })
+      }).then(r => r.json());
+      if (r.ok) {
+        user.yandexToken = token;
+        renderYandex(true, true);
+        showNotice('Яндекс Музыка подключена!', 'success');
+      } else {
+        showNotice(r.error || 'Ошибка токена', 'error');
+        btn.disabled = false; btn.textContent = 'Сохранить';
+      }
+    } catch {
+      btn.disabled = false; btn.textContent = 'Сохранить';
+    }
+  });
+
   const spotifyCard   = document.getElementById('spotifyCard');
   const spotifyStatus = document.getElementById('spotifyStatus');
   const spotifyBtn    = document.getElementById('spotifyBtn');

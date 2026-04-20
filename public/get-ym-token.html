@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Подключить Яндекс Музыку — +aura</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    .ym-logo { width:48px;height:48px;border-radius:14px;background:rgba(255,204,0,0.15);display:flex;align-items:center;justify-content:center;margin:0 auto 16px; }
+    .token-box { background:rgba(255,204,0,0.05);border:1px solid rgba(255,204,0,0.2);border-radius:14px;padding:16px;margin:16px 0;word-break:break-all;font:600 13px/1.5 monospace;color:#FFCC00;min-height:44px;cursor:pointer;transition:background .15s; }
+    .token-box:hover { background:rgba(255,204,0,0.1); }
+    .step { display:flex;align-items:flex-start;gap:12px;margin-bottom:14px; }
+    .step-n { width:24px;height:24px;border-radius:50%;background:rgba(255,43,43,0.15);border:1px solid rgba(255,43,43,0.3);font-size:11px;font-weight:800;color:#ff2b2b;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px; }
+    .step p { font-size:13px;color:rgba(255,255,255,0.6);line-height:1.55;margin:0; }
+    .step b { color:#fff; }
+    .notice-success { background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);color:#22c55e;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;text-align:center;margin-bottom:12px;display:none; }
+  </style>
+</head>
+<body class="red-mode auth-page">
+  <main class="auth-shell">
+    <section class="auth-card">
+      <div class="ym-logo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="#FFCC00"><path d="M13.24 3H11v8.6H9.3c-2.16 0-3.9 1.7-3.9 3.8 0 2.1 1.74 3.8 3.9 3.8 2.15 0 3.9-1.7 3.9-3.8V3zm-3.94 14.2c-1.06 0-1.9-.84-1.9-1.8s.84-1.8 1.9-1.8H11v1.8c0 .96-.85 1.8-1.7 1.8z"/></svg>
+      </div>
+
+      <div class="logo">+aura</div>
+      <h1>Яндекс Музыка</h1>
+      <p class="auth-subtitle">Получи токен за 10 секунд — +aura будет показывать что ты слушаешь в реальном времени</p>
+
+      <!-- Состояние 1: кнопка получить токен -->
+      <div id="stateGet">
+        <div style="margin-bottom:20px;">
+          <div class="step">
+            <span class="step-n">1</span>
+            <p>Нажми кнопку ниже — откроется страница Яндекса для авторизации</p>
+          </div>
+          <div class="step">
+            <span class="step-n">2</span>
+            <p>Войди в свой Яндекс аккаунт (или подтверди если уже залогинен)</p>
+          </div>
+          <div class="step">
+            <span class="step-n">3</span>
+            <p>Тебя автоматически вернёт сюда — и токен появится ниже</p>
+          </div>
+        </div>
+        <a id="authBtn" class="primary-btn text-center" href="https://oauth.yandex.ru/authorize?response_type=token&client_id=23cabbbdc6cd418abb4b39c32c41195d&redirect_uri=https://aura-red.onrender.com/get-ym-token" style="display:block;text-align:center;">
+          Войти через Яндекс →
+        </a>
+      </div>
+
+      <!-- Состояние 2: токен получен -->
+      <div id="stateToken" style="display:none;">
+        <div class="notice-success" id="successMsg">✓ Токен получен!</div>
+
+        <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:6px;">Твой токен (нажми чтобы скопировать):</p>
+        <div class="token-box" id="tokenBox" onclick="copyToken()"></div>
+        <p style="font-size:11px;color:rgba(255,255,255,0.25);text-align:center;margin-bottom:16px;">Токен действует ~1 год. Не показывай его никому.</p>
+
+        <button class="primary-btn" onclick="copyAndGo()" style="width:100%;">Скопировать и перейти в профиль</button>
+        <a href="/profile" class="secondary-btn text-center" style="display:block;text-align:center;margin-top:8px;">В профиль без копирования</a>
+      </div>
+
+      <!-- Состояние 3: ошибка -->
+      <div id="stateError" style="display:none;">
+        <div class="notice error" id="errorMsg"></div>
+        <a href="/get-ym-token" class="secondary-btn text-center" style="display:block;text-align:center;margin-top:12px;">Попробовать снова</a>
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    let _token = '';
+
+    function show(state) {
+      ['stateGet','stateToken','stateError'].forEach(id => {
+        document.getElementById(id).style.display = id === state ? '' : 'none';
+      });
+    }
+
+    function copyToken() {
+      if (!_token) return;
+      navigator.clipboard?.writeText(_token).then(() => {
+        document.getElementById('tokenBox').textContent = '✓ Скопировано!';
+        setTimeout(() => { document.getElementById('tokenBox').textContent = _token; }, 1500);
+      });
+    }
+
+    function copyAndGo() {
+      navigator.clipboard?.writeText(_token).then(() => {
+        window.location.href = '/profile';
+      }).catch(() => {
+        window.location.href = '/profile';
+      });
+    }
+
+    // Читаем токен из hash-фрагмента URL
+    function init() {
+      const hash = window.location.hash.slice(1);
+      if (!hash) return;
+      const params = new URLSearchParams(hash);
+      const token = params.get('access_token');
+      const error = params.get('error');
+
+      if (token) {
+        _token = token;
+        document.getElementById('tokenBox').textContent = token;
+        document.getElementById('successMsg').style.display = 'block';
+        show('stateToken');
+        // Очищаем хэш из URL чтобы токен не был виден
+        history.replaceState(null, '', window.location.pathname);
+      } else if (error) {
+        document.getElementById('errorMsg').textContent = 'Ошибка авторизации: ' + error;
+        show('stateError');
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
