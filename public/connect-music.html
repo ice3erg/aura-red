@@ -65,22 +65,6 @@
       background: #1DB954;
       display: flex; align-items: center; justify-content: center;
     }
-    .yandex-dot {
-      width: 28px; height: 28px; border-radius: 50%;
-      background: #FFCC00; display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 900; color: #000;
-    }
-    .step-block { margin-bottom: 14px; }
-    .step-block .step-num {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 20px; height: 20px; border-radius: 50%;
-      background: rgba(255,43,43,0.15); border: 1px solid rgba(255,43,43,0.3);
-      font-size: 10px; font-weight: 800; color: #ff2b2b;
-      flex-shrink: 0; margin-right: 8px; vertical-align: middle;
-    }
-    .step-block p { font-size: 13px; color: #9090a0; line-height: 1.55; margin: 0; display: inline; }
-    .step-block a { color: #ff2b2b; text-decoration: none; }
-    .ya-note { font-size: 11px; color: rgba(255,255,255,0.25); margin-top: 14px; line-height: 1.5; text-align: center; }
   </style>
 </head>
 <body class="red-mode auth-page">
@@ -96,7 +80,6 @@
 
       <div class="music-source-tabs">
         <button class="tab-btn active" data-tab="lastfm">Last.fm</button>
-        <button class="tab-btn" data-tab="yandex">Яндекс</button>
         <button class="tab-btn" data-tab="spotify">Spotify</button>
       </div>
 
@@ -120,43 +103,6 @@
         <div class="stack" style="margin-top: 18px;">
           <button id="lastfmConnectBtn" class="primary-btn">Подключить Last.fm</button>
           <a class="secondary-btn text-center" href="/home">Пропустить пока</a>
-        </div>
-      </div>
-
-      <!-- Яндекс Музыка tab -->
-      <div class="tab-panel" id="tab-yandex">
-        <div class="service-logo">
-          <div class="yandex-dot">ЯМ</div>
-          Яндекс Музыка → Last.fm
-        </div>
-
-        <p class="lastfm-hint" style="margin-bottom:16px;">
-          Самый надёжный способ — подключить скробблинг прямо в приложении ЯМ. Треки пойдут в Last.fm автоматически, в реальном времени.
-        </p>
-
-        <div class="step-block" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">
-          <span class="step-num">1</span>
-          <p>Зарегистрируйся на <a href="https://www.last.fm/join" target="_blank">last.fm</a> — бесплатно, занимает минуту.</p>
-        </div>
-        <div class="step-block" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">
-          <span class="step-num">2</span>
-          <p>В приложении Яндекс Музыка: <b style="color:#ddd">Настройки → Last.fm → Подключить</b>. Введи логин Last.fm.</p>
-        </div>
-        <div class="step-block" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;">
-          <span class="step-num">3</span>
-          <p>Вернись сюда, открой вкладку <b style="color:#ddd">Last.fm</b> и введи свой username.</p>
-        </div>
-
-        <a class="primary-btn text-center" href="https://www.last.fm/join" target="_blank" rel="noopener" style="display:block;text-align:center;">
-          Создать аккаунт Last.fm →
-        </a>
-
-        <p class="ya-note">
-          После подключения все треки из ЯМ будут автоматически<br>появляться на +aura в режиме реального времени
-        </p>
-
-        <div style="margin-top:12px;">
-          <a class="secondary-btn text-center" href="/home" style="display:block;text-align:center;">Пропустить пока</a>
         </div>
       </div>
 

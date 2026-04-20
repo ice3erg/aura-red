@@ -1218,7 +1218,7 @@ function getAuraRing(pts, isPlaying) {
       }
     }
     loadTrack(_user);
-    setInterval(() => loadTrack(_user), 15000);
+    setInterval(() => loadTrack(_user), 30000);
 
     // Зоны грузим сразу — не ждём геолокацию
     loadZones();
