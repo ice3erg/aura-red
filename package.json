@@ -23,7 +23,8 @@
     "dotenv": "^17.3.1",
     "express": "^4.22.1",
     "express-session": "^1.19.0",
-    "pg": "^8.13.0"
+    "pg": "^8.13.0",
+    "ws": "^8.20.0"
   },
   "capacitor": {
     "appId": "com.aura.app",

@@ -5,6 +5,125 @@ const session   = require("express-session");
 const PgSession = require("connect-pg-simple")(session);
 const bcrypt  = require("bcryptjs");
 const axios   = require("axios");
+const WebSocket = require("ws");
+
+// ── Ynison — real-time трек с Яндекс Музыки через WebSocket ─────────────────
+async function ynisonGetTrack(token) {
+  return new Promise((resolve) => {
+    const deviceId = require("crypto").randomBytes(16).toString("hex");
+    const timer = setTimeout(() => resolve(null), 9000);
+    const done = (v) => { clearTimeout(timer); resolve(v); };
+
+    const makeProtocol = (extra = {}) => JSON.stringify({
+      "Ynison-Device-Id": deviceId,
+      "Ynison-Device-Info": JSON.stringify({ app_name: "Desktop", app_version: "5.79.7", type: 1 }),
+      "authorization": `OAuth ${token}`,
+      ...extra
+    });
+
+    const wsOpts = (proto) => ({
+      headers: { "Origin": "https://music.yandex.ru", "Authorization": `OAuth ${token}` },
+      rejectUnauthorized: false,
+      perMessageDeflate: false,
+    });
+
+    // ШАГ 1: редиректор → получаем host + redirect_ticket
+    let rdr;
+    try {
+      rdr = new WebSocket(
+        "wss://ynison.music.yandex.ru/redirector.YnisonRedirectService/GetRedirectToYnison",
+        ["Bearer", "v2", makeProtocol()],
+        wsOpts()
+      );
+    } catch { return done(null); }
+
+    rdr.once("error", () => done(null));
+    rdr.once("message", async (raw) => {
+      rdr.close();
+      let redirect;
+      try { redirect = JSON.parse(raw); } catch { return done(null); }
+      if (redirect.error) return done(null);
+
+      const host   = (redirect.host || "").replace(/^wss?:\/\//, "").replace(/\/$/, "");
+      const ticket = redirect.redirect_ticket;
+      const sid    = redirect.session_id;
+      if (!host || !ticket) return done(null);
+
+      // ШАГ 2: state socket → получаем текущий трек
+      const stateProto = makeProtocol({
+        "Ynison-Redirect-Ticket": ticket,
+        ...(sid ? { "Ynison-Session-Id": sid } : {})
+      });
+
+      let ws;
+      try {
+        ws = new WebSocket(
+          `wss://${host}/ynison_state.YnisonStateService/PutYnisonState`,
+          ["Bearer", "v2", stateProto],
+          wsOpts()
+        );
+      } catch { return done(null); }
+
+      ws.once("error", () => done(null));
+
+      ws.once("open", () => {
+        // Shadow-устройство: только наблюдаем, не управляем
+        ws.send(JSON.stringify({
+          update_full_state: {
+            device: {
+              capabilities: { can_be_player: false, can_be_remote_controller: false, volume_granularity: 0 },
+              info: { device_id: deviceId, app_name: "Desktop", app_version: "5.79.7", type: 1, title: "aura" },
+              is_shadow: true, volume_info: { volume: 0 }
+            },
+            player_state: {
+              player_queue: { version: { device_id: deviceId, version: "0" } },
+              status: { version: { device_id: deviceId, version: "0" }, duration_ms: 0, progress_ms: 0 }
+            },
+            is_currently_active: false
+          }
+        }));
+      });
+
+      ws.once("message", async (raw2) => {
+        ws.close();
+        let state;
+        try { state = JSON.parse(raw2); } catch { return done(null); }
+
+        const fs  = state.update_full_state || state;
+        const pq  = fs?.player_state?.player_queue;
+        const st  = fs?.player_state?.status;
+        if (!pq?.playable_list?.length) return done(null);
+
+        const idx  = pq.current_playable_index ?? 0;
+        const item = pq.playable_list[idx];
+        const tid  = item?.playable_id;
+        if (!tid) return done(null);
+
+        // Если в очереди уже есть title — используем, параллельно запрашиваем обложку
+        try {
+          const r = await axios.get(`https://api.music.yandex.net/tracks/${tid}`, {
+            headers: { "Authorization": `OAuth ${token}`, "X-Yandex-Music-Client": "YandexMusicAndroid/24023621" },
+            timeout: 5000
+          });
+          const t  = r.data?.result?.[0];
+          if (!t) return done(null);
+          const album = t.albums?.[0];
+          done({
+            name:     t.title || item.title || "",
+            artists:  (t.artists || []).map(a => a.name).join(", "),
+            album:    album?.title || "",
+            image:    album?.coverUri ? "https://" + album.coverUri.replace("%%", "400x400") : "",
+            url:      `https://music.yandex.ru/track/${tid}`,
+            source:   "yandex",
+            isPlaying: !st?.paused,
+          });
+        } catch { done(null); }
+      });
+    });
+  });
+}
+// ── END Ynison ───────────────────────────────────────────────────────────────
+
 const path    = require("path");
 const db      = require("./db");
 const { ACHIEVEMENTS, getTitle, checkAchievements } = require("./achievements");
@@ -513,53 +632,12 @@ app.get("/api/yandex/current-track", requireAuth, async (req, res) => {
     const token = user?.yandexToken;
     if (!token) return res.json({ ok: false, error: "Яндекс Музыка не подключена" });
 
-    // Получаем список очередей — первая = текущая
-    const queuesResp = await axios.get("https://api.music.yandex.net/queues", {
-      headers: { "Authorization": `OAuth ${token}`, "X-Yandex-Music-Client": "WindowsPhone/3.20" }
-    });
-
-    const queues = queuesResp.data?.result?.queues;
-    if (!queues?.length) return res.json({ ok: true, isPlaying: false });
-
-    // Берём последнюю активную очередь
-    const queueId = queues[0].id;
-    const queueResp = await axios.get(`https://api.music.yandex.net/queues/${queueId}`, {
-      headers: { "Authorization": `OAuth ${token}`, "X-Yandex-Music-Client": "WindowsPhone/3.20" }
-    });
-
-    const queue = queueResp.data?.result;
-    if (!queue) return res.json({ ok: true, isPlaying: false });
-
-    const currentIdx = queue.currentIndex ?? 0;
-    const trackId = queue.tracks?.[currentIdx]?.id;
-    if (!trackId) return res.json({ ok: true, isPlaying: false });
-
-    // Получаем инфу о треке
-    const trackResp = await axios.get(`https://api.music.yandex.net/tracks/${trackId}`, {
-      headers: { "Authorization": `OAuth ${token}`, "X-Yandex-Music-Client": "WindowsPhone/3.20" }
-    });
-
-    const track = trackResp.data?.result?.[0];
+    const track = await ynisonGetTrack(token);
     if (!track) return res.json({ ok: true, isPlaying: false });
 
-    const artists = (track.artists || []).map(a => a.name).join(", ");
-    const album   = track.albums?.[0];
-    const image   = album?.coverUri
-      ? "https://" + album.coverUri.replace("%%", "400x400")
-      : "";
-
-    res.json({ ok: true, isPlaying: true, track: {
-      name: track.title || "",
-      artists: artists,
-      album: album?.title || "",
-      image,
-      url: `https://music.yandex.ru/track/${trackId}`,
-      source: "yandex"
-    }});
+    res.json({ ok: true, isPlaying: track.isPlaying !== false, track });
   } catch(e) {
-    const status = e.response?.status;
-    if (status === 401) return res.json({ ok: false, error: "Токен недействителен" });
-    console.error("[yandex]", e.message);
+    console.error("[ynison]", e.message);
     res.json({ ok: false, error: "Ошибка Яндекс Музыки" });
   }
 });
