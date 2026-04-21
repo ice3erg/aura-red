@@ -8,13 +8,17 @@
   <link rel="stylesheet" href="/styles.css" />
   <style>
     .ym-logo { width:48px;height:48px;border-radius:14px;background:rgba(255,204,0,0.15);display:flex;align-items:center;justify-content:center;margin:0 auto 16px; }
-    .token-box { background:rgba(255,204,0,0.05);border:1px solid rgba(255,204,0,0.2);border-radius:14px;padding:16px;margin:16px 0;word-break:break-all;font:600 13px/1.5 monospace;color:#FFCC00;min-height:44px;cursor:pointer;transition:background .15s; }
-    .token-box:hover { background:rgba(255,204,0,0.1); }
     .step { display:flex;align-items:flex-start;gap:12px;margin-bottom:14px; }
     .step-n { width:24px;height:24px;border-radius:50%;background:rgba(255,43,43,0.15);border:1px solid rgba(255,43,43,0.3);font-size:11px;font-weight:800;color:#ff2b2b;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px; }
     .step p { font-size:13px;color:rgba(255,255,255,0.6);line-height:1.55;margin:0; }
     .step b { color:#fff; }
-    .notice-success { background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);color:#22c55e;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;text-align:center;margin-bottom:12px;display:none; }
+    .token-box { background:rgba(255,204,0,0.05);border:1px solid rgba(255,204,0,0.2);border-radius:14px;padding:14px;word-break:break-all;font:600 12px/1.5 monospace;color:#FFCC00;cursor:pointer;transition:background .15s; }
+    .token-box:hover { background:rgba(255,204,0,0.1); }
+    .url-box { background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 13px;font:600 11px/1.6 monospace;color:rgba(255,255,255,0.5);word-break:break-all;margin:8px 0; }
+    .tab-btn { flex:1;padding:9px;border-radius:10px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:rgba(255,255,255,0.4);font:600 12px/1 Inter,sans-serif;cursor:pointer; }
+    .tab-btn.active { background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.15);color:#fff; }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
   </style>
 </head>
 <body class="red-mode auth-page">
@@ -23,100 +27,128 @@
       <div class="ym-logo">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="#FFCC00"><path d="M13.24 3H11v8.6H9.3c-2.16 0-3.9 1.7-3.9 3.8 0 2.1 1.74 3.8 3.9 3.8 2.15 0 3.9-1.7 3.9-3.8V3zm-3.94 14.2c-1.06 0-1.9-.84-1.9-1.8s.84-1.8 1.9-1.8H11v1.8c0 .96-.85 1.8-1.7 1.8z"/></svg>
       </div>
-
       <div class="logo">+aura</div>
-      <h1>Яндекс Музыка</h1>
-      <p class="auth-subtitle">Получи токен за 10 секунд — +aura будет показывать что ты слушаешь в реальном времени</p>
+      <h1 style="margin-bottom:6px;">Токен Яндекс Музыки</h1>
+      <p class="auth-subtitle" style="margin-bottom:20px;">Выбери способ получить токен</p>
 
-      <!-- Состояние 1: кнопка получить токен -->
-      <div id="stateGet">
-        <div style="margin-bottom:20px;">
-          <div class="step">
-            <span class="step-n">1</span>
-            <p>Нажми кнопку ниже — откроется страница Яндекса для авторизации</p>
-          </div>
-          <div class="step">
-            <span class="step-n">2</span>
-            <p>Войди в свой Яндекс аккаунт (или подтверди если уже залогинен)</p>
-          </div>
-          <div class="step">
-            <span class="step-n">3</span>
-            <p>Тебя автоматически вернёт сюда — и токен появится ниже</p>
-          </div>
+      <!-- Tabs -->
+      <div style="display:flex;gap:6px;margin-bottom:18px;">
+        <button class="tab-btn active" onclick="switchTab('manual')">Вручную</button>
+        <button class="tab-btn" onclick="switchTab('paste')">Уже есть токен</button>
+      </div>
+
+      <!-- Tab: manual -->
+      <div class="tab-panel active" id="tab-manual">
+        <div class="step">
+          <span class="step-n">1</span>
+          <p>Открой эту ссылку в браузере — войди в Яндекс аккаунт:<br>
+            <a href="https://oauth.yandex.ru/authorize?response_type=token&client_id=23cabbbdc6cd418abb4b39c32c41195d"
+               target="_blank" style="color:#FFCC00;word-break:break-all;font-size:11px;">
+              oauth.yandex.ru/authorize?response_type=token&client_id=23cabbbdc6cd418abb4b39c32c41195d
+            </a>
+          </p>
         </div>
-        <a id="authBtn" class="primary-btn text-center" href="https://oauth.yandex.ru/authorize?response_type=token&client_id=23cabbbdc6cd418abb4b39c32c41195d&redirect_uri=https://aura-red.onrender.com/get-ym-token" style="display:block;text-align:center;">
-          Войти через Яндекс →
-        </a>
+        <div class="step">
+          <span class="step-n">2</span>
+          <p>После входа тебя редиректнет на music.yandex.ru. <b>Быстро скопируй весь URL</b> из адресной строки — токен будет в нём после <code style="color:#ffcc00;">#access_token=</code></p>
+        </div>
+        <div class="step">
+          <span class="step-n">3</span>
+          <p>Вставь скопированный URL сюда — мы сами вытащим токен:</p>
+        </div>
+
+        <textarea id="urlInput" placeholder="https://music.yandex.ru/#access_token=AQAAAA..." rows="3"
+          style="width:100%;box-sizing:border-box;padding:12px;border-radius:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:#fff;font:500 13px/1.5 Inter,sans-serif;outline:none;resize:none;margin-bottom:10px;"></textarea>
+
+        <button class="primary-btn" onclick="extractFromUrl()" style="width:100%;">Извлечь токен →</button>
       </div>
 
-      <!-- Состояние 2: токен получен -->
-      <div id="stateToken" style="display:none;">
-        <div class="notice-success" id="successMsg">✓ Токен получен!</div>
+      <!-- Tab: paste -->
+      <div class="tab-panel" id="tab-paste">
+        <p style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:14px;line-height:1.55;">Вставь токен который уже получил — он начинается с <code style="color:#ffcc00;">AQAAAA</code></p>
+        <input id="directToken" type="text" placeholder="AQAAAAxxxxxxxxxxxxxxxx..."
+          style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,204,0,0.2);color:#fff;font:600 13px/1 Inter,sans-serif;outline:none;margin-bottom:10px;">
+        <button class="primary-btn" onclick="useDirect()" style="width:100%;">Использовать токен →</button>
+      </div>
 
-        <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:6px;">Твой токен (нажми чтобы скопировать):</p>
+      <!-- Результат -->
+      <div id="result" style="display:none;margin-top:16px;">
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:6px;">Твой токен (нажми чтобы скопировать):</div>
         <div class="token-box" id="tokenBox" onclick="copyToken()"></div>
-        <p style="font-size:11px;color:rgba(255,255,255,0.25);text-align:center;margin-bottom:16px;">Токен действует ~1 год. Не показывай его никому.</p>
-
-        <button class="primary-btn" onclick="copyAndGo()" style="width:100%;">Скопировать и перейти в профиль</button>
-        <a href="/profile" class="secondary-btn text-center" style="display:block;text-align:center;margin-top:8px;">В профиль без копирования</a>
+        <p style="font-size:11px;color:rgba(255,255,255,0.2);text-align:center;margin:8px 0 14px;">Не показывай никому. Действует ~1 год.</p>
+        <button class="primary-btn" onclick="copyAndGo()" style="width:100%;margin-bottom:8px;">Скопировать и открыть профиль →</button>
+        <a href="/profile" class="secondary-btn text-center" style="display:block;text-align:center;">В профиль без копирования</a>
       </div>
 
-      <!-- Состояние 3: ошибка -->
-      <div id="stateError" style="display:none;">
-        <div class="notice error" id="errorMsg"></div>
-        <a href="/get-ym-token" class="secondary-btn text-center" style="display:block;text-align:center;margin-top:12px;">Попробовать снова</a>
-      </div>
-
+      <div id="errBox" style="display:none;margin-top:12px;" class="notice error"></div>
     </section>
   </main>
 
   <script>
     let _token = '';
 
-    function show(state) {
-      ['stateGet','stateToken','stateError'].forEach(id => {
-        document.getElementById(id).style.display = id === state ? '' : 'none';
-      });
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', (i===0&&tab==='manual')||(i===1&&tab==='paste')));
+      document.getElementById('tab-manual').classList.toggle('active', tab==='manual');
+      document.getElementById('tab-paste').classList.toggle('active', tab==='paste');
+    }
+
+    function showToken(token) {
+      if (!token || token.length < 20) return showErr('Токен не найден. Попробуй скопировать URL сразу после редиректа.');
+      _token = token;
+      document.getElementById('tokenBox').textContent = token;
+      document.getElementById('result').style.display = '';
+      document.getElementById('errBox').style.display = 'none';
+    }
+
+    function showErr(msg) {
+      const e = document.getElementById('errBox');
+      e.textContent = msg; e.style.display = '';
+    }
+
+    function extractFromUrl() {
+      const raw = document.getElementById('urlInput').value.trim();
+      if (!raw) return showErr('Вставь URL');
+      try {
+        // Ищем access_token в hash или query
+        const hash = raw.includes('#') ? raw.split('#')[1] : raw.split('?')[1] || '';
+        const params = new URLSearchParams(hash);
+        const token = params.get('access_token');
+        if (token) return showToken(token);
+        // Если нет — пробуем regex
+        const m = raw.match(/access_token=([^&\s]+)/);
+        if (m) return showToken(m[1]);
+        showErr('Токен не найден в URL. Убедись что скопировал полный URL из адресной строки сразу после редиректа.');
+      } catch { showErr('Не удалось разобрать URL'); }
+    }
+
+    function useDirect() {
+      const t = document.getElementById('directToken').value.trim();
+      showToken(t);
     }
 
     function copyToken() {
       if (!_token) return;
       navigator.clipboard?.writeText(_token).then(() => {
-        document.getElementById('tokenBox').textContent = '✓ Скопировано!';
-        setTimeout(() => { document.getElementById('tokenBox').textContent = _token; }, 1500);
+        const box = document.getElementById('tokenBox');
+        const orig = box.textContent;
+        box.textContent = '✓ Скопировано!';
+        setTimeout(() => box.textContent = orig, 1500);
       });
     }
 
     function copyAndGo() {
-      navigator.clipboard?.writeText(_token).then(() => {
-        window.location.href = '/profile';
-      }).catch(() => {
-        window.location.href = '/profile';
-      });
+      navigator.clipboard?.writeText(_token).then(() => window.location.href = '/profile')
+        .catch(() => window.location.href = '/profile');
     }
 
-    // Читаем токен из hash-фрагмента URL
-    function init() {
-      const hash = window.location.hash.slice(1);
-      if (!hash) return;
-      const params = new URLSearchParams(hash);
-      const token = params.get('access_token');
-      const error = params.get('error');
-
-      if (token) {
-        _token = token;
-        document.getElementById('tokenBox').textContent = token;
-        document.getElementById('successMsg').style.display = 'block';
-        show('stateToken');
-        // Очищаем хэш из URL чтобы токен не был виден
-        history.replaceState(null, '', window.location.pathname);
-      } else if (error) {
-        document.getElementById('errorMsg').textContent = 'Ошибка авторизации: ' + error;
-        show('stateError');
-      }
+    // Если пришли с hash от Яндекса
+    const hash = window.location.hash.slice(1);
+    if (hash) {
+      const p = new URLSearchParams(hash);
+      const t = p.get('access_token');
+      if (t) { showToken(t); history.replaceState(null,'',location.pathname); }
     }
-
-    init();
   </script>
 </body>
 </html>
