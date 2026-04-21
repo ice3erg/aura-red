@@ -87,9 +87,7 @@ async function ynisonGetTrackClient() {
     const tid  = item?.playable_id;
     if (!tid) return null;
 
-    const tr = await fetch(`https://api.music.yandex.net/tracks/${tid}`, {
-      headers: { "Authorization": "OAuth " + token, "X-Yandex-Music-Client": "YandexMusicAndroid/24023621" }
-    }).then(r => r.json());
+    const tr = await fetch(`/api/yandex/track-meta/${tid}`).then(r => r.json());
     const t2 = tr?.result?.[0];
     if (!t2) return null;
     const album = t2.albums?.[0];

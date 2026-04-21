@@ -727,6 +727,20 @@ app.get("/api/lastfm/search", async (req, res) => {
 });
 
 
+// Прокси для метаданных трека ЯМ (CORS не позволяет браузеру запрашивать напрямую)
+app.get("/api/yandex/track-meta/:trackId", requireAuth, async (req, res) => {
+  try {
+    const user = await db.findById(req.user.id);
+    const token = user?.yandexToken;
+    if (!token) return res.status(401).json({ ok: false });
+    const r = await axios.get(`https://api.music.yandex.net/tracks/${req.params.trackId}`, {
+      headers: { "Authorization": `OAuth ${token}`, "X-Yandex-Music-Client": "YandexMusicAndroid/24023621" },
+      timeout: 5000
+    });
+    res.json(r.data);
+  } catch(e) { res.json({ result: [] }); }
+});
+
 // Клиент присылает трек из Ynison (серверный IP заблокирован Яндексом)
 app.post("/api/yandex/push-track", requireAuth, async (req, res) => {
   try {
