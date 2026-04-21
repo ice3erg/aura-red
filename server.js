@@ -8,7 +8,7 @@ const axios   = require("axios");
 const WebSocket = require("ws");
 
 // ── Ynison — real-time трек с Яндекс Музыки через WebSocket ─────────────────
-async function ynisonGetTrack(token) {
+async function ynisonGetTrack(token, deviceId) {
   // Ynison требует Sec-WebSocket-Protocol: Bearer, v2, {json}
   // Библиотека ws валидирует протоколы и не принимает JSON со спецсимволами.
   // Обходим через низкоуровневый HTTP upgrade с ручным заголовком.
@@ -16,7 +16,6 @@ async function ynisonGetTrack(token) {
   const crypto = require("crypto");
 
   return new Promise((resolve) => {
-    const deviceId = crypto.randomBytes(16).toString("hex");
     const timer = setTimeout(() => { resolve(null); }, 10000);
     const done = (v) => { clearTimeout(timer); resolve(v); };
 
@@ -733,7 +732,14 @@ app.get("/api/yandex/current-track", requireAuth, async (req, res) => {
     const token = user?.yandexToken;
     if (!token) return res.json({ ok: false, error: "Яндекс Музыка не подключена" });
 
-    const track = await ynisonGetTrack(token);
+    // Получаем или создаём постоянный device_id для этого пользователя
+    let deviceId = user?.yandexDeviceId;
+    if (!deviceId) {
+      deviceId = require("crypto").randomBytes(16).toString("hex");
+      await db.updateUser(req.user.id, { yandexDeviceId: deviceId });
+    }
+
+    const track = await ynisonGetTrack(token, deviceId);
     if (!track) return res.json({ ok: true, isPlaying: false });
 
     res.json({ ok: true, isPlaying: track.isPlaying !== false, track });

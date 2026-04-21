@@ -54,6 +54,7 @@ if (USE_PG) {
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS aura_points INTEGER DEFAULT 0`))
       .then(() => pgPool.query(`ALTER TABLE signals ADD COLUMN IF NOT EXISTS seen_by_from BOOLEAN DEFAULT false`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS yandex_token TEXT DEFAULT ''`))
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS yandex_device_id TEXT DEFAULT ''`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_days INTEGER DEFAULT 0`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_last DATE`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT UNIQUE`))
@@ -141,6 +142,7 @@ function rowToUser(row) {
     spotifyRefreshToken: row.spotify_refresh_token || "",
     lastfmConnected:     row.lastfm_connected || false,
     yandexToken:         row.yandex_token || '',
+    yandexDeviceId:      row.yandex_device_id || '',
     lastfmUsername:      row.lastfm_username || "",
     currentTrack:        row.current_track || null,
     createdAt:           row.created_at,
@@ -176,7 +178,7 @@ async function pgUpdateUser(id, patch) {
     spotifyConnected: "spotify_connected", spotifyName: "spotify_name",
     spotifyId: "spotify_id", spotifyAccessToken: "spotify_access_token",
     spotifyRefreshToken: "spotify_refresh_token",
-    lastfmConnected: "lastfm_connected", lastfmUsername: "lastfm_username", yandexToken: "yandex_token",
+    lastfmConnected: "lastfm_connected", lastfmUsername: "lastfm_username", yandexToken: "yandex_token", yandexDeviceId: "yandex_device_id",
     currentTrack: "current_track",
     username: "username",
     streakDays: "streak_days", streakLast: "streak_last",
