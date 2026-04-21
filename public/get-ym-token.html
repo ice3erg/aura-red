@@ -7,63 +7,57 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css" />
   <style>
-    .ym-logo { width:48px;height:48px;border-radius:14px;background:rgba(255,204,0,0.15);display:flex;align-items:center;justify-content:center;margin:0 auto 16px; }
+    .ym-logo { width:52px;height:52px;border-radius:16px;background:rgba(255,204,0,0.15);display:flex;align-items:center;justify-content:center;margin:0 auto 14px; }
     .token-box { background:rgba(255,204,0,0.05);border:1px solid rgba(255,204,0,0.2);border-radius:14px;padding:14px;margin:12px 0;word-break:break-all;font:600 12px/1.5 monospace;color:#FFCC00;cursor:pointer;transition:background .15s; }
     .token-box:hover { background:rgba(255,204,0,0.1); }
-    .step { display:flex;align-items:flex-start;gap:12px;margin-bottom:12px; }
-    .step-n { width:22px;height:22px;border-radius:50%;background:rgba(255,43,43,0.15);border:1px solid rgba(255,43,43,0.3);font-size:11px;font-weight:800;color:#ff2b2b;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px; }
-    .step p { font-size:13px;color:rgba(255,255,255,0.6);line-height:1.55;margin:0; }
-    .step b { color:#fff; }
-    .success-box { background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);color:#22c55e;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;text-align:center;margin-bottom:12px; }
+    .success-box { background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);color:#22c55e;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;text-align:center;margin-bottom:14px; }
+    .warn-box { background:rgba(255,204,0,0.07);border:1px solid rgba(255,204,0,0.2);border-radius:10px;padding:10px 14px;font-size:12px;color:rgba(255,204,0,0.8);margin-bottom:14px;line-height:1.5; }
+    .field label { display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.3);margin-bottom:6px; }
+    .field { margin-bottom:12px; }
   </style>
 </head>
 <body class="red-mode auth-page">
   <main class="auth-shell">
     <section class="auth-card">
       <div class="ym-logo">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="#FFCC00"><path d="M13.24 3H11v8.6H9.3c-2.16 0-3.9 1.7-3.9 3.8 0 2.1 1.74 3.8 3.9 3.8 2.15 0 3.9-1.7 3.9-3.8V3zm-3.94 14.2c-1.06 0-1.9-.84-1.9-1.8s.84-1.8 1.9-1.8H11v1.8c0 .96-.85 1.8-1.7 1.8z"/></svg>
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="#FFCC00"><path d="M13.24 3H11v8.6H9.3c-2.16 0-3.9 1.7-3.9 3.8 0 2.1 1.74 3.8 3.9 3.8 2.15 0 3.9-1.7 3.9-3.8V3zm-3.94 14.2c-1.06 0-1.9-.84-1.9-1.8s.84-1.8 1.9-1.8H11v1.8c0 .96-.85 1.8-1.7 1.8z"/></svg>
       </div>
 
       <div class="logo">+aura</div>
-      <h1>Токен Яндекс Музыки</h1>
-      <p class="auth-subtitle">+aura будет показывать что ты слушаешь в реальном времени</p>
+      <h1>Яндекс Музыка</h1>
+      <p class="auth-subtitle">Введи логин и пароль от Яндекса — токен получается напрямую, без редиректов</p>
 
-      <!-- Шаги -->
-      <div id="stateGet">
-        <div style="margin-bottom:18px;">
-          <div class="step">
-            <span class="step-n">1</span>
-            <p>Нажми кнопку ниже — откроется страница Яндекса в новой вкладке</p>
-          </div>
-          <div class="step">
-            <span class="step-n">2</span>
-            <p>Войди в аккаунт → страница быстро редиректнет на music.yandex.ru. <b>Сразу скопируй весь адрес из адресной строки</b></p>
-          </div>
-          <div class="step">
-            <span class="step-n">3</span>
-            <p>Вернись сюда и вставь скопированный адрес в поле ниже</p>
-          </div>
+      <!-- Форма логина -->
+      <div id="stateLogin">
+        <div class="warn-box">
+          🔒 Логин и пароль отправляются напрямую на серверы Яндекса через их официальный OAuth API. +aura их не сохраняет.
         </div>
 
-        <a href="https://oauth.yandex.ru/authorize?response_type=token&client_id=23cabbbdc6cd418abb4b39c32c41195d" target="_blank" class="primary-btn text-center" style="display:block;text-align:center;margin-bottom:16px;">
-          Открыть Яндекс →
-        </a>
-
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.3);margin-bottom:6px;">Вставь адрес страницы после входа</div>
-        <div style="display:flex;gap:8px;margin-bottom:6px;">
-          <input id="urlField" type="text" placeholder="https://music.yandex.ru/#access_token=..." autocomplete="off"
-            style="flex:1;padding:10px 13px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#fff;font:500 12px/1 Inter,sans-serif;outline:none;" />
-          <button id="extractBtn" onclick="extractToken()" style="padding:10px 14px;border-radius:10px;background:#ff2b2b;color:#fff;border:none;font:700 13px/1 Inter,sans-serif;cursor:pointer;white-space:nowrap;">Найти</button>
+        <div class="field">
+          <label>Логин или email</label>
+          <input id="ymLogin" type="email" placeholder="example@yandex.ru" autocomplete="username"
+            style="width:100%;padding:11px 13px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#fff;font:500 15px/1 Inter,sans-serif;outline:none;box-sizing:border-box;" />
         </div>
-        <div id="pasteError" style="display:none;font-size:12px;color:#ff6b6b;margin-top:4px;line-height:1.5;"></div>
+        <div class="field">
+          <label>Пароль</label>
+          <input id="ymPass" type="password" placeholder="••••••••" autocomplete="current-password"
+            style="width:100%;padding:11px 13px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#fff;font:500 15px/1 Inter,sans-serif;outline:none;box-sizing:border-box;" />
+        </div>
+
+        <div id="loginError" style="display:none;font-size:13px;color:#ff6b6b;margin-bottom:12px;padding:10px 13px;background:rgba(255,43,43,0.08);border-radius:10px;line-height:1.5;"></div>
+
+        <button id="loginBtn" onclick="doLogin()" class="primary-btn" style="width:100%;">Получить токен</button>
+        <p style="font-size:11px;color:rgba(255,255,255,0.2);text-align:center;margin-top:12px;line-height:1.5;">
+          Используется та же процедура что и в сторонних клиентах ЯМ.<br>Пароль нигде не сохраняется.
+        </p>
       </div>
 
-      <!-- Токен найден -->
+      <!-- Токен получен -->
       <div id="stateToken" style="display:none;">
-        <div class="success-box">✓ Токен найден!</div>
-        <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:4px;">Твой токен (нажми чтобы скопировать):</p>
+        <div class="success-box">✓ Токен получен!</div>
+        <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:4px;">Нажми чтобы скопировать:</p>
         <div class="token-box" id="tokenBox" onclick="copyToken()"></div>
-        <p style="font-size:11px;color:rgba(255,255,255,0.25);text-align:center;margin-bottom:16px;">Не показывай токен никому — он даёт доступ к твоему аккаунту</p>
+        <p style="font-size:11px;color:rgba(255,255,255,0.25);text-align:center;margin-bottom:16px;">Токен действует ~1 год. Не показывай его никому.</p>
         <button class="primary-btn" onclick="copyAndGo()" style="width:100%;margin-bottom:8px;">Скопировать и перейти в профиль</button>
         <a href="/profile" class="secondary-btn text-center" style="display:block;text-align:center;">В профиль</a>
       </div>
@@ -75,31 +69,48 @@
     let _token = '';
 
     function show(state) {
-      document.getElementById('stateGet').style.display   = state === 'get'   ? '' : 'none';
+      document.getElementById('stateLogin').style.display = state === 'login' ? '' : 'none';
       document.getElementById('stateToken').style.display = state === 'token' ? '' : 'none';
     }
 
-    function extractToken() {
-      const raw = (document.getElementById('urlField')?.value || '').trim();
-      const errEl = document.getElementById('pasteError');
-      errEl.style.display = 'none';
-      if (!raw) return;
+    function setError(msg) {
+      const el = document.getElementById('loginError');
+      el.textContent = msg;
+      el.style.display = msg ? 'block' : 'none';
+    }
 
-      let token = '';
+    async function doLogin() {
+      const login = (document.getElementById('ymLogin')?.value || '').trim();
+      const pass  = (document.getElementById('ymPass')?.value  || '').trim();
+      if (!login || !pass) return setError('Введи логин и пароль');
 
-      // Ищем access_token= в строке (работает для URL с hash или query)
-      const m = raw.match(/access_token=([A-Za-z0-9._~+\-]+)/);
-      if (m) token = m[1];
+      const btn = document.getElementById('loginBtn');
+      btn.disabled = true;
+      btn.textContent = 'Получаем токен...';
+      setError('');
 
-      if (!token) {
-        errEl.textContent = 'Токен не найден. Скопируй полный адрес страницы после редиректа — он должен содержать access_token=...';
-        errEl.style.display = 'block';
-        return;
+      try {
+        const r = await fetch('/api/yandex/get-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ login, password: pass })
+        });
+        const data = await r.json();
+
+        if (data.ok && data.token) {
+          _token = data.token;
+          document.getElementById('tokenBox').textContent = data.token;
+          show('token');
+        } else {
+          setError(data.error || 'Ошибка авторизации. Проверь логин и пароль.');
+          btn.disabled = false;
+          btn.textContent = 'Получить токен';
+        }
+      } catch {
+        setError('Ошибка сети. Попробуй ещё раз.');
+        btn.disabled = false;
+        btn.textContent = 'Получить токен';
       }
-
-      _token = token;
-      document.getElementById('tokenBox').textContent = token;
-      show('token');
     }
 
     function copyToken() {
@@ -114,32 +125,18 @@
 
     function copyAndGo() {
       if (navigator.clipboard) {
-        navigator.clipboard.writeText(_token).finally(() => {
-          window.location.href = '/profile';
-        });
+        navigator.clipboard.writeText(_token).finally(() => window.location.href = '/profile');
       } else {
         window.location.href = '/profile';
       }
     }
 
-    // Enter в поле
-    document.getElementById('urlField')?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') extractToken();
+    // Enter
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('ymPass')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') doLogin();
+      });
     });
-
-    // Пробуем прочитать токен из текущего хэша (на случай если редирект всё же сработал)
-    (function() {
-      const hash = window.location.hash.slice(1);
-      if (!hash) return;
-      const params = new URLSearchParams(hash);
-      const token = params.get('access_token');
-      if (token) {
-        _token = token;
-        document.getElementById('tokenBox').textContent = token;
-        show('token');
-        history.replaceState(null, '', window.location.pathname);
-      }
-    })();
   </script>
 </body>
 </html>
