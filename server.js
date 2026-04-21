@@ -76,7 +76,7 @@ async function ynisonGetTrack(token) {
           buf = Buffer.concat([buf, chunk]);
           // Парсим WebSocket frame
           while (buf.length >= 2) {
-            const fin  = (buf[0] & 0x80) !== 0;
+            const fin    = (buf[0] & 0x80) !== 0;
             const opcode = buf[0] & 0x0f;
             const masked = (buf[1] & 0x80) !== 0;
             let payLen = buf[1] & 0x7f;
@@ -88,10 +88,19 @@ async function ynisonGetTrack(token) {
             if (masked) { mask = buf.slice(offset, offset + 4); offset += 4; data = buf.slice(offset, offset + payLen); for (let i = 0; i < data.length; i++) data[i] ^= mask[i % 4]; }
             else { data = buf.slice(offset, offset + payLen); }
             buf = buf.slice(offset + payLen);
+            console.log("[ynison] frame opcode:", opcode, "len:", payLen);
             if (opcode === 1 || opcode === 2) { // text or binary
-              onMessage(data.toString("utf8"), socket);
+              const text = data.toString("utf8");
+              console.log("[ynison] message:", text.slice(0, 300));
+              onMessage(text, socket);
             } else if (opcode === 8) { // close
+              const code = payLen >= 2 ? data.readUInt16BE(0) : 1000;
+              const reason = payLen > 2 ? data.slice(2).toString("utf8") : "";
+              console.log("[ynison] close frame code:", code, "reason:", reason);
               socket.destroy();
+            } else if (opcode === 9) { // ping
+              // отвечаем pong
+              socket.write(Buffer.from([0x8a, 0x00]));
             }
           }
         });
