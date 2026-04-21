@@ -7,59 +7,113 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css" />
   <style>
-    .ym-logo { width:52px;height:52px;border-radius:16px;background:rgba(255,204,0,0.15);display:flex;align-items:center;justify-content:center;margin:0 auto 14px; }
-    .token-box { background:rgba(255,204,0,0.05);border:1px solid rgba(255,204,0,0.2);border-radius:14px;padding:14px;margin:12px 0;word-break:break-all;font:600 12px/1.5 monospace;color:#FFCC00;cursor:pointer;transition:background .15s; }
-    .token-box:hover { background:rgba(255,204,0,0.1); }
-    .success-box { background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.2);color:#22c55e;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;text-align:center;margin-bottom:14px; }
-    .warn-box { background:rgba(255,204,0,0.07);border:1px solid rgba(255,204,0,0.2);border-radius:10px;padding:10px 14px;font-size:12px;color:rgba(255,204,0,0.8);margin-bottom:14px;line-height:1.5; }
-    .field label { display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.3);margin-bottom:6px; }
-    .field { margin-bottom:12px; }
+    .ym-orb {
+      width: 56px; height: 56px; border-radius: 16px;
+      background: rgba(255,204,0,0.12); border: 1px solid rgba(255,204,0,0.2);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .step-row {
+      display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px;
+    }
+    .step-num {
+      width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; margin-top: 1px;
+      background: rgba(255,43,43,0.12); border: 1px solid rgba(255,43,43,0.25);
+      font-size: 10px; font-weight: 800; color: #ff2b2b;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .step-row p { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.55; margin: 0; }
+    .step-row b { color: #fff; }
+    .token-display {
+      background: rgba(255,204,0,0.06); border: 1px solid rgba(255,204,0,0.2);
+      border-radius: 12px; padding: 14px; margin: 4px 0 16px;
+      font: 600 12px/1.6 monospace; color: #FFCC00;
+      word-break: break-all; cursor: pointer; transition: background .15s;
+    }
+    .token-display:hover { background: rgba(255,204,0,0.1); }
+    .ya-btn {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; padding: 15px; border-radius: 14px;
+      background: #FFCC00; color: #000; border: none;
+      font: 800 15px/1 Inter,sans-serif; cursor: pointer;
+      text-decoration: none; transition: opacity .15s;
+    }
+    .ya-btn:hover { opacity: .9; }
   </style>
 </head>
 <body class="red-mode auth-page">
   <main class="auth-shell">
     <section class="auth-card">
-      <div class="ym-logo">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="#FFCC00"><path d="M13.24 3H11v8.6H9.3c-2.16 0-3.9 1.7-3.9 3.8 0 2.1 1.74 3.8 3.9 3.8 2.15 0 3.9-1.7 3.9-3.8V3zm-3.94 14.2c-1.06 0-1.9-.84-1.9-1.8s.84-1.8 1.9-1.8H11v1.8c0 .96-.85 1.8-1.7 1.8z"/></svg>
+
+      <div class="ym-orb">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="#FFCC00">
+          <path d="M13.24 3H11v8.6H9.3c-2.16 0-3.9 1.7-3.9 3.8 0 2.1 1.74 3.8 3.9 3.8 2.15 0 3.9-1.7 3.9-3.8V3zm-3.94 14.2c-1.06 0-1.9-.84-1.9-1.8s.84-1.8 1.9-1.8H11v1.8c0 .96-.85 1.8-1.7 1.8z"/>
+        </svg>
       </div>
 
       <div class="logo">+aura</div>
       <h1>Яндекс Музыка</h1>
-      <p class="auth-subtitle">Введи логин и пароль от Яндекса — токен получается напрямую, без редиректов</p>
 
-      <!-- Форма логина -->
-      <div id="stateLogin">
-        <div class="warn-box">
-          🔒 Логин и пароль отправляются напрямую на серверы Яндекса через их официальный OAuth API. +aura их не сохраняет.
+      <!-- ШАГ 1: кнопка входа -->
+      <div id="s1">
+        <p class="auth-subtitle" style="margin-bottom:20px;">
+          Нажми кнопку — откроется официальная страница Яндекса.<br>
+          Войди там и токен появится здесь автоматически.
+        </p>
+
+        <div style="margin-bottom:20px;">
+          <div class="step-row">
+            <span class="step-num">1</span>
+            <p>Нажми <b>«Войти через Яндекс»</b> — откроется сайт Яндекса</p>
+          </div>
+          <div class="step-row">
+            <span class="step-num">2</span>
+            <p>Войди в свой аккаунт на странице <b>Яндекса</b> (не здесь)</p>
+          </div>
+          <div class="step-row">
+            <span class="step-num">3</span>
+            <p>Тебя вернёт сюда — нажми <b>«Подключить»</b> и готово</p>
+          </div>
         </div>
 
-        <div class="field">
-          <label>Логин или email</label>
-          <input id="ymLogin" type="email" placeholder="example@yandex.ru" autocomplete="username"
-            style="width:100%;padding:11px 13px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#fff;font:500 15px/1 Inter,sans-serif;outline:none;box-sizing:border-box;" />
-        </div>
-        <div class="field">
-          <label>Пароль</label>
-          <input id="ymPass" type="password" placeholder="••••••••" autocomplete="current-password"
-            style="width:100%;padding:11px 13px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:#fff;font:500 15px/1 Inter,sans-serif;outline:none;box-sizing:border-box;" />
-        </div>
+        <a id="yaLoginBtn" class="ya-btn" href="#" onclick="startOAuth()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#000">
+            <path d="M13.24 3H11v8.6H9.3c-2.16 0-3.9 1.7-3.9 3.8 0 2.1 1.74 3.8 3.9 3.8 2.15 0 3.9-1.7 3.9-3.8V3zm-3.94 14.2c-1.06 0-1.9-.84-1.9-1.8s.84-1.8 1.9-1.8H11v1.8c0 .96-.85 1.8-1.7 1.8z"/>
+          </svg>
+          Войти через Яндекс
+        </a>
 
-        <div id="loginError" style="display:none;font-size:13px;color:#ff6b6b;margin-bottom:12px;padding:10px 13px;background:rgba(255,43,43,0.08);border-radius:10px;line-height:1.5;"></div>
-
-        <button id="loginBtn" onclick="doLogin()" class="primary-btn" style="width:100%;">Получить токен</button>
         <p style="font-size:11px;color:rgba(255,255,255,0.2);text-align:center;margin-top:12px;line-height:1.5;">
-          Используется та же процедура что и в сторонних клиентах ЯМ.<br>Пароль нигде не сохраняется.
+          Логин и пароль вводятся только на сайте Яндекса.<br>+aura их не видит и не хранит.
         </p>
       </div>
 
-      <!-- Токен получен -->
-      <div id="stateToken" style="display:none;">
-        <div class="success-box">✓ Токен получен!</div>
-        <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:4px;">Нажми чтобы скопировать:</p>
-        <div class="token-box" id="tokenBox" onclick="copyToken()"></div>
-        <p style="font-size:11px;color:rgba(255,255,255,0.25);text-align:center;margin-bottom:16px;">Токен действует ~1 год. Не показывай его никому.</p>
-        <button class="primary-btn" onclick="copyAndGo()" style="width:100%;margin-bottom:8px;">Скопировать и перейти в профиль</button>
-        <a href="/profile" class="secondary-btn text-center" style="display:block;text-align:center;">В профиль</a>
+      <!-- ШАГ 2: токен получен -->
+      <div id="s2" style="display:none;">
+        <div class="notice" style="background:rgba(34,197,94,0.08);border-color:rgba(34,197,94,0.2);color:#22c55e;margin-bottom:16px;">
+          ✓ Токен получен — нажми чтобы скопировать
+        </div>
+
+        <div class="token-display" id="tokenBox" onclick="copyToken()"></div>
+
+        <button class="primary-btn" style="width:100%;margin-bottom:8px;" onclick="copyAndGo()">
+          Скопировать и подключить →
+        </button>
+        <a href="/profile" class="secondary-btn text-center" style="display:block;text-align:center;">
+          Перейти в профиль
+        </a>
+
+        <p style="font-size:11px;color:rgba(255,255,255,0.2);text-align:center;margin-top:12px;">
+          Токен действует ~1 год. Не показывай его другим.
+        </p>
+      </div>
+
+      <!-- Ошибка -->
+      <div id="sErr" style="display:none;">
+        <div class="notice error" id="errTxt"></div>
+        <button class="secondary-btn" style="width:100%;margin-top:12px;" onclick="show('s1')">
+          Попробовать снова
+        </button>
       </div>
 
     </section>
@@ -67,76 +121,56 @@
 
   <script>
     let _token = '';
+    const REDIRECT = location.origin + '/get-ym-token';
+    const CLIENT_ID = '23cabbbdc6cd418abb4b39c32c41195d';
 
-    function show(state) {
-      document.getElementById('stateLogin').style.display = state === 'login' ? '' : 'none';
-      document.getElementById('stateToken').style.display = state === 'token' ? '' : 'none';
+    function show(id) {
+      ['s1','s2','sErr'].forEach(s => {
+        document.getElementById(s).style.display = s === id ? '' : 'none';
+      });
     }
 
-    function setError(msg) {
-      const el = document.getElementById('loginError');
-      el.textContent = msg;
-      el.style.display = msg ? 'block' : 'none';
-    }
-
-    async function doLogin() {
-      const login = (document.getElementById('ymLogin')?.value || '').trim();
-      const pass  = (document.getElementById('ymPass')?.value  || '').trim();
-      if (!login || !pass) return setError('Введи логин и пароль');
-
-      const btn = document.getElementById('loginBtn');
-      btn.disabled = true;
-      btn.textContent = 'Получаем токен...';
-      setError('');
-
-      try {
-        const r = await fetch('/api/yandex/get-token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ login, password: pass })
-        });
-        const data = await r.json();
-
-        if (data.ok && data.token) {
-          _token = data.token;
-          document.getElementById('tokenBox').textContent = data.token;
-          show('token');
-        } else {
-          setError(data.error || 'Ошибка авторизации. Проверь логин и пароль.');
-          btn.disabled = false;
-          btn.textContent = 'Получить токен';
-        }
-      } catch {
-        setError('Ошибка сети. Попробуй ещё раз.');
-        btn.disabled = false;
-        btn.textContent = 'Получить токен';
-      }
+    function startOAuth(e) {
+      if (e) e.preventDefault();
+      const url = `https://oauth.yandex.ru/authorize?response_type=token&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT)}`;
+      window.location.href = url;
     }
 
     function copyToken() {
       if (!_token) return;
       navigator.clipboard?.writeText(_token).then(() => {
         const box = document.getElementById('tokenBox');
-        const prev = box.textContent;
+        const orig = box.textContent;
         box.textContent = '✓ Скопировано!';
-        setTimeout(() => { box.textContent = prev; }, 1500);
+        setTimeout(() => box.textContent = orig, 1500);
       });
     }
 
     function copyAndGo() {
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(_token).finally(() => window.location.href = '/profile');
-      } else {
+      if (!_token) return;
+      navigator.clipboard?.writeText(_token).then(() => {
         window.location.href = '/profile';
-      }
+      }).catch(() => window.location.href = '/profile');
     }
 
-    // Enter
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('ymPass')?.addEventListener('keydown', e => {
-        if (e.key === 'Enter') doLogin();
-      });
-    });
+    // Читаем токен из хэша который Яндекс добавляет после редиректа
+    (function init() {
+      const hash = location.hash.slice(1);
+      if (!hash) return;
+      const p = new URLSearchParams(hash);
+      const tok = p.get('access_token');
+      const err = p.get('error');
+      // Убираем токен из адресной строки сразу
+      history.replaceState(null, '', location.pathname);
+      if (tok) {
+        _token = tok;
+        document.getElementById('tokenBox').textContent = tok;
+        show('s2');
+      } else if (err) {
+        document.getElementById('errTxt').textContent = 'Ошибка: ' + err;
+        show('sErr');
+      }
+    })();
   </script>
 </body>
 </html>

@@ -644,65 +644,6 @@ app.get("/api/yandex/current-track", requireAuth, async (req, res) => {
 
 // Сохранить токен Яндекс Музыки
 // Получить токен ЯМ по логину/паролю (двухшаговый OAuth)
-app.post("/api/yandex/get-token", async (req, res) => {
-  const { login, password } = req.body || {};
-  if (!login || !password)
-    return res.status(400).json({ ok: false, error: "Нет логина или пароля" });
-
-  const DEVICE_ID    = "377c5ae26b09fccd72deae0a95425559";
-  const UUID         = "3cfccdaf75dcf98b917a54afe50447ba";
-  const CLIENT_ID_1  = "0618394846eb4d9589a602f80ce013d6";
-  const SECRET_1     = "c13b3de8d9f5492caf321467c3520358";
-  const CLIENT_ID_2  = "23cabbbdc6cd418abb4b39c32c41195d";
-  const SECRET_2     = "53bc75238f0c4d08a118e51fe9203300";
-
-  try {
-    // Шаг 1: получаем временный x-token по логину/паролю
-    const step1 = await axios.post(
-      "https://oauth.mobile.yandex.net/1/token",
-      new URLSearchParams({
-        grant_type:    "password",
-        username:      login,
-        password:      password,
-        client_id:     CLIENT_ID_1,
-        client_secret: SECRET_1,
-      }),
-      { headers: { "Content-Type": "application/x-www-form-urlencoded" }, timeout: 10000 }
-    );
-    const xToken = step1.data?.access_token;
-    if (!xToken) return res.json({ ok: false, error: "Не удалось получить промежуточный токен" });
-
-    // Шаг 2: обмениваем x-token на финальный ЯМ токен
-    const step2 = await axios.post(
-      "https://oauth.mobile.yandex.net/1/token",
-      new URLSearchParams({
-        grant_type:    "x-token",
-        access_token:  xToken,
-        client_id:     CLIENT_ID_2,
-        client_secret: SECRET_2,
-        device_id:     DEVICE_ID,
-        uuid:          UUID,
-        package_name:  "ru.yandex.music",
-      }),
-      { headers: { "Content-Type": "application/x-www-form-urlencoded" }, timeout: 10000 }
-    );
-    const token = step2.data?.access_token;
-    if (!token) return res.json({ ok: false, error: "Не удалось получить токен Яндекс Музыки" });
-
-    res.json({ ok: true, token });
-  } catch(e) {
-    const status = e.response?.status;
-    const errData = e.response?.data;
-    if (status === 400 && errData?.error === "invalid_client") {
-      return res.json({ ok: false, error: "Неверный логин или пароль" });
-    }
-    if (status === 400) {
-      return res.json({ ok: false, error: errData?.error_description || "Ошибка авторизации" });
-    }
-    console.error("[ym-token]", e.message);
-    res.json({ ok: false, error: "Ошибка сервера. Попробуй позже." });
-  }
-});
 
 app.post("/api/yandex/connect", requireAuth, async (req, res) => {
   const { token } = req.body;
