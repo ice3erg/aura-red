@@ -43,7 +43,7 @@ async function ynisonGetTrack(token) {
     try {
       rdr = new WebSocket(
         "wss://ynison.music.yandex.ru/redirector.YnisonRedirectService/GetRedirectToYnison",
-        undefined,
+        ["Bearer", "v2"],
         makeWsOpts()
       );
     } catch(e) { console.error("[ynison] rdr create:", e.message); return done(null); }
@@ -67,7 +67,7 @@ async function ynisonGetTrack(token) {
       try {
         ws = new WebSocket(
           `wss://${host}/ynison_state.YnisonStateService/PutYnisonState`,
-          undefined,
+          ["Bearer", "v2"],
           makeWsOpts({ "Ynison-Redirect-Ticket": ticket, ...(sid ? { "Ynison-Session-Id": sid } : {}) })
         );
       } catch(e) { console.error("[ynison] state create:", e.message); return done(null); }
