@@ -11,63 +11,71 @@ const WebSocket = require("ws");
 async function ynisonGetTrack(token) {
   return new Promise((resolve) => {
     const deviceId = require("crypto").randomBytes(16).toString("hex");
-    const timer = setTimeout(() => resolve(null), 9000);
+    const timer = setTimeout(() => resolve(null), 10000);
     const done = (v) => { clearTimeout(timer); resolve(v); };
 
-    const makeProtocol = (extra = {}) => JSON.stringify({
-      "Ynison-Device-Id": deviceId,
-      "Ynison-Device-Info": JSON.stringify({ app_name: "Desktop", app_version: "5.79.7", type: 1 }),
-      "authorization": `OAuth ${token}`,
-      ...extra
-    });
+    // Ynison требует JSON в Sec-WebSocket-Protocol заголовке
+    // ws не принимает JSON как протокол напрямую — передаём через заголовок вручную
+    const makeProtoHeader = (extra = {}) => {
+      const obj = {
+        "Ynison-Device-Id": deviceId,
+        "Ynison-Device-Info": JSON.stringify({ app_name: "Desktop", app_version: "5.79.7", type: 1 }),
+        "authorization": `OAuth ${token}`,
+        ...extra
+      };
+      // Кодируем в base64 чтобы избежать проблем с символами в заголовке
+      return `Bearer, v2, ${JSON.stringify(obj)}`;
+    };
 
-    const wsOpts = (proto) => ({
-      headers: { "Origin": "https://music.yandex.ru", "Authorization": `OAuth ${token}` },
+    const makeWsOpts = (extra = {}) => ({
+      headers: {
+        "Origin": "https://music.yandex.ru",
+        "Authorization": `OAuth ${token}`,
+        "Sec-WebSocket-Protocol": makeProtoHeader(extra),
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+      },
       rejectUnauthorized: false,
       perMessageDeflate: false,
     });
 
-    // ШАГ 1: редиректор → получаем host + redirect_ticket
+    // ШАГ 1: редиректор
     let rdr;
     try {
       rdr = new WebSocket(
         "wss://ynison.music.yandex.ru/redirector.YnisonRedirectService/GetRedirectToYnison",
-        ["Bearer", "v2", makeProtocol()],
-        wsOpts()
+        undefined,
+        makeWsOpts()
       );
-    } catch { return done(null); }
+    } catch(e) { console.error("[ynison] rdr create:", e.message); return done(null); }
 
-    rdr.once("error", () => done(null));
+    rdr.once("error", (e) => { console.error("[ynison] rdr error:", e.message); done(null); });
     rdr.once("message", async (raw) => {
       rdr.close();
       let redirect;
-      try { redirect = JSON.parse(raw); } catch { return done(null); }
-      if (redirect.error) return done(null);
+      try { redirect = JSON.parse(raw); } catch(e) { console.error("[ynison] rdr parse:", e.message); return done(null); }
+      if (redirect.error) { console.error("[ynison] rdr error response:", redirect.error); return done(null); }
 
       const host   = (redirect.host || "").replace(/^wss?:\/\//, "").replace(/\/$/, "");
       const ticket = redirect.redirect_ticket;
       const sid    = redirect.session_id;
-      if (!host || !ticket) return done(null);
+      if (!host || !ticket) { console.error("[ynison] no host/ticket:", redirect); return done(null); }
 
-      // ШАГ 2: state socket → получаем текущий трек
-      const stateProto = makeProtocol({
-        "Ynison-Redirect-Ticket": ticket,
-        ...(sid ? { "Ynison-Session-Id": sid } : {})
-      });
+      console.log("[ynison] redirect to:", host);
 
+      // ШАГ 2: state socket
       let ws;
       try {
         ws = new WebSocket(
           `wss://${host}/ynison_state.YnisonStateService/PutYnisonState`,
-          ["Bearer", "v2", stateProto],
-          wsOpts()
+          undefined,
+          makeWsOpts({ "Ynison-Redirect-Ticket": ticket, ...(sid ? { "Ynison-Session-Id": sid } : {}) })
         );
-      } catch { return done(null); }
+      } catch(e) { console.error("[ynison] state create:", e.message); return done(null); }
 
-      ws.once("error", () => done(null));
+      ws.once("error", (e) => { console.error("[ynison] state error:", e.message); done(null); });
 
       ws.once("open", () => {
-        // Shadow-устройство: только наблюдаем, не управляем
+        console.log("[ynison] state connected, sending init");
         ws.send(JSON.stringify({
           update_full_state: {
             device: {
@@ -87,37 +95,46 @@ async function ynisonGetTrack(token) {
       ws.once("message", async (raw2) => {
         ws.close();
         let state;
-        try { state = JSON.parse(raw2); } catch { return done(null); }
+        try { state = JSON.parse(raw2); } catch(e) { console.error("[ynison] state parse:", e.message); return done(null); }
+
+        console.log("[ynison] state received, keys:", Object.keys(state));
 
         const fs  = state.update_full_state || state;
         const pq  = fs?.player_state?.player_queue;
         const st  = fs?.player_state?.status;
-        if (!pq?.playable_list?.length) return done(null);
+
+        if (!pq?.playable_list?.length) {
+          console.log("[ynison] empty queue");
+          return done(null);
+        }
 
         const idx  = pq.current_playable_index ?? 0;
         const item = pq.playable_list[idx];
         const tid  = item?.playable_id;
-        if (!tid) return done(null);
+        if (!tid) { console.log("[ynison] no track id"); return done(null); }
 
-        // Если в очереди уже есть title — используем, параллельно запрашиваем обложку
+        console.log("[ynison] track id:", tid, "paused:", st?.paused);
+
         try {
           const r = await axios.get(`https://api.music.yandex.net/tracks/${tid}`, {
             headers: { "Authorization": `OAuth ${token}`, "X-Yandex-Music-Client": "YandexMusicAndroid/24023621" },
             timeout: 5000
           });
-          const t  = r.data?.result?.[0];
+          const t = r.data?.result?.[0];
           if (!t) return done(null);
           const album = t.albums?.[0];
-          done({
-            name:     t.title || item.title || "",
-            artists:  (t.artists || []).map(a => a.name).join(", "),
-            album:    album?.title || "",
-            image:    album?.coverUri ? "https://" + album.coverUri.replace("%%", "400x400") : "",
-            url:      `https://music.yandex.ru/track/${tid}`,
-            source:   "yandex",
+          const result = {
+            name:      t.title || item.title || "",
+            artists:   (t.artists || []).map(a => a.name).join(", "),
+            album:     album?.title || "",
+            image:     album?.coverUri ? "https://" + album.coverUri.replace("%%", "400x400") : "",
+            url:       `https://music.yandex.ru/track/${tid}`,
+            source:    "yandex",
             isPlaying: !st?.paused,
-          });
-        } catch { done(null); }
+          };
+          console.log("[ynison] ok:", result.name, "-", result.artists);
+          done(result);
+        } catch(e) { console.error("[ynison] track fetch:", e.message); done(null); }
       });
     });
   });
