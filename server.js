@@ -125,6 +125,7 @@ async function ynisonGetTrack(token) {
           "/ynison_state.YnisonStateService/PutYnisonState",
           makeProto(stateExtra),
           (sock2) => {
+            console.log("[ynison] state socket open, sending init");
             // Отправляем init сразу после подключения
             sock2.send(JSON.stringify({
               update_full_state: {
@@ -140,11 +141,12 @@ async function ynisonGetTrack(token) {
                 is_currently_active: false
               }
             }));
+            console.log("[ynison] init sent, waiting for state...");
           },
           async (msg2, sock2) => {
             sock2.destroy();
             let state;
-            try { state = JSON.parse(msg2); } catch { return done(null); }
+            try { state = JSON.parse(msg2); } catch(e) { console.error("[ynison] state parse error:", e.message, "raw:", msg2.slice(0,100)); return done(null); }
             console.log("[ynison] state keys:", Object.keys(state));
 
             const fs  = state.update_full_state || state;
