@@ -137,8 +137,42 @@ async function ynisonGetTrack(token) {
           "/ynison_state.YnisonStateService/PutYnisonState",
           makeProto(stateExtra),
           (sock2) => {
-            console.log("[ynison] state socket open, waiting for server state (no init)...");
-            // Не отправляем ничего — ждём что Ynison сам пришлёт текущее состояние
+            console.log("[ynison] state socket open, sending init");
+            const nowMs = Date.now();
+            const ver = { device_id: deviceId, version: "0", timestamp_ms: nowMs };
+            // Точный формат из Python реализации (exclude_none=True)
+            sock2.send(JSON.stringify({
+              rid: require("crypto").randomUUID(),
+              activity_interception_type: "DO_NOT_INTERCEPT_BY_DEFAULT",
+              player_action_timestamp_ms: nowMs,
+              update_full_state: {
+                player_state: {
+                  player_queue: {
+                    current_playable_index: -1,
+                    entity_type: "VARIOUS",
+                    entity_context: "BASED_ON_ENTITY_BY_DEFAULT",
+                    options: { repeat_mode: "NONE" },
+                    playable_list: [],
+                    version: ver
+                  },
+                  status: {
+                    duration_ms: 0,
+                    paused: true,
+                    playback_speed: 1.0,
+                    progress_ms: 0,
+                    version: ver
+                  }
+                },
+                device: {
+                  info: { device_id: deviceId, type: "WEB", title: "Deck Player", app_name: "Desktop", app_version: "5.79.7" },
+                  capabilities: { can_be_player: true, can_be_remote_controller: true, volume_granularity: 16 },
+                  volume_info: { volume: 0.0 },
+                  is_shadow: true
+                },
+                is_currently_active: false
+              }
+            }));
+            console.log("[ynison] init sent");
           },
           async (msg2, sock2) => {
             // Получаем каждое сообщение — ищем update_full_state с треком
