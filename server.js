@@ -56,6 +56,8 @@ async function ynisonGetTrack(token) {
         let buf = Buffer.alloc(0);
 
         socket.on("error", (e) => onError(e.message));
+        socket.on("close", () => console.log("[ynison] socket closed"));
+        socket.on("end",   () => console.log("[ynison] socket end"));
 
         // Определяем send ДО onOpen чтобы он был доступен в колбэке
         socket.send = (text) => {
@@ -70,6 +72,7 @@ async function ynisonGetTrack(token) {
 
         if (onOpen) onOpen(socket);
         socket.on("data", (chunk) => {
+          console.log("[ynison] raw data bytes:", chunk.length, "first bytes:", chunk.slice(0,4).toString("hex"));
           buf = Buffer.concat([buf, chunk]);
           // Парсим WebSocket frame
           while (buf.length >= 2) {
