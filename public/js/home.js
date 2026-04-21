@@ -1,3 +1,112 @@
+// ── Ynison: клиентское подключение (серверный IP заблокирован Яндексом) ──────
+async function ynisonGetTrackClient() {
+  try {
+    const p = await fetch('/api/yandex/ynison-params').then(r => r.json());
+    if (!p.ok || !p.token) return null;
+    const { token, deviceId, uid } = p;
+
+    const makeProto = (extra = {}) => {
+      const obj = {
+        "Ynison-Device-Id": deviceId,
+        "Ynison-Device-Info": JSON.stringify({ app_name: "Desktop", app_version: "5.79.7", type: 1 }),
+        "authorization": "OAuth " + token,
+        ...(uid ? { "X-Yandex-Music-Multi-Auth-User-Id": String(uid) } : {}),
+        ...extra
+      };
+      return ["Bearer", "v2", JSON.stringify(obj)];
+    };
+
+    const redirect = await new Promise((res, rej) => {
+      const ws = new WebSocket(
+        "wss://ynison.music.yandex.ru/redirector.YnisonRedirectService/GetRedirectToYnison",
+        makeProto()
+      );
+      const t = setTimeout(() => { ws.close(); rej(new Error("rdr timeout")); }, 8000);
+      ws.onmessage = (e) => { clearTimeout(t); ws.close(); res(JSON.parse(e.data)); };
+      ws.onerror   = () => { clearTimeout(t); rej(new Error("rdr error")); };
+    });
+
+    if (redirect.error) return null;
+    const host   = (redirect.host || "").replace(/^wss?:\/\//, "").replace(/\/$/, "");
+    const ticket = redirect.redirect_ticket;
+    const sid    = redirect.session_id;
+    if (!host || !ticket) return null;
+
+    const extra = { "Ynison-Redirect-Ticket": ticket };
+    if (sid) extra["Ynison-Session-Id"] = sid;
+
+    const state = await new Promise((res, rej) => {
+      const ws = new WebSocket(
+        `wss://${host}/ynison_state.YnisonStateService/PutYnisonState`,
+        makeProto(extra)
+      );
+      const t = setTimeout(() => { ws.close(); rej(new Error("state timeout")); }, 8000);
+
+      ws.onopen = () => {
+        const nowMs = Date.now();
+        const ver = { device_id: deviceId, version: "0", timestamp_ms: nowMs };
+        ws.send(JSON.stringify({
+          rid: crypto.randomUUID(),
+          activity_interception_type: "DO_NOT_INTERCEPT_BY_DEFAULT",
+          player_action_timestamp_ms: nowMs,
+          update_full_state: {
+            player_state: {
+              player_queue: {
+                current_playable_index: -1, entity_type: "VARIOUS",
+                entity_context: "BASED_ON_ENTITY_BY_DEFAULT",
+                options: { repeat_mode: "NONE" }, playable_list: [], version: ver
+              },
+              status: { duration_ms: 0, paused: true, playback_speed: 1.0, progress_ms: 0, version: ver }
+            },
+            device: {
+              info: { device_id: deviceId, type: "WEB", title: "aura", app_name: "Desktop", app_version: "5.79.7" },
+              capabilities: { can_be_player: true, can_be_remote_controller: true, volume_granularity: 16 },
+              volume_info: { volume: 0.0 }, is_shadow: true
+            },
+            is_currently_active: false
+          }
+        }));
+      };
+      ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        const fs = data.update_full_state || data;
+        const pq = fs?.player_state?.player_queue;
+        if (!pq?.playable_list?.length) return;
+        clearTimeout(t); ws.close(); res(data);
+      };
+      ws.onerror = () => { clearTimeout(t); rej(new Error("state error")); };
+      ws.onclose = (ev) => { if (ev.code !== 1000 && ev.code !== 1001) { clearTimeout(t); rej(new Error("closed " + ev.code)); } };
+    });
+
+    const fs  = state.update_full_state || state;
+    const pq  = fs?.player_state?.player_queue;
+    const st  = fs?.player_state?.status;
+    if (!pq?.playable_list?.length) return null;
+    const idx  = pq.current_playable_index ?? 0;
+    const item = pq.playable_list[idx];
+    const tid  = item?.playable_id;
+    if (!tid) return null;
+
+    const tr = await fetch(`https://api.music.yandex.net/tracks/${tid}`, {
+      headers: { "Authorization": "OAuth " + token, "X-Yandex-Music-Client": "YandexMusicAndroid/24023621" }
+    }).then(r => r.json());
+    const t2 = tr?.result?.[0];
+    if (!t2) return null;
+    const album = t2.albums?.[0];
+    const result = {
+      name: t2.title || item.title || "", artists: (t2.artists || []).map(a => a.name).join(", "),
+      album: album?.title || "", image: album?.coverUri ? "https://" + album.coverUri.replace("%%","400x400") : "",
+      url: "https://music.yandex.ru/track/" + tid, source: "yandex", isPlaying: !st?.paused,
+    };
+    fetch("/api/yandex/push-track", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ track: result })
+    }).catch(() => {});
+    return result;
+  } catch(e) { console.warn("[ynison]", e.message); return null; }
+}
+// ── END Ynison client ─────────────────────────────────────────────────────────
+
 // Стиль кольца по очкам ауры
 function getAuraRing(pts, isPlaying) {
   if (pts >= 600) return {
@@ -338,10 +447,19 @@ function getAuraRing(pts, isPlaying) {
 
     if (!track && user.yandexToken) {
       try {
+        // Сначала проверяем кеш на сервере (из Ynison)
         const r = await fetch('/api/yandex/current-track');
         const d = await r.json();
         if (d.ok && d.isPlaying && d.track) track = d.track;
       } catch (_) {}
+
+      // Если кеш пустой — запускаем клиентский Ynison
+      if (!track) {
+        try {
+          const t = await ynisonGetTrackClient();
+          if (t) track = t;
+        } catch (_) {}
+      }
     }
 
     const pill    = document.getElementById('nowPill');

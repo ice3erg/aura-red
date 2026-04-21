@@ -727,13 +727,25 @@ app.get("/api/lastfm/search", async (req, res) => {
 });
 
 
-app.get("/api/yandex/current-track", requireAuth, async (req, res) => {
+// Клиент присылает трек из Ynison (серверный IP заблокирован Яндексом)
+app.post("/api/yandex/push-track", requireAuth, async (req, res) => {
+  try {
+    const { track } = req.body;
+    if (!track?.name) return res.json({ ok: false });
+    // Сохраняем в кеш
+    if (!global._ynisonCache) global._ynisonCache = {};
+    global._ynisonCache[req.user.id] = { track, ts: Date.now() };
+    res.json({ ok: true });
+  } catch(e) { res.json({ ok: false }); }
+});
+
+// Возвращает параметры для Ynison подключения на клиенте
+app.get("/api/yandex/ynison-params", requireAuth, async (req, res) => {
   try {
     const user = await db.findById(req.user.id);
     const token = user?.yandexToken;
     if (!token) return res.json({ ok: false, error: "Яндекс Музыка не подключена" });
 
-    // Получаем или создаём постоянный device_id для этого пользователя
     let deviceId = user?.yandexDeviceId;
     let uid = user?.yandexUid;
     const updates = {};
@@ -741,7 +753,6 @@ app.get("/api/yandex/current-track", requireAuth, async (req, res) => {
       deviceId = require("crypto").randomBytes(16).toString("hex");
       updates.yandexDeviceId = deviceId;
     }
-    // Получаем uid если ещё нет
     if (!uid) {
       try {
         const statusR = await axios.get("https://api.music.yandex.net/account/status", {
@@ -750,19 +761,22 @@ app.get("/api/yandex/current-track", requireAuth, async (req, res) => {
         });
         uid = String(statusR.data?.result?.account?.uid || "");
         if (uid) updates.yandexUid = uid;
-      } catch(e) { console.error("[ynison] uid fetch:", e.message); }
+      } catch(e) {}
     }
     if (Object.keys(updates).length) await db.updateUser(req.user.id, updates);
+    res.json({ ok: true, token, deviceId, uid });
+  } catch(e) { res.json({ ok: false }); }
+});
 
-    console.log("[ynison] calling with deviceId:", deviceId?.slice(0,8), "uid:", uid || "NONE");
-    const track = await ynisonGetTrack(token, deviceId, uid);
-    if (!track) return res.json({ ok: true, isPlaying: false });
-
-    res.json({ ok: true, isPlaying: track.isPlaying !== false, track });
-  } catch(e) {
-    console.error("[ynison]", e.message);
-    res.json({ ok: false, error: "Ошибка Яндекс Музыки" });
-  }
+app.get("/api/yandex/current-track", requireAuth, async (req, res) => {
+  try {
+    const user = await db.findById(req.user.id);
+    if (!user?.yandexToken) return res.json({ ok: false, error: "Яндекс Музыка не подключена" });
+    // Возвращаем из кеша (клиент присылает через push-track)
+    const cached = global._ynisonCache?.[req.user.id];
+    if (!cached || Date.now() - cached.ts > 60000) return res.json({ ok: true, isPlaying: false });
+    res.json({ ok: true, isPlaying: true, track: cached.track });
+  } catch(e) { res.json({ ok: false }); }
 });
 
 // Сохранить токен Яндекс Музыки
