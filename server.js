@@ -126,7 +126,7 @@ async function ynisonGetTrack(token, deviceId, uid) {
         const ticket = redirect.redirect_ticket;
         const sid    = redirect.session_id;
         if (!host || !ticket) { console.error("[ynison] no host/ticket"); return done(null); }
-        console.log("[ynison] redirect to:", host);
+        console.log("[ynison] redirect to:", host, "sid:", sid ? sid.slice(0,8)+"..." : "NONE", "ticket_len:", ticket?.length);
 
         // ШАГ 2: state socket
         const stateExtra = { "Ynison-Redirect-Ticket": ticket };
@@ -754,6 +754,7 @@ app.get("/api/yandex/current-track", requireAuth, async (req, res) => {
     }
     if (Object.keys(updates).length) await db.updateUser(req.user.id, updates);
 
+    console.log("[ynison] calling with deviceId:", deviceId?.slice(0,8), "uid:", uid || "NONE");
     const track = await ynisonGetTrack(token, deviceId, uid);
     if (!track) return res.json({ ok: true, isPlaying: false });
 
