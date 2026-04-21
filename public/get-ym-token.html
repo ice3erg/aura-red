@@ -121,7 +121,6 @@
 
   <script>
     let _token = '';
-    const REDIRECT = location.origin + '/get-ym-token';
     const CLIENT_ID = '23cabbbdc6cd418abb4b39c32c41195d';
 
     function show(id) {
@@ -132,8 +131,33 @@
 
     function startOAuth(e) {
       if (e) e.preventDefault();
-      const url = `https://oauth.yandex.ru/authorize?response_type=token&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT)}`;
-      window.location.href = url;
+      // Без redirect_uri — Яндекс редиректит на music.yandex.ru с токеном в хэше
+      // Открываем в popup и слушаем смену URL
+      const url = `https://oauth.yandex.ru/authorize?response_type=token&client_id=${CLIENT_ID}`;
+      const popup = window.open(url, 'ya_auth', 'width=500,height=650,left=400,top=100');
+      if (!popup) {
+        // Popup заблокирован — открываем в текущей вкладке
+        window.location.href = url;
+        return;
+      }
+      const poll = setInterval(() => {
+        try {
+          const ph = popup.location.href;
+          if (ph && ph.includes('access_token=')) {
+            clearInterval(poll);
+            popup.close();
+            const hash = ph.split('#')[1] || '';
+            const p = new URLSearchParams(hash);
+            const tok = p.get('access_token');
+            if (tok) {
+              _token = tok;
+              document.getElementById('tokenBox').textContent = tok;
+              show('s2');
+            }
+          }
+        } catch(e) { /* cross-origin, ждём */ }
+        if (popup.closed) clearInterval(poll);
+      }, 300);
     }
 
     function copyToken() {
