@@ -126,17 +126,29 @@ async function ynisonGetTrack(token) {
           makeProto(stateExtra),
           (sock2) => {
             console.log("[ynison] state socket open, sending init");
-            // Отправляем init сразу после подключения
+            const nowMs = Date.now();
+            const ver = { device_id: deviceId, version: String(nowMs), timestamp_ms: nowMs };
             sock2.send(JSON.stringify({
+              rid: require("crypto").randomUUID(),
+              player_action_timestamp_ms: nowMs,
+              activity_interception_type: "DO_NOT_INTERCEPT_BY_DEFAULT",
               update_full_state: {
                 device: {
+                  info: { device_id: deviceId, app_name: "Desktop", app_version: "5.79.7", type: "WEB", title: "aura" },
                   capabilities: { can_be_player: false, can_be_remote_controller: false, volume_granularity: 0 },
-                  info: { device_id: deviceId, app_name: "Desktop", app_version: "5.79.7", type: 1, title: "aura" },
-                  is_shadow: true, volume_info: { volume: 0 }
+                  volume_info: { volume: 0 },
+                  is_shadow: true
                 },
                 player_state: {
-                  player_queue: { version: { device_id: deviceId, version: "0" } },
-                  status: { version: { device_id: deviceId, version: "0" }, duration_ms: 0, progress_ms: 0 }
+                  player_queue: {
+                    entity_id: "", entity_type: "VARIOUS",
+                    current_playable_index: -1,
+                    playable_list: [],
+                    options: { repeat_mode: "NONE" },
+                    entity_context: "BASED_ON_ENTITY_BY_DEFAULT",
+                    version: ver
+                  },
+                  status: { duration_ms: 0, paused: true, playback_speed: 1.0, progress_ms: 0, version: ver }
                 },
                 is_currently_active: false
               }
