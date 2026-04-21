@@ -8,7 +8,7 @@ const axios   = require("axios");
 const WebSocket = require("ws");
 
 // ── Ynison — real-time трек с Яндекс Музыки через WebSocket ─────────────────
-async function ynisonGetTrack(token, deviceId) {
+async function ynisonGetTrack(token, deviceId, uid) {
   // Ynison требует Sec-WebSocket-Protocol: Bearer, v2, {json}
   // Библиотека ws валидирует протоколы и не принимает JSON со спецсимволами.
   // Обходим через низкоуровневый HTTP upgrade с ручным заголовком.
@@ -24,6 +24,7 @@ async function ynisonGetTrack(token, deviceId) {
         "Ynison-Device-Id": deviceId,
         "Ynison-Device-Info": JSON.stringify({ app_name: "Desktop", app_version: "5.79.7", type: 1 }),
         "authorization": "OAuth " + token,
+        ...(uid ? { "X-Yandex-Music-Multi-Auth-User-Id": String(uid) } : {}),
         ...extra
       };
       return "Bearer, v2, " + JSON.stringify(obj);
@@ -734,12 +735,26 @@ app.get("/api/yandex/current-track", requireAuth, async (req, res) => {
 
     // Получаем или создаём постоянный device_id для этого пользователя
     let deviceId = user?.yandexDeviceId;
+    let uid = user?.yandexUid;
+    const updates = {};
     if (!deviceId) {
       deviceId = require("crypto").randomBytes(16).toString("hex");
-      await db.updateUser(req.user.id, { yandexDeviceId: deviceId });
+      updates.yandexDeviceId = deviceId;
     }
+    // Получаем uid если ещё нет
+    if (!uid) {
+      try {
+        const statusR = await axios.get("https://api.music.yandex.net/account/status", {
+          headers: { "Authorization": "OAuth " + token, "X-Yandex-Music-Client": "YandexMusicAndroid/24023621" },
+          timeout: 5000
+        });
+        uid = String(statusR.data?.result?.account?.uid || "");
+        if (uid) updates.yandexUid = uid;
+      } catch(e) { console.error("[ynison] uid fetch:", e.message); }
+    }
+    if (Object.keys(updates).length) await db.updateUser(req.user.id, updates);
 
-    const track = await ynisonGetTrack(token, deviceId);
+    const track = await ynisonGetTrack(token, deviceId, uid);
     if (!track) return res.json({ ok: true, isPlaying: false });
 
     res.json({ ok: true, isPlaying: track.isPlaying !== false, track });
