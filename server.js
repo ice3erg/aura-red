@@ -56,6 +56,18 @@ async function ynisonGetTrack(token) {
         let buf = Buffer.alloc(0);
 
         socket.on("error", (e) => onError(e.message));
+
+        // Определяем send ДО onOpen чтобы он был доступен в колбэке
+        socket.send = (text) => {
+          const payload = Buffer.from(text, "utf8");
+          const len = payload.length;
+          let header;
+          if (len < 126) header = Buffer.from([0x81, len]);
+          else if (len < 65536) { header = Buffer.alloc(4); header[0]=0x81; header[1]=126; header.writeUInt16BE(len,2); }
+          else { header = Buffer.alloc(10); header[0]=0x81; header[1]=127; header.writeBigUInt64BE(BigInt(len),2); }
+          socket.write(Buffer.concat([header, payload]));
+        };
+
         if (onOpen) onOpen(socket);
         socket.on("data", (chunk) => {
           buf = Buffer.concat([buf, chunk]);
@@ -81,16 +93,6 @@ async function ynisonGetTrack(token) {
           }
         });
 
-        // Отправляем WebSocket фрейм (без маски — серверный режим)
-        socket.send = (text) => {
-          const payload = Buffer.from(text, "utf8");
-          const len = payload.length;
-          let header;
-          if (len < 126) header = Buffer.from([0x81, len]);
-          else if (len < 65536) { header = Buffer.alloc(4); header[0]=0x81; header[1]=126; header.writeUInt16BE(len,2); }
-          else { header = Buffer.alloc(10); header[0]=0x81; header[1]=127; header.writeBigUInt64BE(BigInt(len),2); }
-          socket.write(Buffer.concat([header, payload]));
-        };
       });
 
       req.end();
