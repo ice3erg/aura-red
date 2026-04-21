@@ -140,6 +140,7 @@ async function ynisonGetTrack(token) {
             console.log("[ynison] state socket open, sending init");
             const nowMs = Date.now();
             const ver = { device_id: deviceId, version: String(nowMs), timestamp_ms: nowMs };
+            // Подключаемся как полноценный плеер - иначе Ynison закрывает соединение сразу
             sock2.send(JSON.stringify({
               rid: require("crypto").randomUUID(),
               player_action_timestamp_ms: nowMs,
@@ -147,9 +148,9 @@ async function ynisonGetTrack(token) {
               update_full_state: {
                 device: {
                   info: { device_id: deviceId, app_name: "Desktop", app_version: "5.79.7", type: "WEB", title: "aura" },
-                  capabilities: { can_be_player: false, can_be_remote_controller: false, volume_granularity: 0 },
-                  volume_info: { volume: 0 },
-                  is_shadow: true
+                  capabilities: { can_be_player: true, can_be_remote_controller: true, volume_granularity: 16 },
+                  volume_info: { volume: 0.5 },
+                  is_shadow: false
                 },
                 player_state: {
                   player_queue: {
@@ -168,21 +169,24 @@ async function ynisonGetTrack(token) {
             console.log("[ynison] init sent, waiting for state...");
           },
           async (msg2, sock2) => {
-            sock2.destroy();
+            // Получаем каждое сообщение — ищем update_full_state с треком
             let state;
-            try { state = JSON.parse(msg2); } catch(e) { console.error("[ynison] state parse error:", e.message, "raw:", msg2.slice(0,100)); return done(null); }
+            try { state = JSON.parse(msg2); } catch(e) { console.error("[ynison] state parse error:", e.message); return; }
             console.log("[ynison] state keys:", Object.keys(state));
 
             const fs  = state.update_full_state || state;
             const pq  = fs?.player_state?.player_queue;
             const st  = fs?.player_state?.status;
-            if (!pq?.playable_list?.length) { console.log("[ynison] empty queue"); return done(null); }
+
+            if (!pq?.playable_list?.length) { console.log("[ynison] empty queue, waiting..."); return; }
 
             const idx  = pq.current_playable_index ?? 0;
             const item = pq.playable_list[idx];
             const tid  = item?.playable_id;
-            if (!tid) { console.log("[ynison] no track id"); return done(null); }
+            if (!tid) { console.log("[ynison] no track id"); return; }
+
             console.log("[ynison] track:", tid, "paused:", st?.paused);
+            sock2.destroy(); // закрываем только когда нашли трек
 
             try {
               const r = await axios.get("https://api.music.yandex.net/tracks/" + tid, {
