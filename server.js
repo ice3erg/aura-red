@@ -785,12 +785,58 @@ app.get("/api/yandex/ynison-params", requireAuth, async (req, res) => {
 app.get("/api/yandex/current-track", requireAuth, async (req, res) => {
   try {
     const user = await db.findById(req.user.id);
-    if (!user?.yandexToken) return res.json({ ok: false, error: "Яндекс Музыка не подключена" });
-    // Возвращаем из кеша (клиент присылает через push-track)
+    const token = user?.yandexToken;
+    if (!token) return res.json({ ok: false, error: "Яндекс Музыка не подключена" });
+
+    // Сначала проверяем кеш от клиентского Ynison
     const cached = global._ynisonCache?.[req.user.id];
-    if (!cached || Date.now() - cached.ts > 60000) return res.json({ ok: true, isPlaying: false });
-    res.json({ ok: true, isPlaying: true, track: cached.track });
-  } catch(e) { res.json({ ok: false }); }
+    if (cached && Date.now() - cached.ts < 30000) {
+      return res.json({ ok: true, isPlaying: true, track: cached.track });
+    }
+
+    // Fallback: queues API — берём самую свежую по modified
+    const queuesResp = await axios.get("https://api.music.yandex.net/queues", {
+      headers: { "Authorization": `OAuth ${token}`, "X-Yandex-Music-Client": "YandexMusicAndroid/24023621" },
+      timeout: 8000
+    });
+    const queues = queuesResp.data?.result?.queues;
+    if (!queues?.length) return res.json({ ok: true, isPlaying: false });
+
+    // Сортируем по modified — берём самую свежую
+    const sorted = [...queues].sort((a, b) => new Date(b.modified) - new Date(a.modified));
+    const queueId = sorted[0].id;
+
+    const queueResp = await axios.get(`https://api.music.yandex.net/queues/${queueId}`, {
+      headers: { "Authorization": `OAuth ${token}`, "X-Yandex-Music-Client": "YandexMusicAndroid/24023621" },
+      timeout: 8000
+    });
+    const queue = queueResp.data?.result;
+    if (!queue) return res.json({ ok: true, isPlaying: false });
+
+    const currentIdx = queue.currentIndex ?? 0;
+    const trackId = queue.tracks?.[currentIdx]?.id;
+    if (!trackId) return res.json({ ok: true, isPlaying: false });
+
+    const trackResp = await axios.get(`https://api.music.yandex.net/tracks/${trackId}`, {
+      headers: { "Authorization": `OAuth ${token}`, "X-Yandex-Music-Client": "YandexMusicAndroid/24023621" },
+      timeout: 5000
+    });
+    const track = trackResp.data?.result?.[0];
+    if (!track) return res.json({ ok: true, isPlaying: false });
+
+    const artists = (track.artists || []).map(a => a.name).join(", ");
+    const album = track.albums?.[0];
+    const image = album?.coverUri ? "https://" + album.coverUri.replace("%%", "400x400") : "";
+
+    res.json({ ok: true, isPlaying: true, track: {
+      name: track.title || "", artists, album: album?.title || "", image,
+      url: `https://music.yandex.ru/track/${trackId}`, source: "yandex"
+    }});
+  } catch(e) {
+    if (e.response?.status === 401) return res.json({ ok: false, error: "Токен недействителен" });
+    console.error("[yandex]", e.message);
+    res.json({ ok: true, isPlaying: false });
+  }
 });
 
 // Сохранить токен Яндекс Музыки
