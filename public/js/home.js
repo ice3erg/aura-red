@@ -715,22 +715,57 @@ function getAuraRing(pts, isPlaying) {
           album: t.collectionName || '', url: t.trackViewUrl || '',
           key: (t.trackName + t.artistName).toLowerCase()
         }))).catch(() => []),
+
+      // Spotify — лучшие обложки, точный поиск
+      fetch(`/api/spotify/search?q=${q}`)
+        .then(r => r.json()).then(d => (d.tracks || []).map(t => ({
+          name: t.name, artist: t.artists,
+          image: t.image || '',
+          album: t.album || '', url: t.url || '',
+          source: 'spotify',
+          key: (t.name + t.artists).toLowerCase()
+        }))).catch(() => []),
     ]);
 
-    const lastfm = lastfmRes.value || [];
-    const deezer = deezerRes.value || [];
-    const itunes = itunesRes.value || [];
+    const lastfm  = lastfmRes.value  || [];
+    const deezer  = deezerRes.value  || [];
+    const itunes  = itunesRes.value  || [];
+    const spotify = (Array.isArray(lastfmRes) ? [] : []);
 
-    // Строим карту обложек из Deezer и iTunes по ключу
+    // Достаём Spotify из 4го результата
+    const spotifyRes = arguments?.[3];
+
+    // Строим карту обложек — Spotify приоритетнее всех
     const coverMap = {};
     for (const t of [...deezer, ...itunes]) {
       if (t.image) coverMap[t.key] = t.image;
     }
 
-    // Last.fm первым — знает всё, добиваем обложками из Deezer/iTunes
+    // Получаем Spotify треки
+    const spotifyTracks = (await Promise.allSettled([
+      fetch(`/api/spotify/search?q=${q}`)
+        .then(r => r.json()).then(d => (d.tracks || []).map(t => ({
+          name: t.name, artist: t.artists,
+          image: t.image || '', album: t.album || '',
+          url: t.url || '', source: 'spotify',
+          key: (t.name + t.artists).toLowerCase()
+        }))).catch(() => [])
+    ]))[0]?.value || [];
+
+    // Spotify обложки — самые качественные, перезаписываем
+    for (const t of spotifyTracks) {
+      if (t.image) coverMap[t.key] = t.image;
+    }
+
+    // Last.fm первым — знает всё, добиваем обложками из Spotify/Deezer/iTunes
     const seen = new Set();
     const combined = [];
-    for (const t of [...lastfm, ...deezer, ...itunes]) {
+    // Spotify треки идут первыми если запрос на латинице
+    const isLatin = /^[a-zA-Z\s]+$/.test(query);
+    const ordered = isLatin
+      ? [...spotifyTracks, ...lastfm, ...deezer, ...itunes]
+      : [...lastfm, ...spotifyTracks, ...deezer, ...itunes];
+    for (const t of ordered) {
       if (!seen.has(t.key) && t.name && t.artist) {
         seen.add(t.key);
         if (!t.image && coverMap[t.key]) t.image = coverMap[t.key];

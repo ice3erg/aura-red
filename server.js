@@ -427,6 +427,48 @@ async function fetchTrack(at) {
     { headers:{ Authorization:`Bearer ${at}` }, validateStatus:()=>true, timeout:15000 });
 }
 
+// Spotify поиск треков — через Client Credentials (не требует авторизации пользователя)
+let _spotifyAppToken = null;
+let _spotifyAppTokenExp = 0;
+
+async function getSpotifyAppToken() {
+  if (_spotifyAppToken && Date.now() < _spotifyAppTokenExp) return _spotifyAppToken;
+  const r = await axios.post("https://accounts.spotify.com/api/token",
+    new URLSearchParams({ grant_type: "client_credentials" }).toString(),
+    { headers: { Authorization: spotifyB64(), "Content-Type": "application/x-www-form-urlencoded" }, timeout: 10000 }
+  );
+  _spotifyAppToken = r.data.access_token;
+  _spotifyAppTokenExp = Date.now() + (r.data.expires_in - 60) * 1000;
+  return _spotifyAppToken;
+}
+
+app.get("/api/spotify/search", requireAuth, async (req, res) => {
+  const q = (req.query.q || "").trim();
+  if (!q) return res.json({ ok: false, tracks: [] });
+  try {
+    const token = await getSpotifyAppToken();
+    const r = await axios.get("https://api.spotify.com/v1/search", {
+      params: { q, type: "track", limit: 6, market: "RU" },
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 8000
+    });
+    const tracks = (r.data?.tracks?.items || []).map(t => ({
+      id:      t.id,
+      name:    t.name,
+      artists: t.artists.map(a => a.name).join(", "),
+      album:   t.album?.name || "",
+      image:   t.album?.images?.[1]?.url || t.album?.images?.[0]?.url || "",
+      url:     t.external_urls?.spotify || "",
+      source:  "spotify",
+      duration: t.duration_ms,
+    }));
+    res.json({ ok: true, tracks });
+  } catch(e) {
+    console.error("[spotify search]", e.message);
+    res.json({ ok: false, tracks: [] });
+  }
+});
+
 app.get("/spotify/login", (req, res) => {
   if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI)
     return res.status(500).send("Не заданы переменные Spotify в .env");
