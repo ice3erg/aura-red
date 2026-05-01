@@ -6,6 +6,12 @@ const PgSession = require("connect-pg-simple")(session);
 const bcrypt  = require("bcryptjs");
 const axios   = require("axios");
 const WebSocket = require("ws");
+const cloudinary = require("cloudinary").v2;
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "dwraysruc",
+  api_key:    process.env.CLOUDINARY_API_KEY    || "557172393861334",
+  api_secret: process.env.CLOUDINARY_API_SECRET || "YSLgo6Imo9gWnLbSve2o3XqSZvk",
+});
 
 // ── Ynison — real-time трек с Яндекс Музыки через WebSocket ─────────────────
 async function ynisonGetTrack(token, deviceId, uid) {
@@ -318,6 +324,25 @@ app.post("/api/auth/logout", (req, res) => { req.session.destroy(() => res.json(
 app.get("/api/auth/me", requireAuth, (req, res) => res.json({ ok:true, user:db.publicProfile(req.user) }));
 
 // ── Profile API ────────────────────────────────────────────
+// Загрузка фото на Cloudinary
+app.post("/api/upload-photo", requireAuth, async (req, res) => {
+  try {
+    const { data, type } = req.body; // data = base64, type = "avatar"|"cover"|"photo"
+    if (!data) return res.status(400).json({ ok: false, error: "Нет данных" });
+    const result = await cloudinary.uploader.upload(data, {
+      folder: "aura",
+      transformation: type === "avatar"
+        ? [{ width: 400, height: 400, crop: "fill", gravity: "face" }]
+        : [{ width: 1200, height: 600, crop: "fill" }],
+      resource_type: "image",
+    });
+    res.json({ ok: true, url: result.secure_url });
+  } catch(e) {
+    console.error("[cloudinary]", e.message);
+    res.json({ ok: false, error: "Ошибка загрузки" });
+  }
+});
+
 app.patch("/api/profile", requireAuth, async (req, res) => {
   const { name, age, city, bio, avatar, cover, photos, username,
     spotifyConnected, spotifyName, spotifyId,

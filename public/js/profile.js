@@ -516,15 +516,31 @@ function showNotice(msg, type = 'error') {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = async ev => {
-      const r = await fetch('/api/profile', {
-        method:'PATCH', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ avatar: ev.target.result })
-      }).then(r => r.json());
-      if (r.ok) {
-        const imgEl = document.getElementById('avatarImg');
-        const phEl  = document.getElementById('avatarPh');
-        if (imgEl) { imgEl.src = ev.target.result; imgEl.className = 'avatar-img visible'; }
-        if (phEl)  phEl.style.display = 'none';
+      // Показываем превью сразу
+      const imgEl = document.getElementById('avatarImg');
+      const phEl  = document.getElementById('avatarPh');
+      if (imgEl) { imgEl.src = ev.target.result; imgEl.className = 'avatar-img visible'; }
+      if (phEl)  phEl.style.display = 'none';
+
+      try {
+        // Загружаем на Cloudinary
+        const up = await fetch('/api/upload-photo', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ data: ev.target.result, type: 'avatar' })
+        }).then(r => r.json());
+
+        if (!up.ok) throw new Error(up.error);
+
+        // Сохраняем URL в профиле
+        await fetch('/api/profile', {
+          method:'PATCH', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ avatar: up.url })
+        });
+
+        // Обновляем аватар на реальный URL
+        if (imgEl) imgEl.src = up.url;
+      } catch(err) {
+        console.error('[avatar upload]', err);
       }
     };
     reader.readAsDataURL(file);
