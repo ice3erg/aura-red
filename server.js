@@ -794,6 +794,55 @@ app.get("/api/lastfm/search", async (req, res) => {
 });
 
 
+// Shazam распознавание трека по аудио
+app.post("/api/shazam/detect", requireAuth, async (req, res) => {
+  try {
+    const { audio } = req.body; // base64 аудио ~5 сек
+    if (!audio) return res.status(400).json({ ok: false });
+
+    // Убираем data:audio/...;base64, префикс если есть
+    const b64 = audio.includes(",") ? audio.split(",")[1] : audio;
+
+    const r = await axios.post(
+      "https://shazam.p.rapidapi.com/songs/v2/detect",
+      b64,
+      {
+        headers: {
+          "content-type": "text/plain",
+          "X-RapidAPI-Key": process.env.RAPIDAPI_KEY || "",
+          "X-RapidAPI-Host": "shazam.p.rapidapi.com"
+        },
+        params: { timezone: "Europe/Moscow", locale: "ru-RU" },
+        timeout: 15000
+      }
+    );
+
+    const track = r.data?.track;
+    if (!track) return res.json({ ok: false, error: "Не удалось распознать" });
+
+    const images = track.images || {};
+    const share  = track.share || {};
+    const hub    = track.hub?.options?.[0]?.actions?.[0] || {};
+
+    res.json({
+      ok: true,
+      track: {
+        name:    track.title || "",
+        artists: track.subtitle || "",
+        album:   track.sections?.[0]?.metadata?.find(m => m.title === "Альбом")?.text || "",
+        image:   images.coverarthq || images.coverart || "",
+        url:     share.href || "",
+        source:  "shazam",
+        shazamKey: track.key,
+      }
+    });
+  } catch(e) {
+    console.error("[shazam]", e.response?.status, e.message);
+    if (e.response?.status === 403) return res.json({ ok: false, error: "Нет ключа API" });
+    res.json({ ok: false, error: "Ошибка распознавания" });
+  }
+});
+
 // Прокси для метаданных трека ЯМ (CORS не позволяет браузеру запрашивать напрямую)
 app.get("/api/yandex/track-meta/:trackId", requireAuth, async (req, res) => {
   try {

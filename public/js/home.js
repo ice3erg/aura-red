@@ -1,3 +1,109 @@
+// ── Shazam: распознавание трека через микрофон ───────────────────────────────
+let _shazamRecording = false;
+
+window.startShazam = async function() {
+  if (_shazamRecording) return;
+
+  const btn = document.getElementById('shazamBtn');
+  const title = document.getElementById('npTitle');
+
+  // Запрашиваем доступ к микрофону
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch(e) {
+    title.textContent = 'Нет доступа к микрофону';
+    setTimeout(() => { title.textContent = _currentTrack?.name ? `${_currentTrack.name} · ${_currentTrack.artists}` : 'Что слушаешь?'; }, 2000);
+    return;
+  }
+
+  _shazamRecording = true;
+
+  // Анимируем кнопку
+  btn.style.background = 'rgba(255,43,43,0.2)';
+  btn.style.borderColor = 'rgba(255,43,43,0.5)';
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="rgba(255,43,43,0.9)"><circle cx="12" cy="12" r="6"/></svg>';
+
+  // Countdown в заголовке
+  let secs = 5;
+  title.textContent = `Слушаю... ${secs}с`;
+  const countInterval = setInterval(() => {
+    secs--;
+    if (secs > 0) title.textContent = `Слушаю... ${secs}с`;
+    else { title.textContent = 'Распознаю...'; clearInterval(countInterval); }
+  }, 1000);
+
+  // Записываем 5 секунд
+  const chunks = [];
+  const recorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg' });
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+  recorder.start();
+  await new Promise(r => setTimeout(r, 5000));
+  recorder.stop();
+  stream.getTracks().forEach(t => t.stop());
+
+  // Конвертируем в base64
+  await new Promise(resolve => {
+    recorder.onstop = async () => {
+      clearInterval(countInterval);
+      const blob = new Blob(chunks, { type: recorder.mimeType });
+      const reader = new FileReader();
+      reader.onload = async ev => {
+        const b64 = ev.target.result;
+        try {
+          title.textContent = 'Распознаю...';
+          const resp = await fetch('/api/shazam/detect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audio: b64 })
+          }).then(r => r.json());
+
+          if (resp.ok && resp.track) {
+            const t = resp.track;
+            title.textContent = `${t.name} · ${t.artists}`;
+
+            // Автоматически публикуем найденный трек
+            const pos = await getGeo().catch(() => null);
+            if (pos) {
+              await fetch('/api/now-playing', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  track: t.name, artist: t.artists,
+                  album: t.album || '', image: t.image || '',
+                  url: t.url || '', source: 'shazam',
+                  lat: pos.lat, lng: pos.lng
+                })
+              });
+              _currentTrack = t;
+              // Обновляем обложку
+              const cover = document.getElementById('npCover');
+              const ph    = document.getElementById('npCoverPh');
+              if (cover && t.image) { cover.src = t.image; cover.style.display = ''; if(ph) ph.style.display='none'; }
+            }
+          } else {
+            title.textContent = resp.error || 'Не удалось распознать';
+            setTimeout(() => { title.textContent = _currentTrack?.name ? `${_currentTrack.name} · ${_currentTrack.artists}` : 'Что слушаешь?'; }, 2000);
+          }
+        } catch(err) {
+          title.textContent = 'Ошибка распознавания';
+          setTimeout(() => { title.textContent = 'Что слушаешь?'; }, 2000);
+        }
+
+        // Сбрасываем кнопку
+        btn.style.background = 'rgba(13,115,255,0.15)';
+        btn.style.borderColor = 'rgba(13,115,255,0.3)';
+        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(13,115,255,0.9)" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>';
+        _shazamRecording = false;
+        resolve();
+      };
+      reader.readAsDataURL(blob);
+    };
+  });
+};
+// ── END Shazam ────────────────────────────────────────────────────────────────
+
 
 // Стиль кольца по очкам ауры
 function getAuraRing(pts, isPlaying) {
