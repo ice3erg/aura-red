@@ -407,15 +407,17 @@
 
     function goTo(step) {
       currentStep = step;
-      // 'verify' это слот 1, числовые шаги сдвигаем +1
-      const slideIndex = step === 'verify' ? 1 : (typeof step === 'number' && step >= 1 ? step + 1 : step);
+      // Физически слайды: 0=создай аккаунт, 1=verify, 2=имя, 3=город, 4=фото, 5=готово
+      const slideIndex = step === 'verify' ? 1
+        : (typeof step === 'number' && step >= 1 ? step + 1 : step);
       slidesEl.style.transform = `translateX(-${slideIndex * 100}%)`;
-      const displayStep = step === 'verify' ? 1 : (typeof step === 'number' ? step + 1 : 1);
+      const displayStep = step === 'verify' ? 1
+        : (typeof step === 'number' ? step + 1 : 1);
       progressEl.style.width = `${(displayStep / TOTAL) * 100}%`;
       counterEl.textContent = `${displayStep} / ${TOTAL}`;
 
       // Кнопки
-      if (step === TOTAL - 1) {
+      if (step === TOTAL - 2 || step === 4) {
         nextBtn.textContent = 'Готово 🚀';
         skipBtn.style.display = 'block';
       } else if (step >= 3) {
@@ -482,10 +484,11 @@
     // ── Step handlers ─────────────────────────────────────
     async function handleNext() {
       if (nextBtn.disabled) return;
-      if (currentStep === 0) await step0();
-      else if (currentStep === 1) step1();
-      else if (currentStep === 2) step2();
-      else if (currentStep === 3) goTo(4);
+      if (currentStep === 0)        await step0();
+      else if (currentStep === 'verify') await stepVerify();
+      else if (currentStep === 1)   step1();
+      else if (currentStep === 2)   step2();
+      else if (currentStep === 3)   goTo(4);
       else finish();
     }
 
