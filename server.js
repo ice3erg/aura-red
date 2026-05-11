@@ -415,8 +415,8 @@ app.post("/api/auth/login", async (req, res) => {
   const user = await db.findByEmail(email);
   if (!user || !(await bcrypt.compare(password, user.passwordHash)))
     return res.status(401).json({ ok:false, error:"Неверная почта или пароль" });
-  if (!user.emailVerified)
-    return res.status(403).json({ ok:false, error:"Подтверди почту — проверь письмо", needsVerify:true, email });
+  // Верификация почты не требуется при входе — только при регистрации
+  // Старые аккаунты могут иметь emailVerified=false, не блокируем их
   req.session.userId = user.id;
   req.session.save(err => {
     if (err) console.error("[login] session save error:", err);
