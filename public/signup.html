@@ -492,23 +492,35 @@
 
     // STEP 0: Ввод email → отправить код
     async function step0() {
-      const email = document.getElementById('s0email').value.trim();
+      const email = (document.getElementById('s0email')?.value || '').trim();
       notice('s0notice', '');
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        notice('s0notice', 'Введи корректный email'); return;
-      }
-      // Проверяем что почта не занята
+      if (!email) { notice('s0notice', 'Введи почту'); return; }
+      if (!email.includes('@') || !email.includes('.')) { notice('s0notice', 'Некорректный email'); return; }
+      
       nextBtn.disabled = true; nextBtn.textContent = 'Отправляем...';
       try {
-        const r = await fetch('/api/auth/send-code', {
-          method:'POST', headers:{'Content-Type':'application/json'},
+        const resp = await fetch('/api/auth/send-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, checkExists: true })
-        }).then(r=>r.json());
-        if (!r.ok) { notice('s0notice', r.error || 'Ошибка'); nextBtn.disabled=false; nextBtn.textContent='Продолжить'; return; }
+        });
+        const r = await resp.json();
+        if (!r.ok) {
+          notice('s0notice', r.error || 'Ошибка отправки');
+          nextBtn.disabled = false;
+          nextBtn.textContent = 'Продолжить';
+          return;
+        }
         state.email = email;
-        document.getElementById('verifyEmailDisplay').textContent = email;
+        const disp = document.getElementById('verifyEmailDisplay');
+        if (disp) disp.textContent = email;
         goTo(1);
-      } catch { notice('s0notice','Ошибка сети'); nextBtn.disabled=false; nextBtn.textContent='Продолжить'; }
+      } catch(err) {
+        console.error('[step0]', err);
+        notice('s0notice', 'Ошибка сети. Попробуй снова.');
+        nextBtn.disabled = false;
+        nextBtn.textContent = 'Продолжить';
+      }
     }
 
     // STEP 1: Ввод OTP кода

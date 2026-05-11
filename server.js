@@ -924,6 +924,16 @@ app.post("/api/auth/send-code", async (req, res) => {
     if (existing) return res.json({ ok: false, error: "Эта почта уже используется" });
   }
 
+  // Логируем код в консоль для отладки
+  console.log(`[OTP] ${emailLower} → ${code}`);
+
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    // Нет ключа — возвращаем ok но предупреждаем
+    console.warn("[resend] RESEND_API_KEY не задан, письмо не отправлено");
+    return res.json({ ok: true, debug: true });
+  }
+
   try {
     await resend.emails.send({
       from: "aura <noreply@aura-app.ru>",
