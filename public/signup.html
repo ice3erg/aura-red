@@ -397,7 +397,7 @@
     }).catch(()=>{});
 
     const slidesEl    = document.getElementById('slides');
-    const progressEl  = document.getElementById('progressBar');
+    const progressEl  = document.getElementById('progressFill');
     const counterEl   = document.getElementById('stepCounter');
     const nextBtn     = document.getElementById('nextBtn');
     const skipBtn     = document.getElementById('skipBtn');
@@ -405,8 +405,8 @@
     function goTo(step) {
       currentStep = step;
       slidesEl.style.transform = `translateX(-${step * 100}%)`;
-      progressEl.style.width = `${((step + 1) / TOTAL) * 100}%`;
-      counterEl.textContent = `${step + 1} / ${TOTAL}`;
+      if (progressEl) progressEl.style.width = `${((step + 1) / TOTAL) * 100}%`;
+      if (counterEl) counterEl.textContent = `${step + 1} / ${TOTAL}`;
 
       // Кнопки
       if (step === TOTAL - 1) {

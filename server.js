@@ -317,7 +317,7 @@ app.post("/api/auth/signup", async (req, res) => {
 
   try {
     await resend.emails.send({
-      from: "aura <noreply@aura-app.ru>",
+      from: "aura <onboarding@resend.dev>",
       to: emailLower,
       subject: `${code} — подтверди почту для +aura`,
       html: `
@@ -936,7 +936,7 @@ app.post("/api/auth/send-code", async (req, res) => {
 
   try {
     await resend.emails.send({
-      from: "aura <noreply@aura-app.ru>",
+      from: "aura <onboarding@resend.dev>",
       to: emailLower,
       subject: `${code} — твой код для +aura`,
       html: `
