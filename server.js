@@ -7,6 +7,13 @@ const bcrypt  = require("bcryptjs");
 const axios   = require("axios");
 const WebSocket = require("ws");
 const cloudinary = require("cloudinary").v2;
+const { Resend } = require("resend");
+const resend = new Resend(process.env.RESEND_API_KEY || "");
+
+// Хранилище OTP кодов (в памяти, TTL 10 минут)
+const _otpStore = new Map(); // email → { code, expires, attempts }
+
+function genOTP() { return String(Math.floor(100000 + Math.random() * 900000)); }
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "dwraysruc",
   api_key:    process.env.CLOUDINARY_API_KEY    || "557172393861334",
@@ -840,6 +847,85 @@ app.post("/api/shazam/detect", requireAuth, async (req, res) => {
     console.error("[shazam]", e.response?.status, e.message);
     if (e.response?.status === 403) return res.json({ ok: false, error: "Нет ключа API" });
     res.json({ ok: false, error: "Ошибка распознавания" });
+  }
+});
+
+// ── Email OTP авторизация ─────────────────────────────────────────────────────
+
+// Отправить код на почту
+app.post("/api/auth/send-code", async (req, res) => {
+  const { email } = req.body || {};
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    return res.status(400).json({ ok: false, error: "Некорректный email" });
+
+  const emailLower = email.toLowerCase().trim();
+
+  // Антиспам — не чаще раза в 60 сек
+  const existing = _otpStore.get(emailLower);
+  if (existing && existing.expires - 9 * 60 * 1000 > Date.now())
+    return res.json({ ok: false, error: "Подожди минуту перед повторной отправкой" });
+
+  const code = genOTP();
+  _otpStore.set(emailLower, { code, expires: Date.now() + 10 * 60 * 1000, attempts: 0 });
+
+  try {
+    await resend.emails.send({
+      from: "aura <noreply@aura-app.ru>",
+      to: emailLower,
+      subject: `${code} — твой код для +aura`,
+      html: `
+        <div style="background:#060608;padding:40px 24px;font-family:Inter,sans-serif;max-width:400px;margin:0 auto;border-radius:20px;">
+          <div style="font-size:36px;font-weight:900;color:#fff;letter-spacing:-1px;margin-bottom:8px;">+aura</div>
+          <div style="font-size:14px;color:rgba(255,255,255,0.4);margin-bottom:32px;">найди людей на своей волне</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:12px;">Твой код для входа:</div>
+          <div style="font-size:48px;font-weight:900;color:#fff;letter-spacing:8px;margin-bottom:24px;">${code}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.3);">Код действует 10 минут. Если ты не запрашивал вход — просто проигнорируй это письмо.</div>
+        </div>
+      `
+    });
+    res.json({ ok: true });
+  } catch(e) {
+    console.error("[resend]", e.message);
+    res.json({ ok: false, error: "Ошибка отправки письма" });
+  }
+});
+
+// Проверить код и войти/зарегистрировать
+app.post("/api/auth/verify-code", async (req, res) => {
+  const { email, code } = req.body || {};
+  if (!email || !code) return res.status(400).json({ ok: false, error: "Нет данных" });
+
+  const emailLower = email.toLowerCase().trim();
+  const entry = _otpStore.get(emailLower);
+
+  if (!entry) return res.json({ ok: false, error: "Сначала запроси код" });
+  if (Date.now() > entry.expires) { _otpStore.delete(emailLower); return res.json({ ok: false, error: "Код истёк" }); }
+  if (entry.attempts >= 5) { _otpStore.delete(emailLower); return res.json({ ok: false, error: "Слишком много попыток" }); }
+
+  entry.attempts++;
+  if (entry.code !== String(code).trim()) return res.json({ ok: false, error: "Неверный код" });
+
+  _otpStore.delete(emailLower);
+
+  // Ищем или создаём пользователя
+  try {
+    let user = await db.findByEmail(emailLower);
+    if (!user) {
+      const id = "u_" + Date.now();
+      await db.createUser({ id, email: emailLower, password: "", name: "" });
+      user = await db.findByEmail(emailLower);
+    }
+
+    req.session.userId = user.id;
+    await new Promise((resolve, reject) =>
+      req.session.save(err => err ? reject(err) : resolve())
+    );
+
+    const needsOnboarding = !user.name || !user.city;
+    res.json({ ok: true, needsOnboarding, user: db.publicProfile(user) });
+  } catch(e) {
+    console.error("[verify-code]", e.message);
+    res.json({ ok: false, error: "Ошибка сервера" });
   }
 });
 

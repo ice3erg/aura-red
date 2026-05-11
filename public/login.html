@@ -4,168 +4,57 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>+aura</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --red: #ff2b2b;
-      --bg: #060608;
-      --border: rgba(255,255,255,0.08);
-      --muted: rgba(255,255,255,0.45);
-      --surface: rgba(255,255,255,0.05);
-    }
-    html, body {
-      height: 100%; background: var(--bg); color: #fff;
-      font-family: 'Inter', system-ui, sans-serif;
-      -webkit-font-smoothing: antialiased;
-      overflow: hidden;
-    }
+    :root { --red: #ff2b2b; --bg: #060608; --border: rgba(255,255,255,0.08); --muted: rgba(255,255,255,0.45); --surface: rgba(255,255,255,0.05); }
+    html, body { height: 100%; background: var(--bg); color: #fff; font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
+    .bg { position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(255,43,43,0.12) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 50% 110%,rgba(255,43,43,0.07) 0%,transparent 60%); }
+    .bg-grid { position:fixed;inset:0;z-index:0;background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);background-size:40px 40px;mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 30%,transparent 100%); }
+    .shell { position:relative;z-index:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 24px calc(24px + env(safe-area-inset-bottom)); }
+    .logo-wrap { text-align:center;margin-bottom:40px;animation:fadeInDown 0.6s ease both; }
+    .logo { font-size:48px;font-weight:900;letter-spacing:-2px;color:#fff;text-shadow:0 0 20px rgba(255,255,255,0.9),0 0 60px rgba(255,255,255,0.4),0 0 120px rgba(255,43,43,0.3); }
+    .logo-sub { font-size:13px;font-weight:500;color:var(--muted);letter-spacing:0.08em;margin-top:6px; }
+    .card { width:100%;max-width:380px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:28px;padding:28px 24px 24px;backdrop-filter:blur(20px);animation:fadeInUp 0.5s 0.1s ease both; }
+    .card-title { font-size:22px;font-weight:800;letter-spacing:-0.3px;margin-bottom:6px; }
+    .card-sub { font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.5; }
+    .field-wrap { position:relative;margin-bottom:10px; }
+    .field-label { position:absolute;top:11px;left:15px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);pointer-events:none;transition:color 0.2s; }
+    .field-input { width:100%;padding:26px 15px 10px;border-radius:14px;border:1px solid var(--border);background:var(--surface);color:#fff;font:700 15px/1.3 'Inter',system-ui,sans-serif;outline:none;transition:border-color 0.2s,background 0.2s;-webkit-appearance:none; }
+    .field-input:focus { border-color:rgba(255,43,43,0.4);background:rgba(255,43,43,0.05); }
+    .field-input:focus + .field-label { color:var(--red); }
+    .field-input.filled + .field-label { color:rgba(255,255,255,0.3); }
+    .btn-primary { width:100%;padding:16px;border-radius:16px;border:none;background:#fff;color:#111;font:800 15px/1 'Inter',system-ui,sans-serif;cursor:pointer;transition:opacity 0.15s,transform 0.1s;margin-top:6px;letter-spacing:-0.1px; }
+    .btn-primary:hover { opacity:0.92; }
+    .btn-primary:active { transform:scale(0.98); }
+    .btn-primary:disabled { opacity:0.4;cursor:default;transform:none; }
+    .notice { padding:11px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600;display:none;background:rgba(255,43,43,0.1);border:1px solid rgba(255,43,43,0.25);color:#ff8080; }
+    .notice.visible { display:block; }
+    .notice.success { background:rgba(34,197,94,0.1);border-color:rgba(34,197,94,0.25);color:#4ade80; }
 
-    /* ── Background ── */
-    .bg {
-      position: fixed; inset: 0; z-index: 0;
-      background:
-        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255,43,43,0.12) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 40% at 50% 110%, rgba(255,43,43,0.07) 0%, transparent 60%);
-    }
-    .bg-grid {
-      position: fixed; inset: 0; z-index: 0;
-      background-image:
-        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-      background-size: 40px 40px;
-      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
-    }
+    /* OTP поле */
+    .otp-wrap { display:flex;gap:8px;margin-bottom:10px; }
+    .otp-input { flex:1;padding:16px 0;border-radius:14px;border:1px solid var(--border);background:var(--surface);color:#fff;font:800 24px/1 'Inter',system-ui,sans-serif;text-align:center;outline:none;-webkit-appearance:none;transition:border-color 0.2s; }
+    .otp-input:focus { border-color:rgba(255,43,43,0.4);background:rgba(255,43,43,0.05); }
 
-    /* ── Shell ── */
-    .shell {
-      position: relative; z-index: 1;
-      height: 100%;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      padding: 24px 24px calc(24px + env(safe-area-inset-bottom));
-    }
+    .back-btn { background:none;border:none;color:var(--muted);font:600 13px/1 'Inter',system-ui,sans-serif;cursor:pointer;padding:0;margin-bottom:16px;display:flex;align-items:center;gap:6px; }
+    .back-btn:hover { color:#fff; }
+    .resend-btn { background:none;border:none;color:var(--muted);font:600 13px/1 'Inter',system-ui,sans-serif;cursor:pointer;padding:0;text-decoration:underline; }
+    .resend-btn:hover { color:#fff; }
+    .resend-btn:disabled { opacity:0.4;cursor:default;text-decoration:none; }
 
-    /* ── Logo ── */
-    .logo-wrap {
-      text-align: center;
-      margin-bottom: 48px;
-      animation: fadeInDown 0.6s ease both;
-    }
-    .logo {
-      font-size: 48px; font-weight: 900; letter-spacing: -2px;
-      color: #fff;
-      text-shadow:
-        0 0 20px rgba(255,255,255,0.9),
-        0 0 60px rgba(255,255,255,0.4),
-        0 0 120px rgba(255,43,43,0.3);
-    }
-    .logo-sub {
-      font-size: 13px; font-weight: 500;
-      color: var(--muted); letter-spacing: 0.08em;
-      margin-top: 6px;
-    }
+    .card-footer { text-align:center;margin-top:16px;font-size:13px;color:var(--muted); }
+    .card-footer a { color:#fff;font-weight:700;text-decoration:none; }
 
-    /* ── Card ── */
-    .card {
-      width: 100%; max-width: 380px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--border);
-      border-radius: 28px;
-      padding: 28px 24px 24px;
-      backdrop-filter: blur(20px);
-      animation: fadeInUp 0.5s 0.1s ease both;
-    }
-    .card-title {
-      font-size: 22px; font-weight: 800; letter-spacing: -0.3px;
-      margin-bottom: 20px;
-    }
-
-    /* ── Fields ── */
-    .field-wrap { position: relative; margin-bottom: 10px; }
-    .field-label {
-      position: absolute; top: 11px; left: 15px;
-      font-size: 10px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.08em;
-      color: var(--muted); pointer-events: none; transition: color 0.2s;
-    }
-    .field-input {
-      width: 100%; padding: 26px 15px 10px;
-      border-radius: 14px; border: 1px solid var(--border);
-      background: var(--surface); color: #fff;
-      font: 700 15px/1.3 'Inter', system-ui, sans-serif;
-      outline: none; transition: border-color 0.2s, background 0.2s;
-      -webkit-appearance: none;
-    }
-    .field-input:focus { border-color: rgba(255,43,43,0.4); background: rgba(255,43,43,0.05); }
-    .field-input:focus + .field-label { color: var(--red); }
-    .field-input.filled + .field-label { color: rgba(255,255,255,0.3); }
-
-    /* ── Button ── */
-    .btn-primary {
-      width: 100%; padding: 16px;
-      border-radius: 16px; border: none;
-      background: #fff; color: #111;
-      font: 800 15px/1 'Inter', system-ui, sans-serif;
-      cursor: pointer; transition: opacity 0.15s, transform 0.1s;
-      margin-top: 6px; letter-spacing: -0.1px;
-    }
-    .btn-primary:hover { opacity: 0.92; }
-    .btn-primary:active { transform: scale(0.98); }
-    .btn-primary:disabled { opacity: 0.4; cursor: default; transform: none; }
-
-    /* ── Notice ── */
-    .notice {
-      padding: 11px 14px; border-radius: 12px; margin-bottom: 10px;
-      font-size: 13px; font-weight: 600; display: none;
-      background: rgba(255,43,43,0.1); border: 1px solid rgba(255,43,43,0.25); color: #ff8080;
-    }
-    .notice.visible { display: block; }
-
-    /* ── Footer ── */
-    .card-footer {
-      text-align: center; margin-top: 16px;
-      font-size: 13px; color: var(--muted);
-    }
-    .card-footer a { color: #fff; font-weight: 700; text-decoration: none; }
-
-    /* ── App badges ── */
-    .badges {
-      display: flex; gap: 10px; justify-content: center;
-      margin-top: 32px;
-      animation: fadeInUp 0.5s 0.25s ease both;
-    }
-    .badge {
-      display: flex; align-items: center; gap: 8px;
-      padding: 9px 16px; border-radius: 12px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.08);
-      color: rgba(255,255,255,0.5);
-      font-size: 11px; font-weight: 600;
-      text-decoration: none; transition: color 0.2s, border-color 0.2s;
-      cursor: default;
-    }
-    .badge svg { opacity: 0.5; }
-    .badge-label { display: flex; flex-direction: column; gap: 1px; }
-    .badge-sub { font-size: 9px; font-weight: 500; opacity: 0.7; }
-    .badge-name { font-size: 12px; font-weight: 700; }
-
-    @keyframes fadeInDown {
-      from { opacity: 0; transform: translateY(-16px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(16px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
+    @keyframes fadeInDown { from{opacity:0;transform:translateY(-16px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes fadeInUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+    .shake { animation:shake 0.3s ease; }
   </style>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#060608">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="+aura">
   <link rel="apple-touch-icon" href="/icon-192.png">
 </head>
 <body>
@@ -179,89 +68,201 @@
     </div>
 
     <div class="card">
-      <div class="card-title">Войти</div>
 
-      <div class="notice" id="notice"></div>
-
-      <div class="field-wrap">
-        <input class="field-input" id="email" type="email" autocomplete="email" autocapitalize="none" />
-        <span class="field-label">Почта</span>
+      <!-- Шаг 1: ввод email -->
+      <div id="step1">
+        <div class="card-title">Войти</div>
+        <div class="card-sub">Введи почту — пришлём код для входа</div>
+        <div class="notice" id="notice1"></div>
+        <div class="field-wrap">
+          <input class="field-input" id="email" type="email" autocomplete="email" autocapitalize="none" inputmode="email" />
+          <span class="field-label">Почта</span>
+        </div>
+        <button class="btn-primary" id="sendBtn">Получить код →</button>
+        <div class="card-footer">Нет аккаунта? <a href="/signup">Создать</a></div>
       </div>
-      <div class="field-wrap">
-        <input class="field-input" id="password" type="password" autocomplete="current-password" />
-        <span class="field-label">Пароль</span>
-      </div>
 
-      <button class="btn-primary" id="loginBtn">Войти</button>
+      <!-- Шаг 2: ввод кода -->
+      <div id="step2" style="display:none;">
+        <button class="back-btn" id="backBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Назад
+        </button>
+        <div class="card-title">Проверь почту</div>
+        <div class="card-sub" id="step2sub">Отправили код на <strong id="emailDisplay"></strong></div>
+        <div class="notice" id="notice2"></div>
 
-      <div class="card-footer">
-        Нет аккаунта? <a href="/signup">Создать</a>
-      </div>
-    </div>
+        <!-- 6 отдельных инпутов для кода -->
+        <div class="otp-wrap" id="otpWrap">
+          <input class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]" id="otp0" />
+          <input class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]" id="otp1" />
+          <input class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]" id="otp2" />
+          <input class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]" id="otp3" />
+          <input class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]" id="otp4" />
+          <input class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]" id="otp5" />
+        </div>
 
-    <div class="badges">
-      <div class="badge">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-        <div class="badge-label">
-          <span class="badge-sub">Скоро в</span>
-          <span class="badge-name">App Store</span>
+        <button class="btn-primary" id="verifyBtn" disabled>Войти</button>
+
+        <div style="text-align:center;margin-top:14px;font-size:13px;color:var(--muted);">
+          Не пришло? <button class="resend-btn" id="resendBtn" disabled>Отправить снова</button>
+          <span id="resendTimer" style="color:rgba(255,255,255,0.3);"></span>
         </div>
       </div>
-      <div class="badge">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M3.18 23.76c.3.17.65.19.98.08l12.49-7.17-2.88-2.89-10.59 9.98zM.94 2.12C.36 2.5 0 3.14 0 3.9v16.21c0 .76.36 1.4.94 1.78l.1.06 9.08-9.08v-.21L1.04 2.06l-.1.06zM20.07 9.66L17.1 7.96l-3.17 3.17 3.17 3.17 3-1.72c.85-.49.85-1.29 0-1.92zM4.16.23L16.65 7.4l-2.88 2.88L3.18.23c.33-.11.68-.09.98.09l.1.06z" opacity=".4"/><path d="M4.16.23C3.83.05 3.48.03 3.18.23L14.06 11.1l2.88-2.88L4.16.23z" opacity=".8"/></svg>
-        <div class="badge-label">
-          <span class="badge-sub">Скоро в</span>
-          <span class="badge-name">Google Play</span>
-        </div>
-      </div>
+
     </div>
   </div>
 
   <script src="/js/utils.js"></script>
   <script>
-    (function() {
-      const U = window.AuraUtils;
+  (function() {
+    const U = window.AuraUtils;
+    U.fetchMe().then(u => { if (u) U.go(u.name && u.city ? '/home' : '/signup?step=name'); }).catch(()=>{});
 
-      // Редирект если уже залогинен
-      U.fetchMe().then(u => { if (u) U.go(u.name && u.city ? '/home' : '/signup?step=name'); }).catch(()=>{});
+    const emailEl   = document.getElementById('email');
+    const sendBtn   = document.getElementById('sendBtn');
+    const notice1   = document.getElementById('notice1');
+    const step1     = document.getElementById('step1');
+    const step2     = document.getElementById('step2');
+    const notice2   = document.getElementById('notice2');
+    const verifyBtn = document.getElementById('verifyBtn');
+    const resendBtn = document.getElementById('resendBtn');
+    const resendTimer = document.getElementById('resendTimer');
+    const emailDisplay = document.getElementById('emailDisplay');
+    const otpInputs = Array.from({length:6}, (_,i) => document.getElementById('otp'+i));
 
-      // Filled label
-      ['email','password'].forEach(id => {
-        const el = document.getElementById(id);
-        el.addEventListener('input', () => el.classList.toggle('filled', !!el.value));
-      });
+    let _email = '';
+    let _resendInterval = null;
 
-      document.getElementById('loginBtn').addEventListener('click', async () => {
-        const email    = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value;
-        const notice   = document.getElementById('notice');
-        const btn      = document.getElementById('loginBtn');
-        notice.className = 'notice';
+    // Filled label
+    emailEl.addEventListener('input', () => emailEl.classList.toggle('filled', !!emailEl.value));
 
-        if (!email || !password) { notice.textContent = 'Заполни все поля'; notice.className = 'notice visible'; return; }
-        btn.disabled = true; btn.textContent = 'Входим...';
-        try {
-          const r = await fetch('/api/auth/login', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ email, password })
-          });
-          const d = await r.json();
-          if (!r.ok || !d.ok) { notice.textContent = d.error || 'Неверная почта или пароль'; notice.className = 'notice visible'; }
-          else U.go(d.needsOnboarding ? '/signup?step=name' : '/home');
-        } catch { notice.textContent = 'Ошибка сети'; notice.className = 'notice visible'; }
-        finally { btn.disabled = false; btn.textContent = 'Войти'; }
-      });
-
-      // Enter to submit
-      document.addEventListener('keydown', e => {
-        if (e.key === 'Enter') document.getElementById('loginBtn').click();
-      });
-    })();
-  </script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    // ── Шаг 1: отправить код ──
+    function showNotice(el, msg, type='error') {
+      el.textContent = msg;
+      el.className = 'notice visible' + (type === 'success' ? ' success' : '');
     }
+
+    async function sendCode() {
+      const email = emailEl.value.trim();
+      if (!email) { showNotice(notice1, 'Введи почту'); return; }
+      sendBtn.disabled = true; sendBtn.textContent = 'Отправляем...';
+      notice1.className = 'notice';
+      try {
+        const r = await fetch('/api/auth/send-code', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email })
+        }).then(r => r.json());
+        if (!r.ok) { showNotice(notice1, r.error || 'Ошибка'); sendBtn.disabled=false; sendBtn.textContent='Получить код →'; return; }
+        _email = email;
+        emailDisplay.textContent = email;
+        step1.style.display = 'none';
+        step2.style.display = '';
+        otpInputs[0].focus();
+        startResendTimer(60);
+      } catch { showNotice(notice1, 'Ошибка сети'); sendBtn.disabled=false; sendBtn.textContent='Получить код →'; }
+    }
+
+    sendBtn.addEventListener('click', sendCode);
+    emailEl.addEventListener('keydown', e => { if (e.key === 'Enter') sendCode(); });
+
+    // ── OTP инпуты ──
+    otpInputs.forEach((inp, i) => {
+      inp.addEventListener('input', e => {
+        // Если вставили весь код сразу
+        if (e.target.value.length > 1) {
+          const digits = e.target.value.replace(/\D/g,'').slice(0,6);
+          digits.split('').forEach((d, j) => { if (otpInputs[j]) otpInputs[j].value = d; });
+          const next = otpInputs[Math.min(digits.length, 5)];
+          next?.focus();
+        } else {
+          e.target.value = e.target.value.replace(/\D/g,'');
+          if (e.target.value && i < 5) otpInputs[i+1].focus();
+        }
+        checkOTPFilled();
+      });
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'Backspace' && !inp.value && i > 0) { otpInputs[i-1].focus(); otpInputs[i-1].value=''; checkOTPFilled(); }
+        if (e.key === 'Enter' && getOTPCode().length === 6) verifyCode();
+      });
+      // Выделяем при фокусе
+      inp.addEventListener('focus', () => inp.select());
+    });
+
+    function getOTPCode() { return otpInputs.map(i => i.value).join(''); }
+    function checkOTPFilled() { verifyBtn.disabled = getOTPCode().length !== 6; }
+
+    // ── Шаг 2: проверить код ──
+    async function verifyCode() {
+      const code = getOTPCode();
+      if (code.length !== 6) return;
+      verifyBtn.disabled = true; verifyBtn.textContent = 'Входим...';
+      notice2.className = 'notice';
+      try {
+        const r = await fetch('/api/auth/verify-code', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email: _email, code })
+        }).then(r => r.json());
+        if (!r.ok) {
+          showNotice(notice2, r.error || 'Неверный код');
+          document.getElementById('otpWrap').classList.add('shake');
+          setTimeout(() => document.getElementById('otpWrap').classList.remove('shake'), 300);
+          otpInputs.forEach(i => i.value='');
+          otpInputs[0].focus();
+          verifyBtn.disabled = true; verifyBtn.textContent = 'Войти';
+          return;
+        }
+        U.go(r.needsOnboarding ? '/signup?step=name' : '/home');
+      } catch { showNotice(notice2, 'Ошибка сети'); verifyBtn.disabled=false; verifyBtn.textContent='Войти'; }
+    }
+
+    verifyBtn.addEventListener('click', verifyCode);
+
+    // ── Назад ──
+    document.getElementById('backBtn').addEventListener('click', () => {
+      step2.style.display = 'none';
+      step1.style.display = '';
+      sendBtn.disabled = false; sendBtn.textContent = 'Получить код →';
+      otpInputs.forEach(i => i.value='');
+      notice2.className = 'notice';
+      if (_resendInterval) { clearInterval(_resendInterval); _resendInterval = null; }
+    });
+
+    // ── Таймер повторной отправки ──
+    function startResendTimer(secs) {
+      resendBtn.disabled = true;
+      let s = secs;
+      resendTimer.textContent = ` (${s}с)`;
+      if (_resendInterval) clearInterval(_resendInterval);
+      _resendInterval = setInterval(() => {
+        s--;
+        if (s <= 0) {
+          clearInterval(_resendInterval);
+          resendBtn.disabled = false;
+          resendTimer.textContent = '';
+        } else {
+          resendTimer.textContent = ` (${s}с)`;
+        }
+      }, 1000);
+    }
+
+    resendBtn.addEventListener('click', async () => {
+      resendBtn.disabled = true;
+      notice2.className = 'notice';
+      try {
+        const r = await fetch('/api/auth/send-code', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email: _email })
+        }).then(r => r.json());
+        if (!r.ok) { showNotice(notice2, r.error || 'Ошибка'); resendBtn.disabled=false; return; }
+        showNotice(notice2, 'Код отправлен повторно', 'success');
+        otpInputs.forEach(i => i.value='');
+        otpInputs[0].focus();
+        startResendTimer(60);
+      } catch { showNotice(notice2, 'Ошибка сети'); resendBtn.disabled=false; }
+    });
+  })();
   </script>
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(()=>{});</script>
 </body>
 </html>
