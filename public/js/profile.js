@@ -499,12 +499,24 @@ function showNotice(msg, type = 'error') {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = async ev => {
-      const photos = [...(user.photos||[]), ev.target.result].slice(-6);
-      const r = await fetch('/api/profile', {
-        method:'PATCH', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ photos })
-      }).then(r => r.json());
-      if (r.ok) { user.photos = photos; if (window._profileUser) window._profileUser.photos = photos; renderCollage(photos); }
+      try {
+        // Загружаем на Cloudinary
+        const up = await fetch('/api/upload-photo', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ data: ev.target.result, type: 'photo' })
+        }).then(r => r.json());
+
+        if (!up.ok) throw new Error(up.error);
+
+        const photos = [...(user.photos||[]), up.url].slice(-6);
+        const r = await fetch('/api/profile', {
+          method:'PATCH', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ photos })
+        }).then(r => r.json());
+        if (r.ok) { user.photos = photos; if (window._profileUser) window._profileUser.photos = photos; renderCollage(photos); }
+      } catch(err) {
+        console.error('[photo upload]', err);
+      }
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -541,6 +553,38 @@ function showNotice(msg, type = 'error') {
         if (imgEl) imgEl.src = up.url;
       } catch(err) {
         console.error('[avatar upload]', err);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  });
+
+  // ── Cover upload ──────────────────────────────────────────
+  document.getElementById('coverInput')?.addEventListener('change', async e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      // Показываем превью сразу
+      const coverEl = document.getElementById('profileCover');
+      if (coverEl) coverEl.src = ev.target.result;
+
+      try {
+        const up = await fetch('/api/upload-photo', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ data: ev.target.result, type: 'cover' })
+        }).then(r => r.json());
+
+        if (!up.ok) throw new Error(up.error);
+
+        await fetch('/api/profile', {
+          method:'PATCH', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ cover: up.url })
+        });
+
+        if (coverEl) coverEl.src = up.url;
+      } catch(err) {
+        console.error('[cover upload]', err);
       }
     };
     reader.readAsDataURL(file);
