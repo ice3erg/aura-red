@@ -756,24 +756,68 @@ function getAuraRing(pts, isPlaying) {
     });
   };
 
-  function selectTrack(t) {
+  // История треков
+  function getRecentTracks() {
+    try { return JSON.parse(localStorage.getItem('aura_recent_tracks') || '[]'); } catch { return []; }
+  }
+  function saveRecentTrack(t) {
+    const recent = getRecentTracks().filter(r => r.name !== t.name || r.artist !== t.artist);
+    recent.unshift(t);
+    try { localStorage.setItem('aura_recent_tracks', JSON.stringify(recent.slice(0, 8))); } catch {}
+  }
+  function renderRecentTracks() {
+    const recent = getRecentTracks();
+    const wrap = document.getElementById('recentTracksWrap');
+    const list = document.getElementById('recentTracksList');
+    if (!wrap || !list || !recent.length) { if(wrap) wrap.style.display='none'; return; }
+    wrap.style.display = '';
+    list.innerHTML = recent.map((t, i) => `
+      <div onclick="window._pickRecent(${i})" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background=''">
+        ${t.image
+          ? `<img src="${t.image}" style="width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'" />`
+          : `<div style="width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>`
+        }
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.name}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.4);">${t.artist}</div>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>`).join('');
+  }
+  window._pickRecent = function(i) {
+    const t = getRecentTracks()[i];
+    if (t) selectTrack(t);
+  };
+
+  async function selectTrack(t) {
     _selectedTrack = t;
-    const el    = document.getElementById('selectedTrack');
-    const cover = document.getElementById('selectedCover');
-    const name  = document.getElementById('selectedName');
-    const art   = document.getElementById('selectedArtist');
-    const pub   = document.getElementById('manualPublishBtn');
-    const res   = document.getElementById('searchResults');
+    saveRecentTrack(t);
+    window.closeManualSheet();
 
-    if (cover) { cover.src = t.image || ''; cover.style.display = t.image ? '' : 'none'; }
-    if (name)    name.textContent   = t.name;
-    if (art)     art.textContent    = t.artist;
-    if (el) { el.style.display = 'flex'; }
-    if (res)     res.innerHTML = '';
-    if (pub) { pub.disabled = false; pub.style.opacity = '1'; }
+    // Обновляем UI мгновенно
+    const title = document.getElementById('npTitle');
+    const cover = document.getElementById('npCover');
+    const ph    = document.getElementById('npCoverPh');
+    const dot   = document.getElementById('npDot');
+    if (title) title.textContent = `${t.name} · ${t.artist}`;
+    if (cover && t.image) { cover.src = t.image; cover.style.display = ''; if(ph) ph.style.display='none'; }
+    if (dot)  { dot.className = 'np-dot playing'; }
 
-    const inp = document.getElementById('smartSearchInput');
-    if (inp) inp.value = '';
+    // Публикуем
+    const pos = await getGeo().catch(() => null);
+    if (!pos) return;
+    try {
+      await fetch('/api/now-playing', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          track: t.name, artist: t.artist,
+          album: t.album || '', image: t.image || '',
+          url: t.url || '', source: t.source || 'manual',
+          lat: pos.lat, lng: pos.lng
+        })
+      });
+      _currentTrack = { name: t.name, artists: t.artist, image: t.image, source: t.source || 'manual' };
+    } catch {}
   }
 
   window.clearSelected = function() {
@@ -982,28 +1026,32 @@ function getAuraRing(pts, isPlaying) {
   function openManualSheet() {
     const backdrop = document.getElementById('manualSheetBackdrop');
     backdrop.style.display = 'flex';
-    window.clearSelected();
     document.getElementById('searchResults').innerHTML = '';
     document.getElementById('smartSearchInput').value = '';
-
-    // Проверяем MediaSession
-    checkMediaSession();
-
-    // Если уже играет трек — подставляем
-    if (_currentTrack?.name) {
-      const inp = document.getElementById('smartSearchInput');
-      if (inp) inp.value = _currentTrack.name + ' ' + (_currentTrack.artists || '');
-    }
-
-    setTimeout(() => {
-      const inp = document.getElementById('smartSearchInput');
-      inp?.focus();
-      if (inp?.value) searchTracks(inp.value);
-    }, 350);
+    renderRecentTracks();
+    setTimeout(() => document.getElementById('smartSearchInput')?.focus(), 300);
   }
 
   window.closeManualSheet = function() {
     document.getElementById('manualSheetBackdrop').style.display = 'none';
+  };
+  window.clearCurrentTrack = async function() {
+    _currentTrack = null; _selectedTrack = null;
+    const title = document.getElementById('npTitle');
+    const cover = document.getElementById('npCover');
+    const ph    = document.getElementById('npCoverPh');
+    const dot   = document.getElementById('npDot');
+    if (title) title.textContent = 'Что слушаешь?';
+    if (cover) { cover.src=''; cover.style.display='none'; }
+    if (ph)    ph.style.display='';
+    if (dot)   dot.className = 'np-dot idle';
+    try {
+      const pos = await getGeo().catch(()=>null);
+      if (pos) await fetch('/api/now-playing', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ track:'', artist:'', lat: pos.lat, lng: pos.lng, clear: true })
+      });
+    } catch {}
   };
 
   // Дебаунс поиска при вводе
