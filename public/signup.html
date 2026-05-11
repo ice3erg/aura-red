@@ -250,32 +250,24 @@
     <!-- Slides -->
     <div class="slides" id="slides">
 
-      <!-- SLIDE 0: Аккаунт -->
+      <!-- SLIDE 0: Email -->
       <div class="slide" id="slide0">
         <div class="slide-icon">👋</div>
         <div class="slide-title">Создай аккаунт</div>
-        <div class="slide-sub">Твоя почта и пароль — больше ничего лишнего</div>
+        <div class="slide-sub">Введи почту — пришлём код для подтверждения</div>
         <div class="step0-form">
           <div class="field-wrap">
             <input class="field-input" id="s0email" type="email" autocomplete="email" autocapitalize="none" inputmode="email" />
             <span class="field-label">Почта</span>
           </div>
-          <div class="field-wrap">
-            <input class="field-input" id="s0pass" type="password" autocomplete="new-password" />
-            <span class="field-label">Пароль</span>
-          </div>
-          <div class="field-wrap">
-            <input class="field-input" id="s0pass2" type="password" autocomplete="new-password" />
-            <span class="field-label">Повторить пароль</span>
-          </div>
           <div class="notice" id="s0notice"></div>
         </div>
       </div>
 
-      <!-- SLIDE verify: подтверждение почты -->
-      <div class="slide" id="slideverify">
+      <!-- SLIDE 1: Код подтверждения -->
+      <div class="slide" id="slide1">
         <div class="slide-icon">📬</div>
-        <div class="slide-title">Подтверди почту</div>
+        <div class="slide-title">Введи код</div>
         <div class="slide-sub">Отправили код на <strong id="verifyEmailDisplay" style="color:#fff;"></strong></div>
         <div style="display:flex;gap:8px;margin-bottom:10px;">
           <input class="field-input" id="vc0" maxlength="1" inputmode="numeric" style="text-align:center;font-size:22px;font-weight:800;padding:14px 0;" />
@@ -285,42 +277,60 @@
           <input class="field-input" id="vc4" maxlength="1" inputmode="numeric" style="text-align:center;font-size:22px;font-weight:800;padding:14px 0;" />
           <input class="field-input" id="vc5" maxlength="1" inputmode="numeric" style="text-align:center;font-size:22px;font-weight:800;padding:14px 0;" />
         </div>
-        <div class="notice" id="s0vnotice"></div>
+        <div class="notice" id="s1vnotice"></div>
         <div style="font-size:12px;color:rgba(255,255,255,0.3);text-align:center;margin-top:4px;">Код действует 10 минут</div>
       </div>
 
+      <!-- SLIDE 2: Пароль -->
+      <div class="slide" id="slide2">
+        <div class="slide-icon">🔒</div>
+        <div class="slide-title">Придумай пароль</div>
+        <div class="slide-sub">Минимум 6 символов — используй для входа</div>
+        <div class="step0-form">
+          <div class="field-wrap">
+            <input class="field-input" id="s2pass" type="password" autocomplete="new-password" />
+            <span class="field-label">Пароль</span>
+          </div>
+          <div class="field-wrap">
+            <input class="field-input" id="s2pass2" type="password" autocomplete="new-password" />
+            <span class="field-label">Повторить пароль</span>
+          </div>
+          <div class="notice" id="s2pnotice"></div>
+        </div>
+      </div>
+
       <!-- SLIDE 1: Имя -->
-      <div class="slide" id="slide1">
+      <div class="slide" id="slide3">
         <div class="slide-icon">✌️</div>
         <div class="slide-title">Как тебя зовут?</div>
         <div class="slide-sub">Это имя увидят люди на твоей волне</div>
         <div class="field-wrap">
-          <input class="field-input" id="s1name" type="text" maxlength="40" autocomplete="given-name" autocapitalize="words" />
+          <input class="field-input" id="s3name" type="text" maxlength="40" autocomplete="given-name" autocapitalize="words" />
           <span class="field-label">Имя</span>
         </div>
-        <div class="notice" id="s1notice"></div>
+        <div class="notice" id="s3notice"></div>
       </div>
 
       <!-- SLIDE 2: Возраст + Город -->
-      <div class="slide" id="slide2">
+      <div class="slide" id="slide4">
         <div class="slide-icon">📍</div>
         <div class="slide-title">Где и сколько?</div>
         <div class="slide-sub">Поможет найти людей рядом</div>
         <div class="field-row">
           <div class="field-wrap">
-            <input class="field-input" id="s2city" type="text" maxlength="40" autocomplete="address-level2" autocapitalize="words" />
+            <input class="field-input" id="s4city" type="text" maxlength="40" autocomplete="address-level2" autocapitalize="words" />
             <span class="field-label">Город</span>
           </div>
           <div class="field-wrap" style="max-width:100px;">
-            <input class="field-input" id="s2age" type="number" min="13" max="99" inputmode="numeric" />
+            <input class="field-input" id="s4age" type="number" min="13" max="99" inputmode="numeric" />
             <span class="field-label">Лет</span>
           </div>
         </div>
-        <div class="notice" id="s2notice"></div>
+        <div class="notice" id="s4notice"></div>
       </div>
 
       <!-- SLIDE 3: Фото профиля -->
-      <div class="slide" id="slide3">
+      <div class="slide" id="slide5">
         <div class="slide-icon">📸</div>
         <div class="slide-title">Добавь фото</div>
         <div class="slide-sub">Аватар и обложка профиля — можно пропустить</div>
@@ -348,12 +358,12 @@
       </div>
 
       <!-- SLIDE 4: О себе (опционально) -->
-      <div class="slide" id="slide4">
+      <div class="slide" id="slide6">
         <div class="slide-icon">🎵</div>
         <div class="slide-title">Пару слов о себе</div>
         <div class="slide-sub">Что слушаешь, кто ты — необязательно</div>
         <div class="field-wrap" style="max-width:320px;">
-          <textarea class="field-input" id="s4bio" maxlength="200" rows="4"
+          <textarea class="field-input" id="s6bio" maxlength="200" rows="4"
             style="padding-top:28px;min-height:100px;resize:none;"></textarea>
           <span class="field-label">О себе</span>
         </div>
@@ -376,63 +386,43 @@
   <script>
   (function() {
     const U = window.AuraUtils;
-    const TOTAL = 6;
+    const TOTAL = 7; // 0:email 1:код 2:пароль 3:имя 4:город 5:фото 6:о себе
     let currentStep = 0;
     let registeredUserId = null;
+    let state = {};
 
-    // State
-    const state = {
-      email: '', password: '', name: '', city: '', age: '',
-      avatar: null, cover: null, bio: ''
-    };
+    // Редирект если уже залогинен
+    U.fetchMe().then(u => {
+      if (u) { registeredUserId = u.id; goTo(3); }
+    }).catch(()=>{});
 
-    // Check if already logged in and start from profile step
-    const urlStep = new URLSearchParams(location.search).get('step');
-    if (urlStep === 'name') {
-      U.fetchMe().then(u => {
-        if (u) { registeredUserId = u.id; goTo(1); }
-      }).catch(()=>{});
-    } else {
-      U.fetchMe().then(u => {
-        if (u && u.name && u.city) U.go('/home');
-      }).catch(()=>{});
-    }
-
-    // ── Navigation ────────────────────────────────────────
     const slidesEl    = document.getElementById('slides');
-    const progressEl  = document.getElementById('progressFill');
+    const progressEl  = document.getElementById('progressBar');
     const counterEl   = document.getElementById('stepCounter');
     const nextBtn     = document.getElementById('nextBtn');
     const skipBtn     = document.getElementById('skipBtn');
 
     function goTo(step) {
       currentStep = step;
-      // Физически слайды: 0=создай аккаунт, 1=verify, 2=имя, 3=город, 4=фото, 5=готово
-      const slideIndex = step === 'verify' ? 1
-        : (typeof step === 'number' && step >= 1 ? step + 1 : step);
-      slidesEl.style.transform = `translateX(-${slideIndex * 100}%)`;
-      const displayStep = step === 'verify' ? 1
-        : (typeof step === 'number' ? step + 1 : 1);
-      progressEl.style.width = `${(displayStep / TOTAL) * 100}%`;
-      counterEl.textContent = `${displayStep} / ${TOTAL}`;
+      slidesEl.style.transform = `translateX(-${step * 100}%)`;
+      progressEl.style.width = `${((step + 1) / TOTAL) * 100}%`;
+      counterEl.textContent = `${step + 1} / ${TOTAL}`;
 
       // Кнопки
-      if (step === TOTAL - 2 || step === 4) {
+      if (step === TOTAL - 1) {
         nextBtn.textContent = 'Готово 🚀';
         skipBtn.style.display = 'block';
-      } else if (step >= 3) {
+      } else if (step >= 5) {
         skipBtn.style.display = 'block';
         nextBtn.textContent = 'Продолжить';
       } else {
         skipBtn.style.display = 'none';
-        nextBtn.textContent = 'Продолжить';
+        nextBtn.textContent = step === 1 ? 'Подтвердить' : 'Продолжить';
       }
 
-      // Фокус на инпут
+      // Фокус
       setTimeout(() => {
-        const inputs = {
-          0: 's0email', 1: 's1name', 2: 's2city', 4: 's4bio'
-        };
+        const inputs = { 0:'s0email', 1:'vc0', 2:'s2pass', 3:'s3name', 4:'s4city', 6:'s6bio' };
         if (inputs[step]) document.getElementById(inputs[step])?.focus();
       }, 450);
     }
@@ -481,174 +471,132 @@
       el.addEventListener('input', () => el.classList.toggle('filled', !!el.value));
     });
 
-    // ── Step handlers ─────────────────────────────────────
-    async function handleNext() {
-      if (nextBtn.disabled) return;
-      if (currentStep === 0)        await step0();
-      else if (currentStep === 'verify') await stepVerify();
-      else if (currentStep === 1)   step1();
-      else if (currentStep === 2)   step2();
-      else if (currentStep === 3)   goTo(4);
-      else finish();
-    }
-
-    function notice(id, text) {
+    function notice(id, text, type='error') {
       const el = document.getElementById(id);
       if (!el) return;
       el.textContent = text;
-      el.className = text ? 'notice visible' : 'notice';
+      el.className = 'notice' + (text ? ' visible' : '') + (type==='success' ? ' success' : '');
     }
 
-    // Step 0: Register
+    // ── Step handlers ─────────────────────────────────────
+    async function handleNext() {
+      if (nextBtn.disabled) return;
+      if      (currentStep === 0) await step0();
+      else if (currentStep === 1) await step1verify();
+      else if (currentStep === 2) await step2password();
+      else if (currentStep === 3) step3name();
+      else if (currentStep === 4) step4city();
+      else if (currentStep === 5) goTo(6);
+      else finish();
+    }
+
+    // STEP 0: Ввод email → отправить код
     async function step0() {
       const email = document.getElementById('s0email').value.trim();
-      const pass  = document.getElementById('s0pass').value;
-      const pass2 = document.getElementById('s0pass2').value;
       notice('s0notice', '');
-      if (!email) { notice('s0notice', 'Введи почту'); return; }
-      if (pass.length < 6) { notice('s0notice', 'Пароль минимум 6 символов'); return; }
-      if (pass !== pass2) { notice('s0notice', 'Пароли не совпадают'); return; }
-      state.email = email; state.password = pass;
-      nextBtn.disabled = true; nextBtn.textContent = 'Создаём...';
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        notice('s0notice', 'Введи корректный email'); return;
+      }
+      // Проверяем что почта не занята
+      nextBtn.disabled = true; nextBtn.textContent = 'Отправляем...';
       try {
-        const r = await fetch('/api/auth/signup', {
-          method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ email, password: pass })
-        });
-        const d = await r.json();
-        if (!r.ok || !d.ok) { notice('s0notice', d.error || 'Ошибка регистрации'); return; }
-        // Показываем шаг подтверждения почты
-        const ved = document.getElementById('verifyEmailDisplay');
-        if (ved) ved.textContent = email;
-        goTo('verify');
-        setTimeout(() => document.getElementById('vc0')?.focus(), 300);
-      } catch { notice('s0notice', 'Ошибка сети. Попробуй ещё раз.'); }
-      finally { nextBtn.disabled = false; nextBtn.textContent = 'Продолжить'; }
-    }
-
-    // Step verify: подтверждение почты
-    const vcInputs = [0,1,2,3,4,5].map(i => document.getElementById('vc'+i));
-    vcInputs.forEach((inp, i) => {
-      if (!inp) return;
-      inp.addEventListener('input', e => {
-        if (e.target.value.length > 1) {
-          const digits = e.target.value.replace(/\D/g,'').slice(0,6);
-          digits.split('').forEach((d, j) => { if (vcInputs[j]) vcInputs[j].value = d; });
-          const last = Math.min(digits.length, 5);
-          vcInputs[last]?.focus();
-        } else {
-          e.target.value = e.target.value.replace(/\D/g,'');
-          if (e.target.value && i < 5) vcInputs[i+1]?.focus();
-        }
-      });
-      inp.addEventListener('keydown', e => {
-        if (e.key === 'Backspace' && !inp.value && i > 0) { vcInputs[i-1].focus(); vcInputs[i-1].value=''; }
-        if (e.key === 'Enter') stepVerify();
-      });
-    });
-
-    const verifyEmailDisplay = document.getElementById('verifyEmailDisplay');
-    if (verifyEmailDisplay) verifyEmailDisplay.textContent = '';
-
-    async function stepVerify() {
-      const code = vcInputs.map(i => i?.value || '').join('');
-      if (code.length !== 6) { notice('s0vnotice', 'Введи все 6 цифр'); return; }
-      nextBtn.disabled = true; nextBtn.textContent = 'Проверяем...';
-      notice('s0vnotice', '');
-      try {
-        const r = await fetch('/api/auth/signup-verify', {
+        const r = await fetch('/api/auth/send-code', {
           method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ email: state.email, code })
-        }).then(r => r.json());
-        if (!r.ok) {
-          notice('s0vnotice', r.error || 'Неверный код');
-          document.getElementById('verifyOtpWrap').style.animation = 'none';
-          setTimeout(() => { document.getElementById('verifyOtpWrap').style.animation = ''; }, 10);
-          vcInputs.forEach(i => { if(i) i.value=''; });
-          vcInputs[0]?.focus();
-          nextBtn.disabled = false; nextBtn.textContent = 'Подтвердить';
-          return;
-        }
+          body: JSON.stringify({ email, checkExists: true })
+        }).then(r=>r.json());
+        if (!r.ok) { notice('s0notice', r.error || 'Ошибка'); nextBtn.disabled=false; nextBtn.textContent='Продолжить'; return; }
+        state.email = email;
+        document.getElementById('verifyEmailDisplay').textContent = email;
         goTo(1);
-      } catch { notice('s0vnotice', 'Ошибка сети'); nextBtn.disabled=false; nextBtn.textContent='Подтвердить'; }
+      } catch { notice('s0notice','Ошибка сети'); nextBtn.disabled=false; nextBtn.textContent='Продолжить'; }
     }
 
-    // Verify: OTP инпуты
+    // STEP 1: Ввод OTP кода
     const vcInputs = [0,1,2,3,4,5].map(i => document.getElementById('vc'+i)).filter(Boolean);
     vcInputs.forEach((inp, i) => {
       inp.addEventListener('input', e => {
         const val = e.target.value.replace(/[^0-9]/g,'');
         if (val.length > 1) {
-          // Вставили весь код
           val.slice(0,6).split('').forEach((d,j) => { if(vcInputs[j]) vcInputs[j].value=d; });
-          vcInputs[Math.min(val.length,5)]?.focus();
-        } else {
-          inp.value = val;
-          if (val && i < 5) vcInputs[i+1].focus();
-        }
+          vcInputs[Math.min(val.length-1,5)]?.focus();
+        } else { inp.value=val; if(val && i<5) vcInputs[i+1].focus(); }
       });
       inp.addEventListener('keydown', e => {
         if (e.key==='Backspace' && !inp.value && i>0) { vcInputs[i-1].focus(); vcInputs[i-1].value=''; }
-        if (e.key==='Enter') stepVerify();
       });
+      inp.addEventListener('focus', () => inp.select());
     });
 
-    async function stepVerify() {
+    async function step1verify() {
       const code = vcInputs.map(i=>i.value).join('');
-      if (code.length !== 6) { notice('s0vnotice','Введи все 6 цифр'); return; }
+      if (code.length !== 6) { notice('s1vnotice','Введи все 6 цифр'); return; }
       nextBtn.disabled=true; nextBtn.textContent='Проверяем...';
-      notice('s0vnotice','');
+      notice('s1vnotice','');
       try {
-        const r = await fetch('/api/auth/signup-verify', {
+        const r = await fetch('/api/auth/verify-email-code', {
           method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ email:state.email, code })
+          body: JSON.stringify({ email: state.email, code })
         }).then(r=>r.json());
         if (!r.ok) {
-          notice('s0vnotice', r.error||'Неверный код');
-          vcInputs.forEach(i=>i.value='');
-          vcInputs[0]?.focus();
-          nextBtn.disabled=false; nextBtn.textContent='Подтвердить';
-          return;
+          notice('s1vnotice', r.error || 'Неверный код');
+          vcInputs.forEach(i=>i.value=''); vcInputs[0]?.focus();
+          nextBtn.disabled=false; nextBtn.textContent='Подтвердить'; return;
         }
-        goTo(1);
-      } catch { notice('s0vnotice','Ошибка сети'); nextBtn.disabled=false; nextBtn.textContent='Подтвердить'; }
+        state.emailVerified = true;
+        goTo(2);
+      } catch { notice('s1vnotice','Ошибка сети'); nextBtn.disabled=false; nextBtn.textContent='Подтвердить'; }
     }
 
-    // Step 1: Name
-    function step1() {
-      const name = document.getElementById('s1name').value.trim();
-      notice('s1notice', '');
-      if (!name) { notice('s1notice', 'Введи имя'); return; }
-      state.name = name;
-      goTo(2);
-    }
-
-    // Step 2: City + Age
-    function step2() {
-      const city = document.getElementById('s2city').value.trim();
-      const age  = document.getElementById('s2age').value.trim();
-      notice('s2notice', '');
-      if (!city) { notice('s2notice', 'Введи город'); return; }
-      state.city = city; state.age = age;
-      goTo(3);
-    }
-
-    // Final: save profile and go home
-    async function finish() {
-      state.bio = document.getElementById('s4bio').value.trim();
-      nextBtn.disabled = true; nextBtn.textContent = 'Сохраняем...';
+    // STEP 2: Ввод пароля → создаём аккаунт
+    async function step2password() {
+      const pass  = document.getElementById('s2pass').value;
+      const pass2 = document.getElementById('s2pass2').value;
+      notice('s2pnotice','');
+      if (pass.length < 6) { notice('s2pnotice','Пароль минимум 6 символов'); return; }
+      if (pass !== pass2)  { notice('s2pnotice','Пароли не совпадают'); return; }
+      nextBtn.disabled=true; nextBtn.textContent='Создаём...';
       try {
-        const payload = {
-          name: state.name, city: state.city, age: state.age, bio: state.bio
-        };
+        const r = await fetch('/api/auth/signup-complete', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email: state.email, password: pass })
+        }).then(r=>r.json());
+        if (!r.ok) { notice('s2pnotice', r.error || 'Ошибка'); nextBtn.disabled=false; nextBtn.textContent='Продолжить'; return; }
+        registeredUserId = r.user?.id;
+        state.password = pass;
+        goTo(3);
+      } catch { notice('s2pnotice','Ошибка сети'); nextBtn.disabled=false; nextBtn.textContent='Продолжить'; }
+    }
+
+    // STEP 3: Имя
+    function step3name() {
+      const name = document.getElementById('s3name').value.trim();
+      notice('s3notice','');
+      if (!name) { notice('s3notice','Введи имя'); return; }
+      state.name = name; goTo(4);
+    }
+
+    // STEP 4: Город
+    function step4city() {
+      const city = document.getElementById('s4city').value.trim();
+      const age  = document.getElementById('s4age').value.trim();
+      notice('s4notice','');
+      if (!city) { notice('s4notice','Введи город'); return; }
+      state.city = city; state.age = age; goTo(5);
+    }
+
+    // FINISH: сохраняем профиль
+    async function finish() {
+      state.bio = document.getElementById('s6bio').value.trim();
+      nextBtn.disabled=true; nextBtn.textContent='Сохраняем...';
+      try {
+        const payload = { name:state.name, city:state.city, age:state.age, bio:state.bio };
         if (state.avatar) payload.avatar = state.avatar;
         if (state.cover)  payload.cover  = state.cover;
         await U.updateCurrentUser(payload);
         U.go('/home');
-      } catch { nextBtn.disabled = false; nextBtn.textContent = 'Готово 🚀'; }
+      } catch { nextBtn.disabled=false; nextBtn.textContent='Готово 🚀'; }
     }
 
-  })();
   </script>
   <script>
     if ('serviceWorker' in navigator) {

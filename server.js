@@ -917,6 +917,13 @@ app.post("/api/auth/send-code", async (req, res) => {
   const code = genOTP();
   _otpStore.set(emailLower, { code, expires: Date.now() + 10 * 60 * 1000, attempts: 0 });
 
+  // checkExists — проверяем что почта не занята (для регистрации)
+  const { checkExists } = req.body || {};
+  if (checkExists) {
+    const existing = await db.findByEmail(emailLower);
+    if (existing) return res.json({ ok: false, error: "Эта почта уже используется" });
+  }
+
   try {
     await resend.emails.send({
       from: "aura <noreply@aura-app.ru>",
@@ -936,6 +943,50 @@ app.post("/api/auth/send-code", async (req, res) => {
   } catch(e) {
     console.error("[resend]", e.message);
     res.json({ ok: false, error: "Ошибка отправки письма" });
+  }
+});
+
+// Проверить код на этапе регистрации (только верифицируем, не создаём аккаунт)
+app.post("/api/auth/verify-email-code", async (req, res) => {
+  const { email, code } = req.body || {};
+  if (!email || !code) return res.status(400).json({ ok: false, error: "Нет данных" });
+
+  const emailLower = email.toLowerCase().trim();
+  const entry = _otpStore.get(emailLower);
+  if (!entry) return res.json({ ok: false, error: "Сначала запроси код" });
+  if (Date.now() > entry.expires) { _otpStore.delete(emailLower); return res.json({ ok: false, error: "Код истёк, запроси новый" }); }
+  if (entry.attempts >= 5) { _otpStore.delete(emailLower); return res.json({ ok: false, error: "Слишком много попыток" }); }
+  entry.attempts++;
+  if (entry.code !== String(code).trim()) return res.json({ ok: false, error: "Неверный код" });
+  // Оставляем в сторе с пометкой verified — используем при signup-complete
+  entry.verified = true;
+  res.json({ ok: true });
+});
+
+// Завершить регистрацию — создать аккаунт с паролем
+app.post("/api/auth/signup-complete", async (req, res) => {
+  const { email, password } = req.body || {};
+  if (!email || !password) return res.status(400).json({ ok: false, error: "Нет данных" });
+  if (password.length < 6) return res.status(400).json({ ok: false, error: "Пароль минимум 6 символов" });
+
+  const emailLower = email.toLowerCase().trim();
+  const entry = _otpStore.get(emailLower);
+  if (!entry?.verified) return res.status(403).json({ ok: false, error: "Сначала подтверди почту" });
+  if (await db.findByEmail(emailLower)) return res.status(409).json({ ok: false, error: "Почта уже используется" });
+
+  _otpStore.delete(emailLower);
+
+  try {
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await db.createUser({ email: emailLower, passwordHash });
+    await db.updateUser(user.id, { emailVerified: true });
+    const fresh = await db.findByEmail(emailLower);
+    req.session.userId = fresh.id;
+    await new Promise((res, rej) => req.session.save(err => err ? rej(err) : res()));
+    res.json({ ok: true, user: db.publicProfile(fresh) });
+  } catch(e) {
+    console.error("[signup-complete]", e.message);
+    res.json({ ok: false, error: "Ошибка сервера" });
   }
 });
 
