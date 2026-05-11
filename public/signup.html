@@ -408,7 +408,8 @@
       if (progressEl) progressEl.style.width = `${((step + 1) / TOTAL) * 100}%`;
       if (counterEl) counterEl.textContent = `${step + 1} / ${TOTAL}`;
 
-      // Кнопки
+      // Кнопки — всегда сбрасываем disabled при смене шага
+      nextBtn.disabled = false;
       if (step === TOTAL - 1) {
         nextBtn.textContent = 'Готово 🚀';
         skipBtn.style.display = 'block';
