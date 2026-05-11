@@ -272,6 +272,23 @@
         </div>
       </div>
 
+      <!-- SLIDE verify: подтверждение почты -->
+      <div class="slide" id="slideverify">
+        <div class="slide-icon">📬</div>
+        <div class="slide-title">Подтверди почту</div>
+        <div class="slide-sub">Отправили код на <strong id="verifyEmailDisplay" style="color:#fff;"></strong></div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <input class="field-input" id="vc0" maxlength="1" inputmode="numeric" style="text-align:center;font-size:22px;font-weight:800;padding:14px 0;" />
+          <input class="field-input" id="vc1" maxlength="1" inputmode="numeric" style="text-align:center;font-size:22px;font-weight:800;padding:14px 0;" />
+          <input class="field-input" id="vc2" maxlength="1" inputmode="numeric" style="text-align:center;font-size:22px;font-weight:800;padding:14px 0;" />
+          <input class="field-input" id="vc3" maxlength="1" inputmode="numeric" style="text-align:center;font-size:22px;font-weight:800;padding:14px 0;" />
+          <input class="field-input" id="vc4" maxlength="1" inputmode="numeric" style="text-align:center;font-size:22px;font-weight:800;padding:14px 0;" />
+          <input class="field-input" id="vc5" maxlength="1" inputmode="numeric" style="text-align:center;font-size:22px;font-weight:800;padding:14px 0;" />
+        </div>
+        <div class="notice" id="s0vnotice"></div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.3);text-align:center;margin-top:4px;">Код действует 10 минут</div>
+      </div>
+
       <!-- SLIDE 1: Имя -->
       <div class="slide" id="slide1">
         <div class="slide-icon">✌️</div>
@@ -359,7 +376,7 @@
   <script>
   (function() {
     const U = window.AuraUtils;
-    const TOTAL = 5;
+    const TOTAL = 6;
     let currentStep = 0;
     let registeredUserId = null;
 
@@ -390,9 +407,12 @@
 
     function goTo(step) {
       currentStep = step;
-      slidesEl.style.transform = `translateX(-${step * 100}%)`;
-      progressEl.style.width = `${((step + 1) / TOTAL) * 100}%`;
-      counterEl.textContent = `${step + 1} / ${TOTAL}`;
+      // 'verify' это слот 1, числовые шаги сдвигаем +1
+      const slideIndex = step === 'verify' ? 1 : (typeof step === 'number' && step >= 1 ? step + 1 : step);
+      slidesEl.style.transform = `translateX(-${slideIndex * 100}%)`;
+      const displayStep = step === 'verify' ? 1 : (typeof step === 'number' ? step + 1 : 1);
+      progressEl.style.width = `${(displayStep / TOTAL) * 100}%`;
+      counterEl.textContent = `${displayStep} / ${TOTAL}`;
 
       // Кнопки
       if (step === TOTAL - 1) {
@@ -494,9 +514,101 @@
         });
         const d = await r.json();
         if (!r.ok || !d.ok) { notice('s0notice', d.error || 'Ошибка регистрации'); return; }
-        goTo(1);
+        // Показываем шаг подтверждения почты
+        const ved = document.getElementById('verifyEmailDisplay');
+        if (ved) ved.textContent = email;
+        goTo('verify');
+        setTimeout(() => document.getElementById('vc0')?.focus(), 300);
       } catch { notice('s0notice', 'Ошибка сети. Попробуй ещё раз.'); }
       finally { nextBtn.disabled = false; nextBtn.textContent = 'Продолжить'; }
+    }
+
+    // Step verify: подтверждение почты
+    const vcInputs = [0,1,2,3,4,5].map(i => document.getElementById('vc'+i));
+    vcInputs.forEach((inp, i) => {
+      if (!inp) return;
+      inp.addEventListener('input', e => {
+        if (e.target.value.length > 1) {
+          const digits = e.target.value.replace(/\D/g,'').slice(0,6);
+          digits.split('').forEach((d, j) => { if (vcInputs[j]) vcInputs[j].value = d; });
+          const last = Math.min(digits.length, 5);
+          vcInputs[last]?.focus();
+        } else {
+          e.target.value = e.target.value.replace(/\D/g,'');
+          if (e.target.value && i < 5) vcInputs[i+1]?.focus();
+        }
+      });
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'Backspace' && !inp.value && i > 0) { vcInputs[i-1].focus(); vcInputs[i-1].value=''; }
+        if (e.key === 'Enter') stepVerify();
+      });
+    });
+
+    const verifyEmailDisplay = document.getElementById('verifyEmailDisplay');
+    if (verifyEmailDisplay) verifyEmailDisplay.textContent = '';
+
+    async function stepVerify() {
+      const code = vcInputs.map(i => i?.value || '').join('');
+      if (code.length !== 6) { notice('s0vnotice', 'Введи все 6 цифр'); return; }
+      nextBtn.disabled = true; nextBtn.textContent = 'Проверяем...';
+      notice('s0vnotice', '');
+      try {
+        const r = await fetch('/api/auth/signup-verify', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email: state.email, code })
+        }).then(r => r.json());
+        if (!r.ok) {
+          notice('s0vnotice', r.error || 'Неверный код');
+          document.getElementById('verifyOtpWrap').style.animation = 'none';
+          setTimeout(() => { document.getElementById('verifyOtpWrap').style.animation = ''; }, 10);
+          vcInputs.forEach(i => { if(i) i.value=''; });
+          vcInputs[0]?.focus();
+          nextBtn.disabled = false; nextBtn.textContent = 'Подтвердить';
+          return;
+        }
+        goTo(1);
+      } catch { notice('s0vnotice', 'Ошибка сети'); nextBtn.disabled=false; nextBtn.textContent='Подтвердить'; }
+    }
+
+    // Verify: OTP инпуты
+    const vcInputs = [0,1,2,3,4,5].map(i => document.getElementById('vc'+i)).filter(Boolean);
+    vcInputs.forEach((inp, i) => {
+      inp.addEventListener('input', e => {
+        const val = e.target.value.replace(/[^0-9]/g,'');
+        if (val.length > 1) {
+          // Вставили весь код
+          val.slice(0,6).split('').forEach((d,j) => { if(vcInputs[j]) vcInputs[j].value=d; });
+          vcInputs[Math.min(val.length,5)]?.focus();
+        } else {
+          inp.value = val;
+          if (val && i < 5) vcInputs[i+1].focus();
+        }
+      });
+      inp.addEventListener('keydown', e => {
+        if (e.key==='Backspace' && !inp.value && i>0) { vcInputs[i-1].focus(); vcInputs[i-1].value=''; }
+        if (e.key==='Enter') stepVerify();
+      });
+    });
+
+    async function stepVerify() {
+      const code = vcInputs.map(i=>i.value).join('');
+      if (code.length !== 6) { notice('s0vnotice','Введи все 6 цифр'); return; }
+      nextBtn.disabled=true; nextBtn.textContent='Проверяем...';
+      notice('s0vnotice','');
+      try {
+        const r = await fetch('/api/auth/signup-verify', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email:state.email, code })
+        }).then(r=>r.json());
+        if (!r.ok) {
+          notice('s0vnotice', r.error||'Неверный код');
+          vcInputs.forEach(i=>i.value='');
+          vcInputs[0]?.focus();
+          nextBtn.disabled=false; nextBtn.textContent='Подтвердить';
+          return;
+        }
+        goTo(1);
+      } catch { notice('s0vnotice','Ошибка сети'); nextBtn.disabled=false; nextBtn.textContent='Подтвердить'; }
     }
 
     // Step 1: Name

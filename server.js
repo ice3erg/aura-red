@@ -8,7 +8,7 @@ const axios   = require("axios");
 const WebSocket = require("ws");
 const cloudinary = require("cloudinary").v2;
 const { Resend } = require("resend");
-const resend = new Resend(process.env.RESEND_API_KEY || "");
+const resend = new Resend(process.env.RESEND_API_KEY || "re_Qa9pAcWJ_ChFxbk2MauFoCYgqktesqGp4");
 
 // Хранилище OTP кодов (в памяти, TTL 10 минут)
 const _otpStore = new Map(); // email → { code, expires, attempts }
@@ -300,16 +300,63 @@ async function requireAuth(req, res, next) {
 }
 
 // ── Auth API ───────────────────────────────────────────────
+// Временное хранилище pending регистраций: email → { passwordHash, code, expires }
+const _pendingSignups = new Map();
+
+// Шаг 1: регистрация — отправляем код подтверждения
 app.post("/api/auth/signup", async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)   return res.status(400).json({ ok:false, error:"Заполни все поля" });
   if (password.length < 6)   return res.status(400).json({ ok:false, error:"Пароль не короче 6 символов" });
   if (await db.findByEmail(email)) return res.status(409).json({ ok:false, error:"Почта уже используется" });
+
+  const emailLower = email.toLowerCase().trim();
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = await db.createUser({ email, passwordHash });
+  const code = genOTP();
+  _pendingSignups.set(emailLower, { passwordHash, code, expires: Date.now() + 10 * 60 * 1000 });
+
+  try {
+    await resend.emails.send({
+      from: "aura <noreply@aura-app.ru>",
+      to: emailLower,
+      subject: `${code} — подтверди почту для +aura`,
+      html: `
+        <div style="background:#060608;padding:40px 24px;font-family:Inter,sans-serif;max-width:400px;margin:0 auto;border-radius:20px;">
+          <div style="font-size:36px;font-weight:900;color:#fff;letter-spacing:-1px;margin-bottom:8px;">+aura</div>
+          <div style="font-size:14px;color:rgba(255,255,255,0.4);margin-bottom:32px;">найди людей на своей волне</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:12px;">Код подтверждения регистрации:</div>
+          <div style="font-size:48px;font-weight:900;color:#fff;letter-spacing:8px;margin-bottom:24px;">${code}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.3);">Код действует 10 минут. Если ты не регистрировался — просто проигнорируй это письмо.</div>
+        </div>
+      `
+    });
+    res.json({ ok: true, step: "verify" });
+  } catch(e) {
+    console.error("[signup resend]", e.message);
+    res.json({ ok: false, error: "Ошибка отправки письма" });
+  }
+});
+
+// Шаг 2: подтверждение кода при регистрации
+app.post("/api/auth/signup-verify", async (req, res) => {
+  const { email, code } = req.body;
+  if (!email || !code) return res.status(400).json({ ok:false, error:"Нет данных" });
+
+  const emailLower = email.toLowerCase().trim();
+  const pending = _pendingSignups.get(emailLower);
+  if (!pending) return res.json({ ok:false, error:"Сначала зарегистрируйся" });
+  if (Date.now() > pending.expires) { _pendingSignups.delete(emailLower); return res.json({ ok:false, error:"Код истёк" }); }
+  if (String(code).trim() !== pending.code) return res.json({ ok:false, error:"Неверный код" });
+
+  _pendingSignups.delete(emailLower);
+
+  // Создаём пользователя с подтверждённой почтой
+  const user = await db.createUser({ email: emailLower, passwordHash: pending.passwordHash });
+  await db.updateUser(user.id, { emailVerified: true });
+
   req.session.userId = user.id;
   req.session.save(err => {
-    if (err) console.error("[signup] session save error:", err);
+    if (err) console.error("[signup-verify] session save error:", err);
     res.json({ ok:true, user:db.publicProfile(user), needsOnboarding:true });
   });
 });
@@ -320,6 +367,8 @@ app.post("/api/auth/login", async (req, res) => {
   const user = await db.findByEmail(email);
   if (!user || !(await bcrypt.compare(password, user.passwordHash)))
     return res.status(401).json({ ok:false, error:"Неверная почта или пароль" });
+  if (!user.emailVerified)
+    return res.status(403).json({ ok:false, error:"Подтверди почту — проверь письмо", needsVerify:true, email });
   req.session.userId = user.id;
   req.session.save(err => {
     if (err) console.error("[login] session save error:", err);
@@ -907,12 +956,18 @@ app.post("/api/auth/verify-code", async (req, res) => {
 
   _otpStore.delete(emailLower);
 
-  // Ищем или создаём пользователя
+  const { markVerified } = req.body || {};
+
   try {
     let user = await db.findByEmail(emailLower);
     if (!user) {
-      const id = "u_" + Date.now();
-      await db.createUser({ id, email: emailLower, password: "", name: "" });
+      // Новый пользователь через OTP логин
+      user = await db.createUser({ email: emailLower, passwordHash: "" });
+      await db.updateUser(user.id, { emailVerified: true });
+      user = await db.findByEmail(emailLower);
+    } else if (markVerified || !user.emailVerified) {
+      // Подтверждаем почту существующего пользователя
+      await db.updateUser(user.id, { emailVerified: true });
       user = await db.findByEmail(emailLower);
     }
 

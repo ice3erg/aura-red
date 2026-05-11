@@ -16,8 +16,7 @@
     .logo { font-size:48px;font-weight:900;letter-spacing:-2px;color:#fff;text-shadow:0 0 20px rgba(255,255,255,0.9),0 0 60px rgba(255,255,255,0.4),0 0 120px rgba(255,43,43,0.3); }
     .logo-sub { font-size:13px;font-weight:500;color:var(--muted);letter-spacing:0.08em;margin-top:6px; }
     .card { width:100%;max-width:380px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:28px;padding:28px 24px 24px;backdrop-filter:blur(20px);animation:fadeInUp 0.5s 0.1s ease both; }
-    .card-title { font-size:22px;font-weight:800;letter-spacing:-0.3px;margin-bottom:6px; }
-    .card-sub { font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.5; }
+    .card-title { font-size:22px;font-weight:800;letter-spacing:-0.3px;margin-bottom:20px; }
     .field-wrap { position:relative;margin-bottom:10px; }
     .field-label { position:absolute;top:11px;left:15px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);pointer-events:none;transition:color 0.2s; }
     .field-input { width:100%;padding:26px 15px 10px;border-radius:14px;border:1px solid var(--border);background:var(--surface);color:#fff;font:700 15px/1.3 'Inter',system-ui,sans-serif;outline:none;transition:border-color 0.2s,background 0.2s;-webkit-appearance:none; }
@@ -25,31 +24,21 @@
     .field-input:focus + .field-label { color:var(--red); }
     .field-input.filled + .field-label { color:rgba(255,255,255,0.3); }
     .btn-primary { width:100%;padding:16px;border-radius:16px;border:none;background:#fff;color:#111;font:800 15px/1 'Inter',system-ui,sans-serif;cursor:pointer;transition:opacity 0.15s,transform 0.1s;margin-top:6px;letter-spacing:-0.1px; }
-    .btn-primary:hover { opacity:0.92; }
-    .btn-primary:active { transform:scale(0.98); }
-    .btn-primary:disabled { opacity:0.4;cursor:default;transform:none; }
+    .btn-primary:hover { opacity:0.92; } .btn-primary:active { transform:scale(0.98); } .btn-primary:disabled { opacity:0.4;cursor:default;transform:none; }
     .notice { padding:11px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600;display:none;background:rgba(255,43,43,0.1);border:1px solid rgba(255,43,43,0.25);color:#ff8080; }
     .notice.visible { display:block; }
     .notice.success { background:rgba(34,197,94,0.1);border-color:rgba(34,197,94,0.25);color:#4ade80; }
-
-    /* OTP поле */
     .otp-wrap { display:flex;gap:8px;margin-bottom:10px; }
-    .otp-input { flex:1;padding:16px 0;border-radius:14px;border:1px solid var(--border);background:var(--surface);color:#fff;font:800 24px/1 'Inter',system-ui,sans-serif;text-align:center;outline:none;-webkit-appearance:none;transition:border-color 0.2s; }
-    .otp-input:focus { border-color:rgba(255,43,43,0.4);background:rgba(255,43,43,0.05); }
-
+    .otp-inp { flex:1;padding:14px 0;border-radius:14px;border:1px solid var(--border);background:var(--surface);color:#fff;font:800 22px/1 'Inter',system-ui,sans-serif;text-align:center;outline:none;-webkit-appearance:none;transition:border-color 0.2s; }
+    .otp-inp:focus { border-color:rgba(255,43,43,0.4);background:rgba(255,43,43,0.05); }
     .back-btn { background:none;border:none;color:var(--muted);font:600 13px/1 'Inter',system-ui,sans-serif;cursor:pointer;padding:0;margin-bottom:16px;display:flex;align-items:center;gap:6px; }
     .back-btn:hover { color:#fff; }
-    .resend-btn { background:none;border:none;color:var(--muted);font:600 13px/1 'Inter',system-ui,sans-serif;cursor:pointer;padding:0;text-decoration:underline; }
-    .resend-btn:hover { color:#fff; }
-    .resend-btn:disabled { opacity:0.4;cursor:default;text-decoration:none; }
-
     .card-footer { text-align:center;margin-top:16px;font-size:13px;color:var(--muted); }
     .card-footer a { color:#fff;font-weight:700;text-decoration:none; }
-
+    .link-btn { background:none;border:none;color:rgba(255,255,255,0.4);font:600 12px/1 Inter,sans-serif;cursor:pointer;text-decoration:underline;padding:0; }
+    .link-btn:hover { color:#fff; }
     @keyframes fadeInDown { from{opacity:0;transform:translateY(-16px)} to{opacity:1;transform:translateY(0)} }
     @keyframes fadeInUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-    @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
-    .shake { animation:shake 0.3s ease; }
   </style>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#060608">
@@ -58,55 +47,50 @@
   <link rel="apple-touch-icon" href="/icon-192.png">
 </head>
 <body>
-  <div class="bg"></div>
-  <div class="bg-grid"></div>
-
+  <div class="bg"></div><div class="bg-grid"></div>
   <div class="shell">
     <div class="logo-wrap">
       <div class="logo">+aura</div>
       <div class="logo-sub">найди людей на своей волне</div>
     </div>
-
     <div class="card">
 
-      <!-- Шаг 1: ввод email -->
-      <div id="step1">
+      <!-- Шаг 1: email + пароль -->
+      <div id="s1">
         <div class="card-title">Войти</div>
-        <div class="card-sub">Введи почту — пришлём код для входа</div>
-        <div class="notice" id="notice1"></div>
+        <div class="notice" id="n1"></div>
         <div class="field-wrap">
           <input class="field-input" id="email" type="email" autocomplete="email" autocapitalize="none" inputmode="email" />
           <span class="field-label">Почта</span>
         </div>
-        <button class="btn-primary" id="sendBtn">Получить код →</button>
+        <div class="field-wrap">
+          <input class="field-input" id="password" type="password" autocomplete="current-password" />
+          <span class="field-label">Пароль</span>
+        </div>
+        <button class="btn-primary" id="loginBtn">Войти</button>
         <div class="card-footer">Нет аккаунта? <a href="/signup">Создать</a></div>
       </div>
 
-      <!-- Шаг 2: ввод кода -->
-      <div id="step2" style="display:none;">
+      <!-- Шаг 2: подтверждение почты (если не подтверждена) -->
+      <div id="s2" style="display:none;">
         <button class="back-btn" id="backBtn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
           Назад
         </button>
-        <div class="card-title">Проверь почту</div>
-        <div class="card-sub" id="step2sub">Отправили код на <strong id="emailDisplay"></strong></div>
-        <div class="notice" id="notice2"></div>
-
-        <!-- 6 отдельных инпутов для кода -->
-        <div class="otp-wrap" id="otpWrap">
-          <input class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]" id="otp0" />
-          <input class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]" id="otp1" />
-          <input class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]" id="otp2" />
-          <input class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]" id="otp3" />
-          <input class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]" id="otp4" />
-          <input class="otp-input" maxlength="1" inputmode="numeric" pattern="[0-9]" id="otp5" />
+        <div class="card-title">Подтверди почту</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.45);margin-bottom:16px;line-height:1.5;">Отправили код на <strong id="emailShow"></strong></div>
+        <div class="notice" id="n2"></div>
+        <div class="otp-wrap">
+          <input class="otp-inp" id="o0" maxlength="1" inputmode="numeric" />
+          <input class="otp-inp" id="o1" maxlength="1" inputmode="numeric" />
+          <input class="otp-inp" id="o2" maxlength="1" inputmode="numeric" />
+          <input class="otp-inp" id="o3" maxlength="1" inputmode="numeric" />
+          <input class="otp-inp" id="o4" maxlength="1" inputmode="numeric" />
+          <input class="otp-inp" id="o5" maxlength="1" inputmode="numeric" />
         </div>
-
-        <button class="btn-primary" id="verifyBtn" disabled>Войти</button>
-
-        <div style="text-align:center;margin-top:14px;font-size:13px;color:var(--muted);">
-          Не пришло? <button class="resend-btn" id="resendBtn" disabled>Отправить снова</button>
-          <span id="resendTimer" style="color:rgba(255,255,255,0.3);"></span>
+        <button class="btn-primary" id="verifyBtn" disabled>Подтвердить</button>
+        <div style="text-align:center;margin-top:12px;font-size:12px;color:rgba(255,255,255,0.3);">
+          Не пришло? <button class="link-btn" id="resendBtn">Отправить снова</button>
         </div>
       </div>
 
@@ -119,147 +103,116 @@
     const U = window.AuraUtils;
     U.fetchMe().then(u => { if (u) U.go(u.name && u.city ? '/home' : '/signup?step=name'); }).catch(()=>{});
 
-    const emailEl   = document.getElementById('email');
-    const sendBtn   = document.getElementById('sendBtn');
-    const notice1   = document.getElementById('notice1');
-    const step1     = document.getElementById('step1');
-    const step2     = document.getElementById('step2');
-    const notice2   = document.getElementById('notice2');
-    const verifyBtn = document.getElementById('verifyBtn');
-    const resendBtn = document.getElementById('resendBtn');
-    const resendTimer = document.getElementById('resendTimer');
-    const emailDisplay = document.getElementById('emailDisplay');
-    const otpInputs = Array.from({length:6}, (_,i) => document.getElementById('otp'+i));
-
     let _email = '';
-    let _resendInterval = null;
+    const otps = [0,1,2,3,4,5].map(i => document.getElementById('o'+i));
 
-    // Filled label
-    emailEl.addEventListener('input', () => emailEl.classList.toggle('filled', !!emailEl.value));
-
-    // ── Шаг 1: отправить код ──
-    function showNotice(el, msg, type='error') {
-      el.textContent = msg;
-      el.className = 'notice visible' + (type === 'success' ? ' success' : '');
-    }
-
-    async function sendCode() {
-      const email = emailEl.value.trim();
-      if (!email) { showNotice(notice1, 'Введи почту'); return; }
-      sendBtn.disabled = true; sendBtn.textContent = 'Отправляем...';
-      notice1.className = 'notice';
-      try {
-        const r = await fetch('/api/auth/send-code', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ email })
-        }).then(r => r.json());
-        if (!r.ok) { showNotice(notice1, r.error || 'Ошибка'); sendBtn.disabled=false; sendBtn.textContent='Получить код →'; return; }
-        _email = email;
-        emailDisplay.textContent = email;
-        step1.style.display = 'none';
-        step2.style.display = '';
-        otpInputs[0].focus();
-        startResendTimer(60);
-      } catch { showNotice(notice1, 'Ошибка сети'); sendBtn.disabled=false; sendBtn.textContent='Получить код →'; }
-    }
-
-    sendBtn.addEventListener('click', sendCode);
-    emailEl.addEventListener('keydown', e => { if (e.key === 'Enter') sendCode(); });
-
-    // ── OTP инпуты ──
-    otpInputs.forEach((inp, i) => {
-      inp.addEventListener('input', e => {
-        // Если вставили весь код сразу
-        if (e.target.value.length > 1) {
-          const digits = e.target.value.replace(/\D/g,'').slice(0,6);
-          digits.split('').forEach((d, j) => { if (otpInputs[j]) otpInputs[j].value = d; });
-          const next = otpInputs[Math.min(digits.length, 5)];
-          next?.focus();
-        } else {
-          e.target.value = e.target.value.replace(/\D/g,'');
-          if (e.target.value && i < 5) otpInputs[i+1].focus();
-        }
-        checkOTPFilled();
-      });
-      inp.addEventListener('keydown', e => {
-        if (e.key === 'Backspace' && !inp.value && i > 0) { otpInputs[i-1].focus(); otpInputs[i-1].value=''; checkOTPFilled(); }
-        if (e.key === 'Enter' && getOTPCode().length === 6) verifyCode();
-      });
-      // Выделяем при фокусе
-      inp.addEventListener('focus', () => inp.select());
+    // Filled labels
+    ['email','password'].forEach(id => {
+      const el = document.getElementById(id);
+      el?.addEventListener('input', () => el.classList.toggle('filled', !!el.value));
     });
 
-    function getOTPCode() { return otpInputs.map(i => i.value).join(''); }
-    function checkOTPFilled() { verifyBtn.disabled = getOTPCode().length !== 6; }
+    function showNotice(id, msg, type='error') {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = msg;
+      el.className = 'notice visible' + (type==='success' ? ' success' : '');
+    }
+    function hideNotice(id) { const el=document.getElementById(id); if(el) el.className='notice'; }
 
-    // ── Шаг 2: проверить код ──
-    async function verifyCode() {
-      const code = getOTPCode();
+    // ── Логин ──
+    async function doLogin() {
+      const email = document.getElementById('email').value.trim();
+      const pass  = document.getElementById('password').value;
+      const btn   = document.getElementById('loginBtn');
+      hideNotice('n1');
+      if (!email || !pass) { showNotice('n1','Заполни все поля'); return; }
+      btn.disabled=true; btn.textContent='Входим...';
+      try {
+        const r = await fetch('/api/auth/login', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email, password: pass })
+        }).then(r=>r.json());
+
+        if (r.ok) { U.go(r.needsOnboarding ? '/signup?step=name' : '/home'); return; }
+
+        // Почта не подтверждена — отправляем код и показываем шаг 2
+        if (r.needsVerify) {
+          _email = r.email || email;
+          await sendVerifyCode(_email);
+          document.getElementById('emailShow').textContent = _email;
+          document.getElementById('s1').style.display = 'none';
+          document.getElementById('s2').style.display = '';
+          setTimeout(() => otps[0]?.focus(), 300);
+        } else {
+          showNotice('n1', r.error || 'Неверная почта или пароль');
+        }
+      } catch { showNotice('n1','Ошибка сети'); }
+      finally { btn.disabled=false; btn.textContent='Войти'; }
+    }
+
+    async function sendVerifyCode(email) {
+      try {
+        await fetch('/api/auth/send-code', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email, forVerify: true })
+        });
+      } catch {}
+    }
+
+    document.getElementById('loginBtn').addEventListener('click', doLogin);
+    document.getElementById('email').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('password').focus(); });
+    document.getElementById('password').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+    document.getElementById('backBtn').addEventListener('click', () => {
+      document.getElementById('s2').style.display='none';
+      document.getElementById('s1').style.display='';
+      otps.forEach(i=>i.value='');
+      hideNotice('n2');
+    });
+
+    // ── OTP ──
+    otps.forEach((inp, i) => {
+      if (!inp) return;
+      inp.addEventListener('input', e => {
+        const val = e.target.value.replace(/[^0-9]/g,'');
+        if (val.length > 1) {
+          val.slice(0,6).split('').forEach((d,j) => { if(otps[j]) otps[j].value=d; });
+          otps[Math.min(val.length,5)]?.focus();
+        } else { inp.value=val; if(val && i<5) otps[i+1].focus(); }
+        document.getElementById('verifyBtn').disabled = otps.map(o=>o.value).join('').length !== 6;
+      });
+      inp.addEventListener('keydown', e => {
+        if (e.key==='Backspace' && !inp.value && i>0) { otps[i-1].focus(); otps[i-1].value=''; document.getElementById('verifyBtn').disabled=true; }
+        if (e.key==='Enter') doVerify();
+      });
+    });
+
+    async function doVerify() {
+      const code = otps.map(o=>o.value).join('');
       if (code.length !== 6) return;
-      verifyBtn.disabled = true; verifyBtn.textContent = 'Входим...';
-      notice2.className = 'notice';
+      const btn = document.getElementById('verifyBtn');
+      btn.disabled=true; btn.textContent='Проверяем...';
+      hideNotice('n2');
       try {
         const r = await fetch('/api/auth/verify-code', {
           method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ email: _email, code })
-        }).then(r => r.json());
-        if (!r.ok) {
-          showNotice(notice2, r.error || 'Неверный код');
-          document.getElementById('otpWrap').classList.add('shake');
-          setTimeout(() => document.getElementById('otpWrap').classList.remove('shake'), 300);
-          otpInputs.forEach(i => i.value='');
-          otpInputs[0].focus();
-          verifyBtn.disabled = true; verifyBtn.textContent = 'Войти';
-          return;
-        }
-        U.go(r.needsOnboarding ? '/signup?step=name' : '/home');
-      } catch { showNotice(notice2, 'Ошибка сети'); verifyBtn.disabled=false; verifyBtn.textContent='Войти'; }
+          body: JSON.stringify({ email: _email, code, markVerified: true })
+        }).then(r=>r.json());
+        if (r.ok) { U.go(r.needsOnboarding ? '/signup?step=name' : '/home'); return; }
+        showNotice('n2', r.error || 'Неверный код');
+        otps.forEach(o=>o.value=''); otps[0]?.focus();
+        btn.disabled=false; btn.textContent='Подтвердить';
+      } catch { showNotice('n2','Ошибка сети'); btn.disabled=false; btn.textContent='Подтвердить'; }
     }
 
-    verifyBtn.addEventListener('click', verifyCode);
-
-    // ── Назад ──
-    document.getElementById('backBtn').addEventListener('click', () => {
-      step2.style.display = 'none';
-      step1.style.display = '';
-      sendBtn.disabled = false; sendBtn.textContent = 'Получить код →';
-      otpInputs.forEach(i => i.value='');
-      notice2.className = 'notice';
-      if (_resendInterval) { clearInterval(_resendInterval); _resendInterval = null; }
-    });
-
-    // ── Таймер повторной отправки ──
-    function startResendTimer(secs) {
-      resendBtn.disabled = true;
-      let s = secs;
-      resendTimer.textContent = ` (${s}с)`;
-      if (_resendInterval) clearInterval(_resendInterval);
-      _resendInterval = setInterval(() => {
-        s--;
-        if (s <= 0) {
-          clearInterval(_resendInterval);
-          resendBtn.disabled = false;
-          resendTimer.textContent = '';
-        } else {
-          resendTimer.textContent = ` (${s}с)`;
-        }
-      }, 1000);
-    }
-
-    resendBtn.addEventListener('click', async () => {
-      resendBtn.disabled = true;
-      notice2.className = 'notice';
-      try {
-        const r = await fetch('/api/auth/send-code', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ email: _email })
-        }).then(r => r.json());
-        if (!r.ok) { showNotice(notice2, r.error || 'Ошибка'); resendBtn.disabled=false; return; }
-        showNotice(notice2, 'Код отправлен повторно', 'success');
-        otpInputs.forEach(i => i.value='');
-        otpInputs[0].focus();
-        startResendTimer(60);
-      } catch { showNotice(notice2, 'Ошибка сети'); resendBtn.disabled=false; }
+    document.getElementById('verifyBtn').addEventListener('click', doVerify);
+    document.getElementById('resendBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('resendBtn');
+      btn.disabled=true;
+      await sendVerifyCode(_email);
+      showNotice('n2','Код отправлен повторно','success');
+      otps.forEach(o=>o.value=''); otps[0]?.focus();
+      setTimeout(()=>{ btn.disabled=false; hideNotice('n2'); }, 60000);
     });
   })();
   </script>

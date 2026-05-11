@@ -56,6 +56,7 @@ if (USE_PG) {
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS yandex_token TEXT DEFAULT ''`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS yandex_device_id TEXT DEFAULT ''`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS yandex_uid TEXT DEFAULT ''`))
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_days INTEGER DEFAULT 0`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_last DATE`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT UNIQUE`))
@@ -145,6 +146,7 @@ function rowToUser(row) {
     yandexToken:         row.yandex_token || '',
     yandexDeviceId:      row.yandex_device_id || '',
     yandexUid:           row.yandex_uid || '',
+    emailVerified:       row.email_verified || false,
     lastfmUsername:      row.lastfm_username || "",
     currentTrack:        row.current_track || null,
     createdAt:           row.created_at,
