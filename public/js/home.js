@@ -139,12 +139,22 @@ function getAuraRing(pts, isPlaying) {
   const U = window.AuraUtils;
   const DEFAULT = [59.9343, 30.3351];
 
+  // Читаем кешированную позицию — карта стартует сразу в нужном месте
+  let _startPos = DEFAULT;
+  try {
+    const saved = localStorage.getItem('aura_last_pos');
+    if (saved) {
+      const p = JSON.parse(saved);
+      if (p && Date.now() - p.ts < 30 * 60 * 1000) _startPos = [p.lat, p.lng];
+    }
+  } catch(_) {}
+
   // ── Map init ─────────────────────────────────────────────
   const map = L.map('map', {
     zoomControl: false, attributionControl: false,
     dragging: true, scrollWheelZoom: true,
     doubleClickZoom: true, touchZoom: true,
-  }).setView(DEFAULT, 14);
+  }).setView(_startPos, 14);
 
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     maxZoom: 20, subdomains: 'abcd', attribution: ''
@@ -1387,42 +1397,39 @@ function getAuraRing(pts, isPlaying) {
       }
     } catch(_) {}
 
-    // You marker
-    // Убираем skeleton — карта и юзер загружены
+    _youMarker = L.marker(_startPos, { icon: makeYouIcon(_user), zIndexOffset: 1000 }).addTo(map);
+
+    // Убираем skeleton сразу — карта и юзер готовы
     const skeleton = document.getElementById('appSkeleton');
     const overlay  = document.getElementById('mapOverlay');
-    if (skeleton) { skeleton.style.opacity = '0'; setTimeout(() => skeleton.remove(), 400); }
-    if (overlay)  { overlay.style.opacity  = '0'; setTimeout(() => overlay.remove(),  600); }
-
-    _youMarker = L.marker(DEFAULT, { icon: makeYouIcon(_user), zIndexOffset: 1000 }).addTo(map);
+    if (skeleton) { skeleton.style.opacity = '0'; setTimeout(() => skeleton.remove(), 300); }
+    if (overlay)  { overlay.style.opacity  = '0'; setTimeout(() => overlay.remove(),  300); }
 
     // Sent signals
-    await loadSentSignalIds();
+    loadSentSignalIds();
 
-    // Трек — сразу пушим из базы (восстановление после рестарта сервера)
-    if (_user.currentTrack?.track) {
-      const pos = await getGeo();
-      if (pos) {
-        fetch('/api/now-playing', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...(_user.currentTrack), lat: pos.lat, lng: pos.lng })
-        }).catch(() => {});
-      }
-    }
+    // Трек — фоновая загрузка без блокировки
     loadTrack(_user);
     setInterval(() => loadTrack(_user), 30000);
 
-    // Зоны грузим сразу — не ждём геолокацию
+    // Зоны грузим сразу
     loadZones();
 
-    // Геолокация
+    // Геолокация — не блокируем рендер
     const pos = await getGeo();
     if (pos) {
-      map.setView([pos.lat, pos.lng], 14);
+      const wasDefault = Math.abs(_startPos[0] - DEFAULT[0]) < 0.001 && Math.abs(_startPos[1] - DEFAULT[1]) < 0.001;
+      if (wasDefault) {
+        // Были на дефолте — плавно перемещаемся
+        map.setView([pos.lat, pos.lng], 14, { animate: true, duration: 0.8 });
+      } else {
+        // Уже были в кеше близко — тихо обновляем без анимации
+        map.setView([pos.lat, pos.lng], 14, { animate: false });
+      }
       _youMarker.setLatLng([pos.lat, pos.lng]);
+      updateCityDisplay(pos.lat, pos.lng);
       loadRadar(pos.lat, pos.lng);
-      loadZones(); // перегружаем с координатами
+      loadZones();
     }
 
     // Keep-alive

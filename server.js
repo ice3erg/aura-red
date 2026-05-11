@@ -8,6 +8,24 @@ const axios   = require("axios");
 const WebSocket = require("ws");
 const cloudinary = require("cloudinary").v2;
 const { Resend } = require("resend");
+const rateLimit = require("express-rate-limit");
+
+// ── Rate limiters ─────────────────────────────────────────────────────────────
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, max: 10,
+  message: { ok: false, error: "Слишком много попыток. Попробуй через 15 минут." },
+  standardHeaders: true, legacyHeaders: false,
+});
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, max: 120,
+  message: { ok: false, error: "Слишком много запросов" },
+  standardHeaders: true, legacyHeaders: false,
+});
+const otpLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, max: 5,
+  message: { ok: false, error: "Слишком много запросов кода. Попробуй через час." },
+  standardHeaders: true, legacyHeaders: false,
+});
 const resend = new Resend(process.env.RESEND_API_KEY || "re_Qa9pAcWJ_ChFxbk2MauFoCYgqktesqGp4");
 
 // Хранилище OTP кодов (в памяти, TTL 10 минут)
@@ -246,8 +264,38 @@ const app       = express();
 const publicDir = path.join(__dirname, "public");
 
 app.set("trust proxy", true);
-app.use(express.static(publicDir));
+// Кеширование статики — JS/CSS на 1 час, картинки на 1 день
+app.use(express.static(publicDir, {
+  maxAge: (req) => {
+    if (req.url.match(/\.(js|css)$/)) return 3600000; // 1 час
+    if (req.url.match(/\.(png|jpg|jpeg|svg|ico|webp)$/)) return 86400000; // 1 день
+    return 0;
+  },
+  etag: true,
+  lastModified: true,
+}));
 app.use(express.json({ limit: "5mb" }));
+
+// Gzip compression
+const compression = require("compression");
+app.use(compression());
+
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  next();
+});
+
+// Rate limiting
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/signup", authLimiter);
+app.use("/api/auth/send-code", otpLimiter);
+app.use("/api/auth/verify-email-code", authLimiter);
+app.use("/api/auth/signup-complete", authLimiter);
+app.use("/api/", apiLimiter);
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -1182,6 +1230,11 @@ app.post("/api/yandex/disconnect", requireAuth, async (req, res) => {
 
 
 app.post("/api/now-playing", requireAuth, async (req, res) => {
+  // Валидация входных данных
+  const { track, artist, lat, lng } = req.body || {};
+  if (lat !== undefined && (typeof lat !== 'number' || lat < -90 || lat > 90)) return res.json({ ok: false });
+  if (lng !== undefined && (typeof lng !== 'number' || lng < -180 || lng > 180)) return res.json({ ok: false });
+  if (track && typeof track === 'string' && track.length > 300) return res.json({ ok: false });
   try {
   const { track, artist, album, image, url, source, lat, lng } = req.body;
   if (!track || !artist) return res.status(400).json({ ok:false, error:"Нужны track и artist" });
