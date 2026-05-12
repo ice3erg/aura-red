@@ -111,7 +111,18 @@
   }
 
   async function load() {
+    // Мгновенно показываем кеш
+    try {
+      const cached = sessionStorage.getItem('aura_friends');
+      if (cached) render(JSON.parse(cached));
+    } catch(_) {}
+
     const r = await fetch('/api/friends').then(r=>r.json()).catch(()=>({ok:false,friends:[]}));
+    try { sessionStorage.setItem('aura_friends', JSON.stringify(r)); } catch(_) {}
+    render(r);
+  }
+
+  function render(r) {
     if (!r.ok || !r.friends.length) {
       list.innerHTML = `<div class="empty">
         <div class="empty-icon">🤝</div>
@@ -124,9 +135,11 @@
 
     list.innerHTML = r.friends.map((f, i) => {
       const ct = f.currentTrack;
-      const isOnline = ct?.track && ct?.updatedAt && (Date.now() - (ct.updatedAt||0)) < 30*60*1000;
-      const trackText = ct?.track ? `🎵 ${ct.track} — ${ct.artist}` : 'Не слушает сейчас';
-      const ago = timeAgo(ct?.updatedAt);
+      // current_track может быть строкой JSON или объектом
+      const ctObj = typeof ct === 'string' ? (() => { try { return JSON.parse(ct); } catch { return null; } })() : ct;
+      const isOnline = ctObj?.track && ctObj?.updatedAt && (Date.now() - (ctObj.updatedAt||0)) < 30*60*1000;
+      const trackText = ctObj?.track ? `🎵 ${ctObj.track}${ctObj.artist ? ' — ' + ctObj.artist : ''}` : 'Не слушает сейчас';
+      const ago = timeAgo(ctObj?.updatedAt);
       return `${i>0?'<div class="divider"></div>':''}
         <a class="friend-card" href="/u/${f.username||f.id}">
           <div class="friend-ava">
@@ -135,7 +148,7 @@
           </div>
           <div class="friend-info">
             <div class="friend-name">${f.name||'Аноним'}</div>
-            <div class="friend-track">${isOnline ? trackText : (ago||'Давно не был')}</div>
+            <div class="friend-track">${isOnline ? trackText : (ago ? ago + ' назад' : 'Давно не был')}</div>
           </div>
           <div class="friend-dot ${isOnline?'online':'offline'}"></div>
           <button class="remove-btn" onclick="event.preventDefault();window.removeFriend('${f.id}','${f.name||'друга'}')">✕</button>

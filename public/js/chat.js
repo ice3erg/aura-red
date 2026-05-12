@@ -201,15 +201,31 @@
   async function loadChats() {
     const root = document.getElementById('chatList');
     if (!root) return;
+
+    // Мгновенно показываем кеш пока грузится сервер
+    try {
+      const cached = sessionStorage.getItem('aura_chats');
+      if (cached && root.children.length === 0) {
+        const d = JSON.parse(cached);
+        if (d.chats?.length) _renderChats(root, d);
+      }
+    } catch(_) {}
+
     try {
       const r = await fetch('/api/chats');
       const d = await r.json();
       if (!r.ok || !d.ok) throw new Error();
+      try { sessionStorage.setItem('aura_chats', JSON.stringify(d)); } catch(_) {}
 
       const totalUnread = d.chats.reduce((s,c) => s+(c.unread||0), 0);
       const sub = document.getElementById('chatSub');
       if (sub) sub.textContent = totalUnread ? `${totalUnread} непрочитанных` : 'Нет новых сообщений';
 
+      _renderChats(root, d);
+    } catch(_) {}
+  }
+
+  function _renderChats(root, d) {
       if (!d.chats.length) {
         root.innerHTML = `<div class="empty-msgs">
           <div class="ei">📡</div>
@@ -218,6 +234,10 @@
         </div>`;
         return;
       }
+
+      const sub = document.getElementById('chatSub');
+      const totalUnread = d.chats.reduce((s,c) => s+(c.unread||0), 0);
+      if (sub) sub.textContent = totalUnread ? `${totalUnread} непрочитанных` : 'Нет новых сообщений';
 
       root.innerHTML = d.chats.map((chat, idx) => {
         const other  = chat.other;
@@ -247,9 +267,6 @@
       root.querySelectorAll('.chat-row').forEach(el => {
         el.addEventListener('click', () => openChat(el.dataset.chatId));
       });
-    } catch {
-      root.innerHTML = `<div class="empty-msgs"><div class="ei">💬</div><p>Не удалось загрузить чаты.</p></div>`;
-    }
   }
 
   // ── Chat dialog ────────────────────────────────────────
