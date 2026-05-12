@@ -57,6 +57,15 @@ if (USE_PG) {
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS yandex_device_id TEXT DEFAULT ''`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS yandex_uid TEXT DEFAULT ''`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE`))
+      // Индексы для ускорения запросов
+      .then(() => pgPool.query(`CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages(chat_id)`))
+      .then(() => pgPool.query(`CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(chat_id, created_at DESC)`))
+      .then(() => pgPool.query(`CREATE INDEX IF NOT EXISTS idx_chats_user_ids ON chats USING GIN(user_ids)`))
+      .then(() => pgPool.query(`CREATE INDEX IF NOT EXISTS idx_friends_user_id ON friends(user_id, status)`))
+      .then(() => pgPool.query(`CREATE INDEX IF NOT EXISTS idx_friends_friend_id ON friends(friend_id, status)`))
+      .then(() => pgPool.query(`CREATE INDEX IF NOT EXISTS idx_signals_location ON signals(lat, lng)`))
+      .then(() => pgPool.query(`CREATE INDEX IF NOT EXISTS idx_signals_user_id ON signals(user_id)`))
+      .then(() => pgPool.query(`CREATE INDEX IF NOT EXISTS idx_chat_reads ON chat_reads(chat_id, user_id)`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_days INTEGER DEFAULT 0`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_last DATE`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT UNIQUE`))
@@ -515,7 +524,7 @@ async function getChatsForUser(userId) {
     );
     return Promise.all(r.rows.map(async row => {
       const msgs = await pgPool.query(
-        `SELECT * FROM messages WHERE chat_id=$1 ORDER BY created_at ASC`, [row.id]
+        `SELECT * FROM messages WHERE chat_id=$1 ORDER BY created_at DESC LIMIT 50`, [row.id]
       );
       return {
         id: row.id,
@@ -536,7 +545,7 @@ async function getChatById(id) {
   if (USE_PG) {
     const r = await pgPool.query(`SELECT * FROM chats WHERE id=$1`, [id]);
     if (!r.rows[0]) return null;
-    const msgs = await pgPool.query(`SELECT * FROM messages WHERE chat_id=$1 ORDER BY created_at ASC`, [id]);
+    const msgs = await pgPool.query(`SELECT * FROM messages WHERE chat_id=$1 ORDER BY created_at DESC LIMIT 50`, [id]);
     return {
       id: r.rows[0].id,
       userIds: r.rows[0].user_ids,

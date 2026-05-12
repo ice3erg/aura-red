@@ -307,10 +307,14 @@
       position: fixed; bottom: 0; left: 0; right: 0;
       height: calc(64px + env(safe-area-inset-bottom));
       padding-bottom: env(safe-area-inset-bottom);
-      background: rgba(6,6,8,0.88);
+      background: rgba(6,6,8,0.95);
       backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border-top: 1px solid var(--border);
       display: flex; align-items: stretch; z-index: 100;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+      will-change: transform;
     }
     .nav-link {
       flex: 1; display: flex; flex-direction: column;
