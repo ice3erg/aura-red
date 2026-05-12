@@ -1260,7 +1260,10 @@ app.post("/api/auth/reset-password", async (req, res) => {
 const ADMIN_KEY = process.env.ADMIN_KEY || "aura-admin-2026";
 
 app.get("/api/admin/stats", async (req, res) => {
-  if (req.query.key !== ADMIN_KEY) return res.status(403).json({ ok: false });
+  const provided = (req.query.key || "").trim();
+  const expected = (ADMIN_KEY || "").trim();
+  console.log("[admin] provided:", JSON.stringify(provided), "expected:", JSON.stringify(expected));
+  if (provided !== expected) return res.status(403).json({ ok: false, debug: `got "${provided}", expected "${expected}"` });
   const pool = db.pgPool();
   if (!pool) return res.json({ ok: false });
   try {
