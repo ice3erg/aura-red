@@ -384,6 +384,7 @@ function getAuraRing(pts, isPlaying) {
   }
 
   let _usingMocks = false;
+  let _emptyText = null;
 
   async function loadRadar(lat, lng) {
     try {
