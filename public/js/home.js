@@ -453,10 +453,6 @@ function getAuraRing(pts, isPlaying) {
       } catch (_) {}
     }
 
-
-
-    }
-
     const pill    = document.getElementById('nowPill');
     const cover   = document.getElementById('npCover');
     const coverPh = document.getElementById('npCoverPh');
