@@ -928,9 +928,9 @@ app.post("/api/push/subscribe", requireAuth, async (req, res) => {
   if (!pool) return res.json({ ok: false });
   try {
     await pool.query(
-      `INSERT INTO push_subscriptions (user_id, subscription) VALUES ($1, $2)
-       ON CONFLICT (user_id, (subscription->>'endpoint')) DO UPDATE SET subscription=$2`,
-      [req.user.id, JSON.stringify(subscription)]
+      `INSERT INTO push_subscriptions (user_id, endpoint, subscription) VALUES ($1, $2, $3)
+       ON CONFLICT (user_id, endpoint) DO UPDATE SET subscription=$3`,
+      [req.user.id, subscription.endpoint, JSON.stringify(subscription)]
     );
     res.json({ ok: true });
   } catch(e) { res.json({ ok: false }); }
@@ -942,7 +942,7 @@ app.post("/api/push/unsubscribe", requireAuth, async (req, res) => {
   if (!pool) return res.json({ ok: true });
   try {
     await pool.query(
-      "DELETE FROM push_subscriptions WHERE user_id=$1 AND subscription->>'endpoint'=$2",
+      "DELETE FROM push_subscriptions WHERE user_id=$1 AND endpoint=$2",
       [req.user.id, endpoint]
     );
     res.json({ ok: true });
@@ -1260,10 +1260,7 @@ app.post("/api/auth/reset-password", async (req, res) => {
 const ADMIN_KEY = process.env.ADMIN_KEY || "aura-admin-2026";
 
 app.get("/api/admin/stats", async (req, res) => {
-  const provided = (req.query.key || "").trim();
-  const expected = (ADMIN_KEY || "").trim();
-  console.log("[admin] provided:", JSON.stringify(provided), "expected:", JSON.stringify(expected));
-  if (provided !== expected) return res.status(403).json({ ok: false, debug: `got "${provided}", expected "${expected}"` });
+  if ((req.query.key || "").trim() !== (ADMIN_KEY || "").trim()) return res.status(403).json({ ok: false });
   const pool = db.pgPool();
   if (!pool) return res.json({ ok: false });
   try {
