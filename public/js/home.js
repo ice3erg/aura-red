@@ -453,13 +453,6 @@ function getAuraRing(pts, isPlaying) {
       } catch (_) {}
     }
 
-    if (!track && user.yandexToken) {
-      try {
-        // Сначала проверяем кеш на сервере (из Ynison)
-        const r = await fetch('/api/yandex/current-track');
-        const d = await r.json();
-        if (d.ok && d.isPlaying && d.track) track = d.track;
-      } catch (_) {}
 
 
     }

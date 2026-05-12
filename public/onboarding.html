@@ -150,13 +150,6 @@
           <div><div class="mopt-name">Spotify</div><div class="mopt-desc">Автоматически что сейчас играет</div></div>
         </div>
 
-        <div class="mopt" id="opt-ym" onclick="selectMusic('ym')">
-          <div class="mopt-icon" style="background:rgba(255,204,0,0.12);">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="#FFCC00"><path d="M13.24 3H11v8.6H9.3c-2.16 0-3.9 1.7-3.9 3.8 0 2.1 1.74 3.8 3.9 3.8 2.15 0 3.9-1.7 3.9-3.8V3zm-3.94 14.2c-1.06 0-1.9-.84-1.9-1.8s.84-1.8 1.9-1.8H11v1.8c0 .96-.85 1.8-1.7 1.8z"/></svg>
-          </div>
-          <div><div class="mopt-name">Яндекс Музыка</div><div class="mopt-desc">Подключить OAuth токен</div></div>
-        </div>
-
         <div class="mopt" id="opt-manual" onclick="selectMusic('manual')">
           <div class="mopt-icon" style="background:rgba(255,255,255,0.06);">✏️</div>
           <div><div class="mopt-name">Вручную</div><div class="mopt-desc">Буду вводить треки сам на карте</div></div>
@@ -227,7 +220,7 @@
 
     window.selectMusic = function(type) {
       _music = type;
-      ['lastfm','spotify','ym','manual'].forEach(t => {
+      ['lastfm','spotify','manual'].forEach(t => {
         document.getElementById('opt-'+t)?.classList.toggle('selected', t===type);
       });
       document.getElementById('lfm-input').classList.toggle('show', type==='lastfm');
@@ -249,8 +242,6 @@
         next();
       } else if (_music === 'spotify') {
         window.location.href = '/spotify/login';
-      } else if (_music === 'ym') {
-        window.location.href = '/get-ym-token?from=onboarding';
       } else {
         next();
       }
