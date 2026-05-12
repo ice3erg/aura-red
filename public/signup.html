@@ -576,7 +576,8 @@
         if (!r.ok) { notice('s2pnotice', r.error || 'Ошибка'); nextBtn.disabled=false; nextBtn.textContent='Продолжить'; return; }
         registeredUserId = r.user?.id;
         state.password = pass;
-        goTo(3);
+        // Новый пользователь — сразу в онбординг
+        U.go('/onboarding');
       } catch { notice('s2pnotice','Ошибка сети'); nextBtn.disabled=false; nextBtn.textContent='Продолжить'; }
     }
 
