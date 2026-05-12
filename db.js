@@ -66,6 +66,14 @@ if (USE_PG) {
       .then(() => pgPool.query(`CREATE INDEX IF NOT EXISTS idx_signals_from_id ON signals(from_id)`))
       .then(() => pgPool.query(`CREATE INDEX IF NOT EXISTS idx_signals_to_id ON signals(to_id)`))
       .then(() => pgPool.query(`CREATE INDEX IF NOT EXISTS idx_chat_reads ON chat_reads(chat_id, user_id)`))
+      .then(() => pgPool.query(`CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        user_id TEXT NOT NULL,
+        subscription JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(user_id, (subscription->>'endpoint'))
+      )`))
+      .then(() => pgPool.query(`CREATE INDEX IF NOT EXISTS idx_push_user_id ON push_subscriptions(user_id)`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_days INTEGER DEFAULT 0`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS streak_last DATE`))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username TEXT UNIQUE`))

@@ -62,3 +62,38 @@ self.addEventListener('fetch', e => {
     )
   );
 });
+
+// ── Push уведомления ─────────────────────────────────────────
+self.addEventListener('push', e => {
+  if (!e.data) return;
+  let data = {};
+  try { data = e.data.json(); } catch { data = { title: '+aura', body: e.data.text() }; }
+
+  e.waitUntil(
+    self.registration.showNotification(data.title || '+aura', {
+      body:    data.body || '',
+      icon:    data.icon  || '/icon-192.png',
+      badge:   data.badge || '/icon-192.png',
+      tag:     data.tag   || 'aura',
+      data:    { url: data.url || '/' },
+      vibrate: [100, 50, 100],
+      requireInteraction: false,
+    })
+  );
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = e.notification.data?.url || '/';
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const client of list) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      return clients.openWindow(url);
+    })
+  );
+});

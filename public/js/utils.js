@@ -169,6 +169,60 @@
     initBadge();
   }
 
+  // ── Push уведомления ─────────────────────────────────────
+  async function subscribePush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const existing = await reg.pushManager.getSubscription();
+      if (existing) return; // уже подписан
+
+      const keyResp = await fetch('/api/push/vapid-key').then(r => r.json());
+      if (!keyResp.publicKey) return;
+
+      // Конвертируем base64 ключ
+      const key = keyResp.publicKey;
+      const padding = '='.repeat((4 - key.length % 4) % 4);
+      const base64 = (key + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const raw = window.atob(base64);
+      const appServerKey = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) appServerKey[i] = raw.charCodeAt(i);
+
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: appServerKey,
+      });
+
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subscription: sub.toJSON() }),
+      });
+    } catch(e) { /* пользователь отказал или ошибка */ }
+  }
+
+  // Запрашиваем разрешение через 3 сек после загрузки (не сразу)
+  function initPush() {
+    const path = window.location.pathname;
+    if (path === '/login' || path === '/signup' || path === '/onboarding') return;
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+      subscribePush();
+    } else if (Notification.permission !== 'denied') {
+      setTimeout(() => {
+        Notification.requestPermission().then(p => {
+          if (p === 'granted') subscribePush();
+        });
+      }, 3000);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPush);
+  } else {
+    initPush();
+  }
+
   // ── Keep-alive клиентский пинг ─────────────────────────
   // Дополнительно пингуем с клиента раз в 8 минут
   setInterval(() => {

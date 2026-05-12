@@ -7,6 +7,32 @@ const bcrypt  = require("bcryptjs");
 const axios   = require("axios");
 const cloudinary = require("cloudinary").v2;
 const { Resend } = require("resend");
+const webpush = require("web-push");
+webpush.setVapidDetails(
+  "mailto:hello@plus-aura.online",
+  process.env.VAPID_PUBLIC_KEY  || "BNIePIIGQyNPScf8XocW3TE3q6K6jtPUinu2Me3TbUeXZtXWJ6m7pmCBtKl3nIQTCY3MwqNsTaCgjebvouP2nBY",
+  process.env.VAPID_PRIVATE_KEY || "utjLnms8d3pujZPwSaGADaBnBKgDpEQ0_LkHZTnP5g4"
+);
+
+// Отправить push одному пользователю
+async function sendPush(userId, payload) {
+  const pool = db.pgPool();
+  if (!pool) return;
+  try {
+    const r = await pool.query("SELECT subscription FROM push_subscriptions WHERE user_id=$1", [userId]);
+    for (const row of r.rows) {
+      try {
+        await webpush.sendNotification(row.subscription, JSON.stringify(payload));
+      } catch(e) {
+        // Удаляем невалидные подписки
+        if (e.statusCode === 410 || e.statusCode === 404) {
+          await pool.query("DELETE FROM push_subscriptions WHERE user_id=$1 AND subscription->>'endpoint'=$2",
+            [userId, row.subscription.endpoint]);
+        }
+      }
+    }
+  } catch(e) { console.error("[push]", e.message); }
+}
 const rateLimit = require("express-rate-limit");
 
 // ── Rate limiters ─────────────────────────────────────────────────────────────
@@ -881,6 +907,39 @@ app.post("/api/auth/verify-code", async (req, res) => {
 
 
 
+// ── Push Notifications ───────────────────────────────────────────────────────
+app.get("/api/push/vapid-key", (req, res) => {
+  res.json({ publicKey: process.env.VAPID_PUBLIC_KEY || "BNIePIIGQyNPScf8XocW3TE3q6K6jtPUinu2Me3TbUeXZtXWJ6m7pmCBtKl3nIQTCY3MwqNsTaCgjebvouP2nBY" });
+});
+
+app.post("/api/push/subscribe", requireAuth, async (req, res) => {
+  const { subscription } = req.body;
+  if (!subscription?.endpoint) return res.status(400).json({ ok: false });
+  const pool = db.pgPool();
+  if (!pool) return res.json({ ok: false });
+  try {
+    await pool.query(
+      `INSERT INTO push_subscriptions (user_id, subscription) VALUES ($1, $2)
+       ON CONFLICT (user_id, (subscription->>'endpoint')) DO UPDATE SET subscription=$2`,
+      [req.user.id, JSON.stringify(subscription)]
+    );
+    res.json({ ok: true });
+  } catch(e) { res.json({ ok: false }); }
+});
+
+app.post("/api/push/unsubscribe", requireAuth, async (req, res) => {
+  const { endpoint } = req.body;
+  const pool = db.pgPool();
+  if (!pool) return res.json({ ok: true });
+  try {
+    await pool.query(
+      "DELETE FROM push_subscriptions WHERE user_id=$1 AND subscription->>'endpoint'=$2",
+      [req.user.id, endpoint]
+    );
+    res.json({ ok: true });
+  } catch(e) { res.json({ ok: false }); }
+});
+
 // ── Signals ────────────────────────────────────────────────
 app.post("/api/signals", requireAuth, async (req, res) => {
   const { toId, type, track, artist, matchType } = req.body;
@@ -890,6 +949,16 @@ app.post("/api/signals", requireAuth, async (req, res) => {
   const existing = (await db.getSignalsForUser(toId)).find(s => s.fromId===req.user.id && s.status==="pending");
   if (existing) return res.status(409).json({ ok:false, error:"Сигнал уже отправлен", signal:existing });
   const signal = await db.createSignal({ fromId:req.user.id, toId, type:type||"wave", track:track||"", artist:artist||"", matchType:matchType||"same-vibe" });
+  // Push уведомление получателю
+  const sender = await db.findById(req.user.id);
+  sendPush(toId, {
+    title: `📡 ${sender?.name || "Кто-то"} отправил сигнал`,
+    body: track ? `Слушает: ${track}${artist ? " — " + artist : ""}` : "Открой +aura чтобы ответить",
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
+    url: "/home",
+    tag: "signal",
+  }).catch(() => {});
   res.json({ ok:true, signal });
 });
 
@@ -1102,6 +1171,21 @@ app.post("/api/chats/:id/messages", requireAuth, async (req, res) => {
   const { text } = req.body;
   if (!text?.trim()) return res.status(400).json({ ok:false, error:"Пустое сообщение" });
   const msg = await db.sendMessage(req.params.id, req.user.id, text.trim());
+  // Push другому участнику
+  try {
+    const otherId = (chat.userIds || []).find(id => id !== req.user.id);
+    if (otherId) {
+      const sender = await db.findById(req.user.id);
+      sendPush(otherId, {
+        title: `💬 ${sender?.name || "Новое сообщение"}`,
+        body: text.trim().length > 60 ? text.trim().slice(0, 60) + "…" : text.trim(),
+        icon: "/icon-192.png",
+        badge: "/icon-192.png",
+        url: "/chat",
+        tag: "msg-" + req.params.id,
+      }).catch(() => {});
+    }
+  } catch(_) {}
   res.json({ ok:true, message:msg });
 });
 
