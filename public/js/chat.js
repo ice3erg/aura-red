@@ -466,5 +466,17 @@
   }
 
   window.openChat = openChat;
+  // Показываем кеш мгновенно — до auth
+  (function() {
+    try {
+      const cached = localStorage.getItem('aura_chats');
+      if (cached) {
+        const d = JSON.parse(cached);
+        const root = document.getElementById('chatList');
+        if (root && d.chats?.length) _renderChats(root, d);
+      }
+    } catch(_) {}
+  })();
+
   document.addEventListener('DOMContentLoaded', init);
 })();

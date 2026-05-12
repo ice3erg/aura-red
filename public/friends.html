@@ -85,6 +85,15 @@
 <script>
 (async () => {
   const U = window.AuraUtils;
+  // Мгновенно рендерим кеш пока идёт auth
+  try {
+    const cached = localStorage.getItem('aura_friends');
+    if (cached) {
+      const r = JSON.parse(cached);
+      if (r.friends?.length) render(r);
+    }
+  } catch(_) {}
+
   const me = await U.requireAuth();
   if (!me) return;
 
