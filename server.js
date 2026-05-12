@@ -1189,6 +1189,64 @@ app.post("/api/chats/:id/messages", requireAuth, async (req, res) => {
   res.json({ ok:true, message:msg });
 });
 
+// ── Password Reset ───────────────────────────────────────────
+const _resetStore = new Map(); // email → { code, expires }
+
+app.post("/api/auth/forgot-password", async (req, res) => {
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ ok: false, error: "Нет email" });
+  const emailLower = email.toLowerCase().trim();
+  const user = await db.findByEmail(emailLower);
+  // Не говорим нет ли пользователя — безопасность
+  if (!user) return res.json({ ok: true });
+
+  const code = genOTP();
+  _resetStore.set(emailLower, { code, expires: Date.now() + 10 * 60 * 1000 });
+  console.log(`[reset] ${emailLower} → ${code}`);
+
+  const apiKey = process.env.RESEND_API_KEY;
+  if (apiKey) {
+    try {
+      await resend.emails.send({
+        from: "aura <onboarding@resend.dev>",
+        to: emailLower,
+        subject: `${code} — сброс пароля +aura`,
+        html: `<div style="background:#060608;padding:40px 24px;font-family:Inter,sans-serif;max-width:400px;margin:0 auto;border-radius:20px;">
+          <div style="font-size:36px;font-weight:900;color:#fff;letter-spacing:-1px;margin-bottom:8px;">+aura</div>
+          <div style="font-size:14px;color:rgba(255,255,255,0.4);margin-bottom:32px;">сброс пароля</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:12px;">Код для сброса пароля:</div>
+          <div style="font-size:48px;font-weight:900;color:#fff;letter-spacing:8px;margin-bottom:24px;">${code}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.3);">Код действует 10 минут. Если ты не запрашивал сброс — просто проигнорируй.</div>
+        </div>`
+      });
+    } catch(e) { console.error("[reset resend]", e.message); }
+  }
+  res.json({ ok: true });
+});
+
+app.post("/api/auth/reset-password", async (req, res) => {
+  const { email, code, password } = req.body || {};
+  if (!email || !code || !password) return res.status(400).json({ ok: false, error: "Нет данных" });
+  if (password.length < 6) return res.status(400).json({ ok: false, error: "Пароль минимум 6 символов" });
+
+  const emailLower = email.toLowerCase().trim();
+  const entry = _resetStore.get(emailLower);
+  if (!entry) return res.json({ ok: false, error: "Сначала запроси код" });
+  if (Date.now() > entry.expires) { _resetStore.delete(emailLower); return res.json({ ok: false, error: "Код истёк" }); }
+  if (entry.code !== String(code).trim()) return res.json({ ok: false, error: "Неверный код" });
+
+  _resetStore.delete(emailLower);
+  const user = await db.findByEmail(emailLower);
+  if (!user) return res.json({ ok: false, error: "Пользователь не найден" });
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  await db.updateUser(user.id, { passwordHash });
+
+  req.session.userId = user.id;
+  await new Promise((res, rej) => req.session.save(err => err ? rej(err) : res()));
+  res.json({ ok: true, user: db.publicProfile(user) });
+});
+
 // ── Admin ────────────────────────────────────────────────────
 const ADMIN_KEY = process.env.ADMIN_KEY || "aura-admin-2026";
 

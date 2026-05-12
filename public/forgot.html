@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+  <title>+aura — восстановление пароля</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--red:#ff2b2b;--bg:#060608;--border:rgba(255,255,255,0.08);--surface:rgba(255,255,255,0.05)}
+    html,body{height:100%;background:var(--bg);color:#fff;font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+    .bg{position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(255,43,43,0.12) 0%,transparent 60%)}
+    .shell{position:relative;z-index:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+    .logo-wrap{text-align:center;margin-bottom:40px}
+    .logo{font-size:44px;font-weight:900;letter-spacing:-2px;text-shadow:0 0 20px rgba(255,255,255,0.8)}
+    .logo-sub{font-size:13px;color:rgba(255,255,255,0.4);margin-top:6px}
+    .card{width:100%;max-width:380px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:28px;padding:28px 24px 24px;backdrop-filter:blur(20px)}
+    .card-title{font-size:22px;font-weight:800;letter-spacing:-0.3px;margin-bottom:20px}
+    .field-wrap{position:relative;margin-bottom:10px}
+    .field-label{position:absolute;top:11px;left:15px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:rgba(255,255,255,0.4);pointer-events:none}
+    .field-input{width:100%;padding:26px 15px 10px;border-radius:14px;border:1px solid var(--border);background:var(--surface);color:#fff;font:700 15px/1.3 Inter,sans-serif;outline:none;-webkit-appearance:none;transition:border-color .2s}
+    .field-input:focus{border-color:rgba(255,43,43,0.4)}
+    .btn{width:100%;padding:16px;border-radius:16px;border:none;background:#fff;color:#111;font:800 15px/1 Inter,sans-serif;cursor:pointer;transition:opacity .15s,transform .1s;margin-top:6px}
+    .btn:active{transform:scale(0.98)} .btn:disabled{opacity:.4;cursor:default}
+    .notice{padding:11px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:600;display:none;background:rgba(255,43,43,0.1);border:1px solid rgba(255,43,43,0.25);color:#ff8080}
+    .notice.visible{display:block}
+    .notice.success{background:rgba(34,197,94,0.1);border-color:rgba(34,197,94,0.25);color:#4ade80}
+    .otp-wrap{display:flex;gap:8px;margin-bottom:10px}
+    .otp-inp{flex:1;padding:14px 0;border-radius:14px;border:1px solid var(--border);background:var(--surface);color:#fff;font:800 22px/1 Inter,sans-serif;text-align:center;outline:none;-webkit-appearance:none;transition:border-color .2s}
+    .otp-inp:focus{border-color:rgba(255,43,43,0.4)}
+    .back-btn{background:none;border:none;color:rgba(255,255,255,0.4);font:600 13px/1 Inter,sans-serif;cursor:pointer;padding:0;margin-bottom:16px;display:flex;align-items:center;gap:6px}
+    .card-footer{text-align:center;margin-top:16px;font-size:13px;color:rgba(255,255,255,0.4)}
+    .card-footer a{color:#fff;font-weight:700;text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="shell">
+    <div class="logo-wrap">
+      <div class="logo">+aura</div>
+      <div class="logo-sub">восстановление пароля</div>
+    </div>
+    <div class="card">
+
+      <!-- Шаг 1: email -->
+      <div id="s1">
+        <div class="card-title">Забыл пароль?</div>
+        <div class="notice" id="n1"></div>
+        <div class="field-wrap">
+          <input class="field-input" id="email" type="email" autocomplete="email" autocapitalize="none" inputmode="email"/>
+          <span class="field-label">Почта</span>
+        </div>
+        <button class="btn" id="sendBtn">Получить код →</button>
+        <div class="card-footer"><a href="/login">← Вернуться</a></div>
+      </div>
+
+      <!-- Шаг 2: код -->
+      <div id="s2" style="display:none">
+        <button class="back-btn" onclick="show('s1')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Назад
+        </button>
+        <div class="card-title">Введи код</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:16px;">Отправили код на <strong id="emailShow" style="color:#fff"></strong></div>
+        <div class="notice" id="n2"></div>
+        <div class="otp-wrap">
+          <input class="otp-inp" id="o0" maxlength="1" inputmode="numeric"/>
+          <input class="otp-inp" id="o1" maxlength="1" inputmode="numeric"/>
+          <input class="otp-inp" id="o2" maxlength="1" inputmode="numeric"/>
+          <input class="otp-inp" id="o3" maxlength="1" inputmode="numeric"/>
+          <input class="otp-inp" id="o4" maxlength="1" inputmode="numeric"/>
+          <input class="otp-inp" id="o5" maxlength="1" inputmode="numeric"/>
+        </div>
+        <button class="btn" id="codeBtn" disabled>Далее →</button>
+      </div>
+
+      <!-- Шаг 3: новый пароль -->
+      <div id="s3" style="display:none">
+        <button class="back-btn" onclick="show('s2')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+          Назад
+        </button>
+        <div class="card-title">Новый пароль</div>
+        <div class="notice" id="n3"></div>
+        <div class="field-wrap">
+          <input class="field-input" id="pass1" type="password" autocomplete="new-password"/>
+          <span class="field-label">Новый пароль</span>
+        </div>
+        <div class="field-wrap">
+          <input class="field-input" id="pass2" type="password" autocomplete="new-password"/>
+          <span class="field-label">Повторить пароль</span>
+        </div>
+        <button class="btn" id="saveBtn">Сохранить →</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    let _email = '', _code = '';
+    const otps = [0,1,2,3,4,5].map(i => document.getElementById('o'+i));
+
+    function show(id) {
+      ['s1','s2','s3'].forEach(s => document.getElementById(s).style.display = s===id ? '' : 'none');
+    }
+    function notice(id, msg, type='error') {
+      const el = document.getElementById(id);
+      el.textContent = msg;
+      el.className = 'notice' + (msg?' visible':'') + (type==='success'?' success':'');
+    }
+
+    // Шаг 1
+    async function sendCode() {
+      const email = document.getElementById('email').value.trim();
+      if (!email) { notice('n1','Введи почту'); return; }
+      const btn = document.getElementById('sendBtn');
+      btn.disabled=true; btn.textContent='Отправляем...';
+      notice('n1','');
+      try {
+        await fetch('/api/auth/forgot-password', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email })
+        });
+        _email = email;
+        document.getElementById('emailShow').textContent = email;
+        show('s2');
+        setTimeout(() => otps[0]?.focus(), 300);
+      } catch { notice('n1','Ошибка сети'); }
+      finally { btn.disabled=false; btn.textContent='Получить код →'; }
+    }
+    document.getElementById('sendBtn').addEventListener('click', sendCode);
+    document.getElementById('email').addEventListener('keydown', e => { if(e.key==='Enter') sendCode(); });
+
+    // OTP
+    otps.forEach((inp, i) => {
+      inp.addEventListener('input', e => {
+        const val = e.target.value.replace(/[^0-9]/g,'');
+        if (val.length > 1) {
+          val.slice(0,6).split('').forEach((d,j) => { if(otps[j]) otps[j].value=d; });
+          otps[Math.min(val.length-1,5)]?.focus();
+        } else { inp.value=val; if(val && i<5) otps[i+1].focus(); }
+        document.getElementById('codeBtn').disabled = otps.map(o=>o.value).join('').length !== 6;
+      });
+      inp.addEventListener('keydown', e => {
+        if (e.key==='Backspace' && !inp.value && i>0) { otps[i-1].focus(); otps[i-1].value=''; document.getElementById('codeBtn').disabled=true; }
+        if (e.key==='Enter') checkCode();
+      });
+    });
+
+    async function checkCode() {
+      _code = otps.map(o=>o.value).join('');
+      if (_code.length !== 6) return;
+      show('s3');
+      setTimeout(() => document.getElementById('pass1')?.focus(), 300);
+    }
+    document.getElementById('codeBtn').addEventListener('click', checkCode);
+
+    // Шаг 3
+    async function savePass() {
+      const p1 = document.getElementById('pass1').value;
+      const p2 = document.getElementById('pass2').value;
+      notice('n3','');
+      if (p1.length < 6) { notice('n3','Минимум 6 символов'); return; }
+      if (p1 !== p2) { notice('n3','Пароли не совпадают'); return; }
+      const btn = document.getElementById('saveBtn');
+      btn.disabled=true; btn.textContent='Сохраняем...';
+      try {
+        const r = await fetch('/api/auth/reset-password', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ email:_email, code:_code, password:p1 })
+        }).then(r=>r.json());
+        if (r.ok) { window.location.href='/home'; }
+        else { notice('n3', r.error||'Ошибка'); btn.disabled=false; btn.textContent='Сохранить →'; }
+      } catch { notice('n3','Ошибка сети'); btn.disabled=false; btn.textContent='Сохранить →'; }
+    }
+    document.getElementById('saveBtn').addEventListener('click', savePass);
+    document.getElementById('pass2').addEventListener('keydown', e => { if(e.key==='Enter') savePass(); });
+  })();
+  </script>
+</body>
+</html>
