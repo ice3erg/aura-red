@@ -282,7 +282,7 @@ function getAuraRing(pts, isPlaying) {
       : '';
 
     // Демо-маркер полупрозрачный
-    const opacity = u.isDemo ? '0.45' : '1';
+    const opacity = '1';
 
     // Кольцо: друг=зелёный, same-genre=фиолетовый, иначе цвет ауры
     const ap_ = u.auraPoints||0;
@@ -383,32 +383,62 @@ function getAuraRing(pts, isPlaying) {
     }
   }
 
-  // Фейковые пользователи для демо (когда никого нет рядом)
-  function getMocks(lat, lng) {
-    const spread = 0.018;
-    return [
-      { userId:'demo1', name:'Саша',  avatar:null, track:'Blindspot', artist:'Travis Scott', matchType:'same-artist', lat:lat+spread*0.7, lng:lng+spread*1.1 },
-      { userId:'demo2', name:'Миша',  avatar:null, track:'Telekinesis', artist:'Travis Scott', matchType:'same-track',  lat:lat-spread*0.5, lng:lng+spread*0.8 },
-      { userId:'demo3', name:'Лена',  avatar:null, track:'Neon Guts', artist:'Lil Uzi Vert', matchType:'same-vibe',   lat:lat+spread*0.3, lng:lng-spread*1.2 },
-      { userId:'demo4', name:'Дима',  avatar:null, track:'Money Trees', artist:'Kendrick Lamar', matchType:'same-vibe', lat:lat-spread*1.1, lng:lng-spread*0.4 },
-      { userId:'demo5', name:'Аня',   avatar:null, track:'Stargazing', artist:'Travis Scott', matchType:'same-artist', lat:lat+spread*1.3, lng:lng+spread*0.2 },
-    ];
-  }
-
   let _usingMocks = false;
 
   async function loadRadar(lat, lng) {
     try {
-      const r = await fetch(`/api/radar/nearby?lat=${lat}&lng=${lng}&radius=50`);
-      const d = await r.json();
+      // Сначала ищем рядом (5км)
+      let r = await fetch(`/api/radar/nearby?lat=${lat}&lng=${lng}&radius=5`);
+      let d = await r.json();
       if (r.ok && d.ok && d.users?.length) {
         _usingMocks = false;
-        renderUsers(d.users); return;
+        renderUsers(d.users);
+        hideEmptyHint();
+        return;
+      }
+
+      // Расширяем до 50км
+      r = await fetch(`/api/radar/nearby?lat=${lat}&lng=${lng}&radius=50`);
+      d = await r.json();
+      if (r.ok && d.ok && d.users?.length) {
+        _usingMocks = false;
+        renderUsers(d.users);
+        showEmptyHint('Рядом пусто — вот кто слушает в городе');
+        return;
+      }
+
+      // Показываем всех активных из базы
+      r = await fetch(`/api/radar/nearby?lat=${lat}&lng=${lng}&radius=5000`);
+      d = await r.json();
+      if (r.ok && d.ok && d.users?.length) {
+        _usingMocks = false;
+        renderUsers(d.users);
+        showEmptyHint('Рядом никого — вот кто сейчас в +aura');
+        return;
       }
     } catch (_) {}
-    // Показываем демо-пользователей если никого нет
-    _usingMocks = true;
-    renderUsers(getMocks(lat, lng).map(u => ({ ...u, isDemo: true })));
+
+    // Совсем никого — карта пустая
+    _usingMocks = false;
+    renderUsers([]);
+    showEmptyHint('Пока никого нет — пригласи друзей 👋');
+  }
+
+  function showEmptyHint(text) {
+    let hint = document.getElementById('emptyHint');
+    if (!hint) {
+      hint = document.createElement('div');
+      hint.id = 'emptyHint';
+      hint.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top)+70px);left:50%;transform:translateX(-50%);background:rgba(10,10,14,0.9);border:1px solid rgba(255,255,255,0.1);border-radius:99px;padding:8px 16px;font-size:12px;font-weight:600;color:rgba(255,255,255,0.5);z-index:60;white-space:nowrap;backdrop-filter:blur(10px);pointer-events:none;';
+      document.body.appendChild(hint);
+    }
+    hint.textContent = text;
+    hint.style.display = '';
+  }
+
+  function hideEmptyHint() {
+    const hint = document.getElementById('emptyHint');
+    if (hint) hint.style.display = 'none';
   }
 
   // ── Push now playing ─────────────────────────────────────
@@ -536,7 +566,7 @@ function getAuraRing(pts, isPlaying) {
   let _sheetUser = null;
 
   function openUserProfile() {
-    if (_sheetUser && !_sheetUser.isDemo && _sheetUser.name) {
+    if (_sheetUser && _sheetUser.name) {
       window.location.href = `/u/${encodeURIComponent(_sheetUser.name)}`;
     }
   }
@@ -574,16 +604,6 @@ function getAuraRing(pts, isPlaying) {
     document.getElementById('sheetTrackName').textContent   = u.track  || '—';
     document.getElementById('sheetTrackArtist').textContent = u.artist || '—';
 
-    // Если демо-пользователь — показываем заглушку
-    if (u.isDemo) {
-      const btn = document.getElementById('sheetSignalBtn');
-      btn.textContent = '👻 Демо — слушай музыку';
-      btn.className = 'sheet-btn secondary';
-      btn.disabled = true;
-      backdrop.classList.add('open');
-      return;
-    }
-
     // Кнопка профиля
     // Профиль — только после принятого сигнала
     const uid = u.id || u.userId;
@@ -591,7 +611,7 @@ function getAuraRing(pts, isPlaying) {
 
     // Реакции — показываем если у пользователя есть трек
     const reactEl = document.getElementById('sheetReactions');
-    if (reactEl) reactEl.style.display = (u.track && !u.isDemo) ? '' : 'none';
+    if (reactEl) reactEl.style.display = (u.track) ? '' : 'none';
     window._reactionTarget = { toId: uid, track: u.track, artist: u.artist };
 
     const profileBtn = document.getElementById('sheetProfileBtn');
@@ -609,7 +629,7 @@ function getAuraRing(pts, isPlaying) {
     if (photosEl) {
       photosEl.style.display = 'none';
       photosEl.innerHTML = '';
-      if (uid && !u.isDemo) {
+      if (uid) {
         fetch(`/api/user/${encodeURIComponent(uid)}`)
           .then(r => r.json())
           .then(d => {
