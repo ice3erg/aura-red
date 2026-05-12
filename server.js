@@ -14,16 +14,19 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, max: 10,
   message: { ok: false, error: "Слишком много попыток. Попробуй через 15 минут." },
   standardHeaders: true, legacyHeaders: false,
+  validate: { trustProxy: false },
 });
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000, max: 120,
   message: { ok: false, error: "Слишком много запросов" },
   standardHeaders: true, legacyHeaders: false,
+  validate: { trustProxy: false },
 });
 const otpLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, max: 5,
   message: { ok: false, error: "Слишком много запросов кода. Попробуй через час." },
   standardHeaders: true, legacyHeaders: false,
+  validate: { trustProxy: false },
 });
 const resend = new Resend(process.env.RESEND_API_KEY || "re_Qa9pAcWJ_ChFxbk2MauFoCYgqktesqGp4");
 
