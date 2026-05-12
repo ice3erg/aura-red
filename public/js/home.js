@@ -374,7 +374,7 @@ function getAuraRing(pts, isPlaying) {
           z-index:50;white-space:nowrap;
           animation:fadeIn 0.3s ease both;
         `;
-        emptyEl.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:rgba(255,43,43,0.5);display:inline-block;flex-shrink:0;"></span> Никого рядом';
+        emptyEl.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:rgba(255,43,43,0.4);display:inline-block;flex-shrink:0;flex-shrink:0;"></span><span>Никого нет рядом — <a href="/profile" style="color:rgba(255,43,43,0.7);text-decoration:none;font-weight:800;">позови друзей</a></span>';
         document.body.appendChild(emptyEl);
       }
       emptyEl.style.display = 'flex';
@@ -393,7 +393,7 @@ function getAuraRing(pts, isPlaying) {
       if (r.ok && d.ok && d.users?.length) {
         _usingMocks = false;
         renderUsers(d.users);
-        hideEmptyHint();
+        
         return;
       }
 
@@ -403,7 +403,7 @@ function getAuraRing(pts, isPlaying) {
       if (r.ok && d.ok && d.users?.length) {
         _usingMocks = false;
         renderUsers(d.users);
-        showEmptyHint('Рядом пусто — вот кто слушает в городе');
+        
         return;
       }
 
@@ -413,7 +413,7 @@ function getAuraRing(pts, isPlaying) {
       if (r.ok && d.ok && d.users?.length) {
         _usingMocks = false;
         renderUsers(d.users);
-        showEmptyHint('Рядом никого — вот кто сейчас в +aura');
+        
         return;
       }
     } catch (_) {}
@@ -421,25 +421,11 @@ function getAuraRing(pts, isPlaying) {
     // Совсем никого — карта пустая
     _usingMocks = false;
     renderUsers([]);
-    showEmptyHint('Пока никого нет — пригласи друзей 👋');
+    
   }
 
-  function showEmptyHint(text) {
-    let hint = document.getElementById('emptyHint');
-    if (!hint) {
-      hint = document.createElement('div');
-      hint.id = 'emptyHint';
-      hint.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top)+74px);left:50%;transform:translateX(-50%);background:rgba(6,6,8,0.85);border:1px solid rgba(255,43,43,0.25);border-radius:99px;padding:7px 16px;font-size:12px;font-weight:700;color:rgba(255,255,255,0.45);z-index:60;white-space:nowrap;backdrop-filter:blur(16px);pointer-events:none;letter-spacing:0.01em;';
-      document.body.appendChild(hint);
-    }
-    hint.textContent = text;
-    hint.style.display = '';
-  }
-
-  function hideEmptyHint() {
-    const hint = document.getElementById('emptyHint');
-    if (hint) hint.style.display = 'none';
-  }
+  function showEmptyHint() {} // убрано
+  function hideEmptyHint() {}
 
   // ── Push now playing ─────────────────────────────────────
   async function pushNowPlaying(track) {
