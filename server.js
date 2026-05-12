@@ -1189,6 +1189,43 @@ app.post("/api/chats/:id/messages", requireAuth, async (req, res) => {
   res.json({ ok:true, message:msg });
 });
 
+// ── Admin ────────────────────────────────────────────────────
+const ADMIN_KEY = process.env.ADMIN_KEY || "aura-admin-2026";
+
+app.get("/api/admin/stats", async (req, res) => {
+  if (req.query.key !== ADMIN_KEY) return res.status(403).json({ ok: false });
+  const pool = db.pgPool();
+  if (!pool) return res.json({ ok: false });
+  try {
+    const [users, today, week, active, signals, chats, messages] = await Promise.all([
+      pool.query(`SELECT COUNT(*) FROM users`),
+      pool.query(`SELECT COUNT(*) FROM users WHERE created_at > NOW() - INTERVAL '1 day'`),
+      pool.query(`SELECT COUNT(*) FROM users WHERE created_at > NOW() - INTERVAL '7 days'`),
+      pool.query(`SELECT COUNT(DISTINCT user_id) FROM push_subscriptions`),
+      pool.query(`SELECT COUNT(*) FROM signals WHERE created_at > NOW() - INTERVAL '7 days'`),
+      pool.query(`SELECT COUNT(*) FROM chats`),
+      pool.query(`SELECT COUNT(*) FROM messages WHERE created_at > NOW() - INTERVAL '7 days'`),
+    ]);
+    // Последние 10 пользователей
+    const recent = await pool.query(
+      `SELECT name, username, email, created_at, aura_points FROM users ORDER BY created_at DESC LIMIT 10`
+    );
+    res.json({
+      ok: true,
+      stats: {
+        totalUsers:    parseInt(users.rows[0].count),
+        newToday:      parseInt(today.rows[0].count),
+        newThisWeek:   parseInt(week.rows[0].count),
+        pushEnabled:   parseInt(active.rows[0].count),
+        signalsWeek:   parseInt(signals.rows[0].count),
+        totalChats:    parseInt(chats.rows[0].count),
+        messagesWeek:  parseInt(messages.rows[0].count),
+      },
+      recentUsers: recent.rows,
+    });
+  } catch(e) { res.json({ ok: false, error: e.message }); }
+});
+
 // ── Ping (keep-alive) ──────────────────────────────────────
 app.get("/ping", (req, res) => res.json({ ok: true, ts: Date.now(), v: "2026-04-01-v4", routes: ["username","reactions","achievements","challenges"] }));
 
