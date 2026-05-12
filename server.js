@@ -136,7 +136,7 @@ const pages = {
   "/":"index.html", "/login":"login.html", "/signup":"signup.html", "/aura":"aura.html", "/friends":"friends.html",
   "/onboarding":"onboarding.html", "/connect-music":"connect-music.html",
   "/connect-success":"connect-success.html", "/home":"home.html",
-  "/profile":"profile.html", "/map":"map.html", "/chat":"chat.html", "/get-ym-token":"get-ym-token.html"
+  "/profile":"profile.html", "/map":"map.html", "/chat":"chat.html", "/get-ym-token":"get-ym-token.html", "/admin":"admin.html", "/forgot":"forgot.html"
 };
 Object.entries(pages).forEach(([r,f]) => app.get(r, (_,res) => res.sendFile(path.join(publicDir,f))));
 
