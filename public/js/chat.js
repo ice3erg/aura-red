@@ -204,7 +204,7 @@
 
     // Мгновенно показываем кеш пока грузится сервер
     try {
-      const cached = sessionStorage.getItem('aura_chats');
+      const cached = localStorage.getItem('aura_chats');
       if (cached && root.children.length === 0) {
         const d = JSON.parse(cached);
         if (d.chats?.length) _renderChats(root, d);
@@ -215,7 +215,7 @@
       const r = await fetch('/api/chats');
       const d = await r.json();
       if (!r.ok || !d.ok) throw new Error();
-      try { sessionStorage.setItem('aura_chats', JSON.stringify(d)); } catch(_) {}
+      try { localStorage.setItem('aura_chats', JSON.stringify(d)); } catch(_) {}
 
       const totalUnread = d.chats.reduce((s,c) => s+(c.unread||0), 0);
       const sub = document.getElementById('chatSub');

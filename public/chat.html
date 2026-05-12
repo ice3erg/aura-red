@@ -392,6 +392,36 @@
     </a>
   </nav>
 
+  <script>
+    // Мгновенный рендер из кеша — до загрузки всех скриптов
+    try {
+      const cached = localStorage.getItem('aura_chats');
+      if (cached) {
+        const d = JSON.parse(cached);
+        if (d.chats?.length) {
+          const root = document.getElementById('chatList');
+          if (root) {
+            root.innerHTML = d.chats.map((chat, idx) => {
+              const other = chat.other;
+              const last = chat.lastMsg;
+              const lastTxt = last ? (last.fromId==='system' ? last.text : last.text) : 'Нет сообщений';
+              const avaHtml = other?.avatar
+                ? `<img src="${other.avatar}" style="width:50px;height:50px;border-radius:50%;object-fit:cover;" />`
+                : `<div style="width:50px;height:50px;border-radius:50%;background:#2a1a1a;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#ff2b2b;">${(other?.name||'?')[0].toUpperCase()}</div>`;
+              return `${idx>0?'<div class="divider"></div>':''}
+                <div class="chat-row" data-chat-id="${chat.id}">
+                  <div class="chat-row-ava">${avaHtml}</div>
+                  <div class="chat-row-body">
+                    <div class="chat-row-name">${other?.name||'Аноним'}</div>
+                    <div class="chat-row-last">${lastTxt||''}</div>
+                  </div>
+                </div>`;
+            }).join('');
+          }
+        }
+      }
+    } catch(_) {}
+  </script>
   <script src="/js/utils.js"></script>
   <script src="/js/chat.js"></script>
   <script>

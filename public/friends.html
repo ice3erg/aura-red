@@ -113,12 +113,12 @@
   async function load() {
     // Мгновенно показываем кеш
     try {
-      const cached = sessionStorage.getItem('aura_friends');
+      const cached = localStorage.getItem('aura_friends');
       if (cached) render(JSON.parse(cached));
     } catch(_) {}
 
     const r = await fetch('/api/friends').then(r=>r.json()).catch(()=>({ok:false,friends:[]}));
-    try { sessionStorage.setItem('aura_friends', JSON.stringify(r)); } catch(_) {}
+    try { localStorage.setItem('aura_friends', JSON.stringify(r)); } catch(_) {}
     render(r);
   }
 
