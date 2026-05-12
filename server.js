@@ -75,6 +75,14 @@ const app       = express();
 const publicDir = path.join(__dirname, "public");
 
 app.set("trust proxy", true);
+
+// Редирект http → https
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === "production" && req.headers["x-forwarded-proto"] !== "https") {
+    return res.redirect(301, "https://" + req.headers.host + req.url);
+  }
+  next();
+});
 // Кеширование статики — JS/CSS на 1 час, картинки на 1 день
 app.use(express.static(publicDir, {
   maxAge: (req) => {
