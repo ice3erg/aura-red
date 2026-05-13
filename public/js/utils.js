@@ -47,8 +47,13 @@
       }
     } catch(_) {}
 
-    // Нет кэша — ждём сеть
-    const u = await fetchMe();
+    // Нет кэша — ждём сеть, даём 2 попытки
+    let u = await fetchMe();
+    if (!u) {
+      // Ждём 1 сек и пробуем ещё раз (сервер мог просыпаться)
+      await new Promise(r => setTimeout(r, 1000));
+      u = await fetchMe();
+    }
     if (!u) { go("/login"); return null; }
     return u;
   }
