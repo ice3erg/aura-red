@@ -46,14 +46,15 @@
     .empty-btn{display:inline-block;margin-top:20px;padding:13px 24px;border-radius:14px;background:var(--red);color:#fff;font:800 14px/1 Inter,sans-serif;text-decoration:none}
 
     /* Bottom nav */
-    .bottom-nav{position:fixed;bottom:0;left:0;right:0;height:calc(64px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:rgba(6,6,8,0.92);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;z-index:100}
-    .nav-link{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-decoration:none;color:rgba(255,255,255,0.3);font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase}
-    .nav-link.active{color:var(--red)}
-    .nav-link svg{width:22px;height:22px}
-    .nav-link.active svg{filter:drop-shadow(0 0 5px rgba(255,43,43,0.5))}
+    /* bottom-nav → nav.css */
+    /* nav-link → nav.css */
+    
+    
+    
     .nav-badge{position:absolute;top:-2px;right:-6px;background:var(--red);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:99px;display:flex;align-items:center;justify-content:center;padding:0 4px}
     .nav-icon-wrap{position:relative}
   </style>
+  <link rel="stylesheet" href="/nav.css">
 </head>
 <body>
 <div class="bg-glow"></div>
