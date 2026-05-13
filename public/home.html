@@ -50,7 +50,7 @@
       display: flex; justify-content: center;
       padding-left: 16px; padding-right: 16px;
       pointer-events: none;
-      animation: slideDown 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+      
     }
     .now-pill {
       display: flex; align-items: center; gap: 10px;
@@ -406,10 +406,7 @@
   <div id="map"></div>
 
   <!-- Город (Zenly стиль) -->
-  <div id="cityChip" style="display:none;position:fixed;top:max(52px, calc(env(safe-area-inset-top) + 8px));left:16px;z-index:45;pointer-events:none;">
-    <div id="cityName" style="font-size:18px;font-weight:900;color:#fff;letter-spacing:-0.3px;line-height:1;text-shadow:0 2px 12px rgba(0,0,0,0.8);"></div>
-    <div id="districtName" style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);margin-top:1px;text-shadow:0 1px 8px rgba(0,0,0,0.8);"></div>
-  </div>
+  <div id="cityChip" style="display:none;" hidden></div>
 
   <!-- Плавное появление поверх карты -->
   <div id="mapOverlay" style="position:fixed;inset:0;background:#060608;z-index:50;pointer-events:none;transition:opacity 0.6s ease;"></div>
@@ -544,12 +541,6 @@
   </button>
 
 
-    <div style="display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;background:rgba(6,6,8,0.8);backdrop-filter:blur(12px);font-size:10px;font-weight:700;color:rgba(255,255,255,0.45);border:1px solid rgba(255,255,255,0.06);">
-      <div style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.7);flex-shrink:0;"></div> артист
-    </div>
-    <div style="display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:99px;background:rgba(6,6,8,0.8);backdrop-filter:blur(12px);font-size:10px;font-weight:700;color:rgba(255,255,255,0.3);border:1px solid rgba(255,255,255,0.06);">
-      <div style="width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.2);flex-shrink:0;"></div> рядом
-    </div>
   </div>
 
   <!-- Sheet -->

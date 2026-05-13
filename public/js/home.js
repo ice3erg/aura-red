@@ -175,27 +175,7 @@ function getAuraRing(pts, isPlaying) {
   let _longPressTimer = null;
 
   // ── Geo ──────────────────────────────────────────────────
-  // Показываем город в стиле Zenly
-  async function updateCityDisplay(lat, lng) {
-    try {
-      const r = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=ru`,
-        { headers: { 'User-Agent': 'AuraApp/1.0' } }
-      ).then(r => r.json());
-
-      const addr = r.address || {};
-      const city     = addr.city || addr.town || addr.village || addr.county || '';
-      const district = addr.city_district || addr.suburb || addr.neighbourhood || addr.road || '';
-
-      const cityEl     = document.getElementById('cityName');
-      const districtEl = document.getElementById('districtName');
-      const wrap       = document.getElementById('cityChip');
-
-      if (cityEl && city) cityEl.textContent = city;
-      if (districtEl)     districtEl.textContent = district;
-      if (wrap && city)   wrap.style.display = 'block';
-    } catch(_) {}
-  }
+  // updateCityDisplay removed
 
   function getGeo() {
     return new Promise(res => {
@@ -217,8 +197,7 @@ function getAuraRing(pts, isPlaying) {
               if (dist > 0.001) {
                 _youMarker?.setLatLng([fresh.lat, fresh.lng]);
                 loadRadar(fresh.lat, fresh.lng);
-                updateCityDisplay(fresh.lat, fresh.lng);
-              }
+                }
             }, () => {}, { timeout: 8000, maximumAge: 30000, enableHighAccuracy: false });
             return;
           }
@@ -520,7 +499,7 @@ function getAuraRing(pts, isPlaying) {
 
       // Обновляем радар с новым треком
       const pos = await getGeo();
-      if (pos) { loadRadar(pos.lat, pos.lng); updateCityDisplay(pos.lat, pos.lng); loadZones(); }
+      if (pos) { loadRadar(pos.lat, pos.lng); loadZones(); }
 
     } else {
       pill.classList.remove('has-track');
@@ -1364,8 +1343,7 @@ function getAuraRing(pts, isPlaying) {
         const p = JSON.parse(savedPos);
         if (p && Date.now() - p.ts < 30 * 60 * 1000) {
           map.setView([p.lat, p.lng], 14, { animate: false });
-          updateCityDisplay(p.lat, p.lng);
-        }
+          }
       }
     } catch(_) {}
 
@@ -1423,7 +1401,6 @@ function getAuraRing(pts, isPlaying) {
         map.setView([pos.lat, pos.lng], 14, { animate: false });
       }
       _youMarker.setLatLng([pos.lat, pos.lng]);
-      updateCityDisplay(pos.lat, pos.lng);
       loadRadar(pos.lat, pos.lng);
       loadZones();
     }
