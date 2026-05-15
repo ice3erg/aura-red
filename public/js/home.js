@@ -160,6 +160,10 @@ function getAuraRing(pts, isPlaying) {
     maxZoom: 20, subdomains: 'abcd', attribution: ''
   }).addTo(map);
 
+  // Принудительно обновляем размер карты — фикс для PWA
+  setTimeout(() => map.invalidateSize(), 100);
+  window.addEventListener('resize', () => map.invalidateSize());
+
   // ── State ────────────────────────────────────────────────
   let _user = null;
   let _youMarker = null;
