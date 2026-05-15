@@ -185,7 +185,7 @@ app.post("/api/auth/signup", async (req, res) => {
 
   try {
     await resend.emails.send({
-      from: "aura <onboarding@resend.dev>",
+      from: "aura <hello@plus-aura.online>",
       to: emailLower,
       subject: `${code} — подтверди почту для +aura`,
       html: `
@@ -804,7 +804,7 @@ app.post("/api/auth/send-code", async (req, res) => {
 
   try {
     await resend.emails.send({
-      from: "aura <onboarding@resend.dev>",
+      from: "aura <hello@plus-aura.online>",
       to: emailLower,
       subject: `${code} — твой код для +aura`,
       html: `
@@ -1217,7 +1217,7 @@ app.post("/api/auth/forgot-password", async (req, res) => {
   if (apiKey) {
     try {
       await resend.emails.send({
-        from: "aura <onboarding@resend.dev>",
+        from: "aura <hello@plus-aura.online>",
         to: emailLower,
         subject: `${code} — сброс пароля +aura`,
         html: `<div style="background:#060608;padding:40px 24px;font-family:Inter,sans-serif;max-width:400px;margin:0 auto;border-radius:20px;">
