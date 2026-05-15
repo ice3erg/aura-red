@@ -1,17 +1,16 @@
 .bottom-nav {
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  height: calc(56px + env(safe-area-inset-bottom));
-  padding-bottom: env(safe-area-inset-bottom);
+  height: 56px;
+  padding-bottom: 0;
   background: rgba(6,6,8,0.97);
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border-top: 1px solid rgba(255,255,255,0.07);
-  display: flex; align-items: stretch;
+  display: flex; align-items: center;
   z-index: 100;
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
-  will-change: transform;
 }
 .nav-link {
   flex: 1; display: flex;
@@ -25,6 +24,7 @@
   text-transform: uppercase;
   -webkit-tap-highlight-color: transparent;
   transition: color 0.15s;
+  height: 56px;
 }
 .nav-link svg { width: 22px; height: 22px; }
 .nav-link:hover { color: rgba(255,255,255,0.6); }
