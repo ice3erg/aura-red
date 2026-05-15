@@ -171,7 +171,28 @@ function getAuraRing(pts, isPlaying) {
   let _sentSignalTo = new Set();
   let _acceptedSignalTo = new Set();
   let _lastPos = null;
+  // Восстанавливаем трек из localStorage мгновенно
   let _currentTrack = null;
+  try {
+    const saved = localStorage.getItem('aura_last_track');
+    if (saved) {
+      _currentTrack = JSON.parse(saved);
+      // Показываем сразу в UI
+      setTimeout(() => {
+        const title  = document.getElementById('npTitle');
+        const cover  = document.getElementById('npCover');
+        const coverPh = document.getElementById('npCoverPh');
+        const dot    = document.getElementById('npDot');
+        const pill   = document.getElementById('nowPill');
+        if (_currentTrack?.name && title) {
+          title.textContent = `${_currentTrack.name} · ${_currentTrack.artists || ''}`;
+          if (cover && _currentTrack.image) { cover.src = _currentTrack.image; cover.style.display=''; if(coverPh) coverPh.style.display='none'; }
+          if (dot) dot.className = 'np-dot playing';
+          if (pill) pill.classList.add('has-track');
+        }
+      }, 0);
+    }
+  } catch(_) {}
   let _zoneMarkers = [];
   let _zoneCreatePos = null;
   let _selectedZoneEmoji = '🔥';
@@ -1026,6 +1047,7 @@ function getAuraRing(pts, isPlaying) {
   };
   window.clearCurrentTrack = async function() {
     _currentTrack = null; _selectedTrack = null;
+    try { localStorage.removeItem('aura_last_track'); } catch(_) {}
     const title = document.getElementById('npTitle');
     const cover = document.getElementById('npCover');
     const ph    = document.getElementById('npCoverPh');
