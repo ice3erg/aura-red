@@ -663,5 +663,19 @@
     </div>
   </div>
 
+  <script>
+    // PWA navbar fix
+    (function() {
+      function fix() {
+        var nav = document.querySelector('.bottom-nav');
+        if (!nav) return;
+        var sab = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sab') || 0);
+        nav.style.cssText = 'position:fixed!important;bottom:0!important;left:0!important;right:0!important;height:56px!important;padding:0!important;';
+      }
+      fix();
+      window.addEventListener('resize', fix);
+      document.addEventListener('DOMContentLoaded', fix);
+    })();
+  </script>
 </body>
 </html>
