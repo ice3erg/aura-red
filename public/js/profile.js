@@ -242,7 +242,7 @@ function showNotice(msg, type = 'error') {
   if (pg) setTimeout(() => { pg.style.opacity = '1'; }, 50);
 
   // Collage
-  renderCollage(user.photos || []);
+  renderCover(user.cover || ''); renderCollage(user.photos || []);
 
   // Avatar
   const img = document.getElementById('avatarImg');
@@ -567,7 +567,7 @@ function showNotice(msg, type = 'error') {
     reader.onload = async ev => {
       // Показываем превью сразу
       const coverEl = document.getElementById('profileCover');
-      if (coverEl) coverEl.src = ev.target.result;
+      if (coverEl) { coverEl.src = ev.target.result; coverEl.style.display = ''; }
 
       try {
         const up = await fetch('/api/upload-photo', {

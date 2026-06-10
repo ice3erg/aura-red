@@ -161,7 +161,8 @@ app.get("/api/user/:nameOrId", async (req, res) => {
 async function requireAuth(req, res, next) {
   if (!req.session?.userId) return res.status(401).json({ ok:false, error:"Не авторизован" });
   try {
-    const user = await db.findById(req.session.userId);
+    // Лёгкий запрос — без track_history/photos (экономит ~95% egress на каждом API вызове)
+    const user = await (db.findByIdLight || db.findById)(req.session.userId);
     if (!user) { req.session.destroy(()=>{}); return res.status(401).json({ ok:false, error:"Пользователь не найден" }); }
     req.user = user; next();
   } catch(e) { res.status(500).json({ ok:false, error:"DB error" }); }
@@ -947,6 +948,146 @@ app.post("/api/push/unsubscribe", requireAuth, async (req, res) => {
     );
     res.json({ ok: true });
   } catch(e) { res.json({ ok: false }); }
+});
+
+// ── Now Playing (восстановлен после случайного удаления) ─────────────
+app.post("/api/now-playing", requireAuth, async (req, res) => {
+  try {
+    const { track, artist, album, image, url, source, lat, lng } = req.body || {};
+    if (!track || !artist) return res.status(400).json({ ok:false, error:"Нужны track и artist" });
+    if (String(track).length > 300) return res.json({ ok: false });
+
+    const data = {
+      track:  String(track).slice(0,200),  artist: String(artist).slice(0,200),
+      album:  String(album||"").slice(0,200), image: String(image||"").slice(0,500),
+      url:    String(url||"").slice(0,500),   source: String(source||"").slice(0,50),
+      lat:    lat != null ? parseFloat(lat) : null,   lng: lng != null ? parseFloat(lng) : null,
+    };
+    if (data.lat !== null && (isNaN(data.lat)||data.lat<-90 ||data.lat>90))  data.lat=null;
+    if (data.lng !== null && (isNaN(data.lng)||data.lng<-180||data.lng>180)) data.lng=null;
+    data.updatedAt = Date.now(); // важно для радара после рестарта сервера
+
+    // Полный профиль нужен для истории/стрика — читаем lastPush ДО обновления
+    const user = await db.findById(req.user.id);
+    const lastPush = db.getMyNowPlaying(req.user.id);
+    db.setNowPlaying(req.user.id, data);
+
+    const history = Array.isArray(user?.trackHistory) ? user.trackHistory : [];
+    const entry = { track: data.track, artist: data.artist, image: data.image, ts: Date.now() };
+    const last = history[0];
+    const newHistory = (last?.track === entry.track && last?.artist === entry.artist)
+      ? history : [entry, ...history].slice(0, 200);
+
+    // Стрик
+    const today = new Date().toISOString().slice(0,10);
+    const lastDay = user?.streakLast ? String(user.streakLast).slice(0,10) : null;
+    let newStreak = user?.streakDays || 0;
+    if (lastDay !== today) {
+      const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+      newStreak = lastDay === yesterday ? newStreak + 1 : 1;
+    }
+
+    let auraGain = 0, streakBonus = 0;
+    const tenMin = 10 * 60 * 1000;
+    if (!lastPush || Date.now() - (lastPush.updatedAt || 0) > tenMin) auraGain += 1;
+    if (lastDay !== today) {
+      if (newStreak === 7)          { streakBonus = 15; auraGain += 15; }
+      else if (newStreak === 30)    { streakBonus = 50; auraGain += 50; }
+      else if (newStreak % 7 === 0) { streakBonus = 10; auraGain += 10; }
+    }
+
+    const updatedUser = await db.updateUser(req.user.id, {
+      currentTrack: data, trackHistory: newHistory,
+      streakDays: newStreak, streakLast: today,
+      auraPoints: (user.auraPoints || 0) + auraGain,
+    });
+
+    let newAchs = [];
+    try {
+      newAchs = checkAchievements(updatedUser);
+      if (newAchs.length) {
+        const allAchs = [...(updatedUser.achievements || []), ...newAchs];
+        const achBonus = newAchs.reduce((sum, a) => {
+          const def = ACHIEVEMENTS.find(x => x.id === a.id);
+          return sum + (def?.aura || 0);
+        }, 0);
+        await db.updateUser(req.user.id, {
+          achievements: allAchs,
+          auraPoints: (updatedUser.auraPoints || 0) + achBonus,
+        });
+      }
+    } catch(achErr) { console.warn('[achievements] skipped:', achErr.message); }
+
+    res.json({ ok:true, streak: newStreak, streakBonus, newAchievements: newAchs });
+  } catch(e) { console.error("[now-playing]", e.message); res.status(500).json({ ok:false, error: e.message }); }
+});
+
+// ── Radar (восстановлен после случайного удаления) ────────────────────
+app.get("/api/radar/nearby", requireAuth, async (req, res) => {
+  try {
+    const lat    = parseFloat(req.query.lat);
+    const lng    = parseFloat(req.query.lng);
+    const radius = Math.min(parseFloat(req.query.radius)||50, 5000);
+    if (isNaN(lat)||isNaN(lng)) return res.status(400).json({ ok:false, error:"Нужны lat и lng" });
+    const nearby = await db.getNearbyUsers(lat, lng, radius, req.user.id);
+
+    // Друзья всегда видны на карте
+    try {
+      const pool = db.pgPool();
+      if (pool) {
+        const friendRows = await pool.query(
+          `SELECT f.friend_id FROM friends f WHERE f.user_id=$1 AND f.status='accepted'`,
+          [req.user.id]
+        );
+        for (const row of friendRows.rows) {
+          const fid = row.friend_id;
+          if (nearby.find(u => u.userId === fid)) continue;
+          const fNowPlaying = db.getMyNowPlaying(fid);
+          if (!fNowPlaying) continue;
+          const fu = await db.findById(fid);
+          if (!fu) continue;
+          nearby.push({
+            userId: fid, name: fu.name||'', avatar: fu.avatar||null,
+            track: fNowPlaying.track||'', artist: fNowPlaying.artist||'',
+            image: fNowPlaying.image||'', source: fNowPlaying.source||'',
+            lat: fNowPlaying.lat||lat, lng: fNowPlaying.lng||lng,
+            distKm: null, isFriend: true, auraPoints: fu.auraPoints||0,
+            genres: fu.genres||[]
+          });
+        }
+      }
+    } catch(_) {}
+
+    const myRadar  = db.getMyNowPlaying(req.user.id);
+    const meUser   = await db.findById(req.user.id);
+    const myTrack  = myRadar || meUser?.currentTrack;
+    const myName   = myTrack?.track?.toLowerCase().trim()  || "";
+    const myArtist = myTrack?.artist?.toLowerCase().trim() || "";
+    const myGenres = new Set((meUser?.genres||[]).map(g => g.toLowerCase()));
+
+    function artistMatch(a, b) {
+      if (!a || !b) return false;
+      return a === b || a.includes(b) || b.includes(a);
+    }
+
+    const users = nearby.map(u => {
+      const uTrack  = u.track?.toLowerCase().trim()  || "";
+      const uArtist = u.artist?.toLowerCase().trim() || "";
+      const uGenres = (u.genres||[]).map(g => g.toLowerCase());
+      const commonGenres = uGenres.filter(g => myGenres.has(g));
+      const matchType =
+        myName   && uTrack  && myName === uTrack              ? "same-track"  :
+        myArtist && uArtist && artistMatch(myArtist, uArtist) ? "same-artist" :
+        commonGenres.length >= 2                               ? "same-genre"  : "same-vibe";
+      return { ...u, matchType, commonGenres };
+    });
+
+    res.json({ ok:true, count:users.length, users,
+      stats:{ sameTrack:users.filter(u=>u.matchType==="same-track").length,
+              sameArtist:users.filter(u=>u.matchType==="same-artist").length,
+              sameGenre:users.filter(u=>u.matchType==="same-genre").length,
+              sameVibe:users.filter(u=>u.matchType==="same-vibe").length }});
+  } catch(e) { console.error("[radar]", e.message); res.status(500).json({ ok:false }); }
 });
 
 // ── Signals ────────────────────────────────────────────────

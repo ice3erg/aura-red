@@ -259,10 +259,27 @@ async function findById(id) {
 
 async function getAllUsers() {
   if (USE_PG) {
-    const r = await pgPool.query("SELECT * FROM users ORDER BY created_at DESC");
+    // Без track_history/photos/achievements — экономим egress (это самые тяжёлые поля)
+    const r = await pgPool.query(`SELECT id, email, name, age, city, bio, avatar, cover, username,
+      aura_points, streak_days, streak_last, current_track, created_at, title,
+      lastfm_connected, lastfm_username, spotify_connected, email_verified, seen_by_from
+      FROM users ORDER BY created_at DESC`);
     return r.rows.map(rowToUser);
   }
   return [..._users];
+}
+
+// Лёгкая версия для requireAuth — только нужные поля, без JSONB
+async function findByIdLight(id) {
+  if (USE_PG) {
+    const r = await pgPool.query(
+      `SELECT id, email, name, username, aura_points, email_verified,
+       spotify_access_token, spotify_refresh_token, lastfm_connected, lastfm_username
+       FROM users WHERE id=$1`, [id]
+    );
+    return r.rows[0] ? rowToUser(r.rows[0]) : null;
+  }
+  return _users.find(u => u.id === id) || null;
 }
 
 async function findByEmail(email) {
@@ -374,6 +391,39 @@ async function getNearbyUsers(lat, lng, radiusKm, excludeUserId) {
       });
     }
   }
+  // Fallback: после рестарта сервера память пуста — дочитываем из БД current_track
+  if (USE_PG) {
+    try {
+      const seen = new Set(results.map(r => r.userId));
+      const r = await pgPool.query(`
+        SELECT id, name, avatar, city, aura_points, genres, current_track
+        FROM users
+        WHERE current_track IS NOT NULL AND id != $1
+        LIMIT 200`, [excludeUserId]);
+      const dayAgo = Date.now() - 24*60*60*1000;
+      for (const row of r.rows) {
+        if (seen.has(row.id)) continue;
+        const ct = typeof row.current_track === 'string'
+          ? JSON.parse(row.current_track) : row.current_track;
+        if (!ct?.track) continue;
+        if (ct.updatedAt && ct.updatedAt < dayAgo) continue; // старше суток — не показываем
+        const hasGeo = ct.lat != null && ct.lng != null;
+        const dist = hasGeo ? haversineKm(lat, lng, ct.lat, ct.lng) : null;
+        if (hasGeo && dist > radiusKm) continue;
+        results.push({
+          userId: row.id, name: row.name||"Аноним", avatar: row.avatar||null,
+          city: row.city||"", track: ct.track||"", artist: ct.artist||"",
+          album: ct.album||"", image: ct.image||"", url: ct.url||"",
+          source: ct.source||"", lat: hasGeo ? ct.lat : lat, lng: hasGeo ? ct.lng : lng,
+          distKm: hasGeo ? Math.round(dist*10)/10 : null,
+          noGeo: !hasGeo, updatedAt: ct.updatedAt || 0,
+          auraPoints: row.aura_points||0,
+          genres: row.genres||[]
+        });
+      }
+    } catch(e) { console.warn("[nearby fallback]", e.message); }
+  }
+
   // Сначала с геолокацией (по дистанции), потом без
   return results.sort((a,b) => {
     if (a.distKm === null) return 1;
@@ -582,7 +632,7 @@ async function sendMessage(chatId, fromId, text) {
 
 module.exports = {
   pgPool: () => pgPool,
-  findById, findByEmail, getAllUsers, createUser, updateUser, publicProfile,
+  findById, findByIdLight, findByEmail, getAllUsers, createUser, updateUser, publicProfile,
   setNowPlaying, getMyNowPlaying, getAllNowPlaying, getNearbyUsers,
   createSignal, getSignalsForUser, getSentSignalsForUser, getSignalById, acceptSignal, ignoreSignal, markSignalsSeenByFrom,
   createOrGetChat, getChatsForUser, getChatById, sendMessage
