@@ -645,7 +645,88 @@ function showNotice(msg, type = 'error') {
     btn.disabled = false; btn.textContent = 'Сохранить';
   });
 
+  // ── Music: VK ─────────────────────────────────────────────
+  const vkStatus = document.getElementById('vkStatus');
+  const vkBtn = document.getElementById('vkBtn');
+  function renderVk(connected, name) {
+    if (connected) {
+      document.getElementById('vkCard')?.classList.add('connected');
+      if (vkStatus) { vkStatus.textContent = name || 'Подключено'; vkStatus.classList.add('connected'); }
+      if (vkBtn) { vkBtn.textContent = 'Отключить'; vkBtn.className = 'music-action disconnect'; }
+    } else {
+      document.getElementById('vkCard')?.classList.remove('connected');
+      if (vkStatus) { vkStatus.textContent = 'Не подключено'; vkStatus.classList.remove('connected'); }
+      if (vkBtn) { vkBtn.textContent = 'Подключить'; vkBtn.className = 'music-action connect'; }
+    }
+  }
+  renderVk(user.vkConnected, user.vkUsername);
+  vkBtn?.addEventListener('click', async () => {
+    if (user.vkConnected) {
+      await fetch('/api/vk/disconnect', { method:'POST' });
+      user.vkConnected = false; renderVk(false);
+    } else {
+      window.location.href = '/vk/login';
+    }
+  });
+
+  // ── Music: Apple ──────────────────────────────────────────
+  const appleStatus = document.getElementById('appleStatus');
+  const appleBtn = document.getElementById('appleBtn');
+  function renderApple(connected) {
+    if (connected) {
+      document.getElementById('appleCard')?.classList.add('connected');
+      if (appleStatus) { appleStatus.textContent = 'Подключено'; appleStatus.classList.add('connected'); }
+      if (appleBtn) { appleBtn.textContent = 'Отключить'; appleBtn.className = 'music-action disconnect'; }
+    } else {
+      document.getElementById('appleCard')?.classList.remove('connected');
+      if (appleStatus) { appleStatus.textContent = 'Не подключено'; appleStatus.classList.remove('connected'); }
+      if (appleBtn) { appleBtn.textContent = 'Подключить'; appleBtn.className = 'music-action connect'; }
+    }
+  }
+  renderApple(user.appleConnected);
+  appleBtn?.addEventListener('click', async () => {
+    if (user.appleConnected) {
+      await fetch('/api/apple/disconnect', { method:'POST' });
+      user.appleConnected = false; renderApple(false);
+      return;
+    }
+    appleBtn.disabled = true; appleBtn.textContent = '...';
+    try {
+      const dt = await fetch('/api/apple/developer-token').then(r => r.json());
+      if (!dt.ok || !dt.token) {
+        showNotice('Apple Music работает в приложении +aura для iOS');
+        appleBtn.disabled = false; renderApple(false); return;
+      }
+      if (!window.MusicKit) {
+        await new Promise((res, rej) => {
+          const s = document.createElement('script');
+          s.src = 'https://js-cdn.music.apple.com/musickit/v3/musickit.js';
+          s.onload = res; s.onerror = rej; document.head.appendChild(s);
+        });
+        await MusicKit.configure({ developerToken: dt.token, app: { name: '+aura', build: '1.0' } });
+      }
+      await MusicKit.getInstance().authorize();
+      await fetch('/api/apple/connect', { method:'POST' });
+      user.appleConnected = true; renderApple(true);
+    } catch (e) {
+      showNotice('Не удалось подключить Apple Music');
+      appleBtn.disabled = false; renderApple(false);
+    }
+  });
+
   // ── Music: Spotify ────────────────────────────────────────
+  const spotifyBtn = document.getElementById('spotifyBtn');
+  const spotifyStatus = document.getElementById('spotifyStatus');
+  if (user.spotifyConnected) {
+    document.getElementById('spotifyCard')?.classList.add('connected');
+    if (spotifyStatus) { spotifyStatus.textContent = user.spotifyName || 'Подключено'; spotifyStatus.classList.add('connected'); }
+    if (spotifyBtn) { spotifyBtn.textContent = 'Отключить'; spotifyBtn.className = 'music-action disconnect'; }
+  }
+  spotifyBtn?.addEventListener('click', () => {
+    if (user.spotifyConnected) return;
+    window.location.href = '/spotify/login';
+  });
+
   // ── Save profile ──────────────────────────────────────────
   document.getElementById('saveBtn')?.addEventListener('click', async () => {
     const btn = document.getElementById('saveBtn');

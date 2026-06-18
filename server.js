@@ -1100,15 +1100,14 @@ app.get("/api/radar/nearby", requireAuth, async (req, res) => {
 app.get("/vk/login", (req, res) => {
   if (!VK_CLIENT_ID) return res.status(500).send("VK_CLIENT_ID не задан");
   const state = req.session?.userId || "";
-  // scope: status (чтение статуса), audio устарел но status broadcast работает
-  const scope = "status,offline";
+  // scope: status (чтение трансляции музыки в статус). offline убран — вызывал invalid_scope.
   res.redirect("https://oauth.vk.com/authorize?" + new URLSearchParams({
     client_id: VK_CLIENT_ID,
     redirect_uri: VK_REDIRECT_URI,
-    display: "mobile",
-    scope,
+    display: "page",
+    scope: "status",
     response_type: "code",
-    v: "5.199",
+    v: "5.131",
     state,
   }));
 });
