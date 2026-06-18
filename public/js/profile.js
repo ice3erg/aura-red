@@ -660,14 +660,7 @@ function showNotice(msg, type = 'error') {
     }
   }
   renderVk(user.vkConnected, user.vkUsername);
-  vkBtn?.addEventListener('click', async () => {
-    if (user.vkConnected) {
-      await fetch('/api/vk/disconnect', { method:'POST' });
-      user.vkConnected = false; renderVk(false);
-    } else {
-      window.location.href = '/vk/login';
-    }
-  });
+  // vkBtn click — в profile.html (делегирование)
 
   // ── Music: Apple ──────────────────────────────────────────
   const appleStatus = document.getElementById('appleStatus');
@@ -684,35 +677,7 @@ function showNotice(msg, type = 'error') {
     }
   }
   renderApple(user.appleConnected);
-  appleBtn?.addEventListener('click', async () => {
-    if (user.appleConnected) {
-      await fetch('/api/apple/disconnect', { method:'POST' });
-      user.appleConnected = false; renderApple(false);
-      return;
-    }
-    appleBtn.disabled = true; appleBtn.textContent = '...';
-    try {
-      const dt = await fetch('/api/apple/developer-token').then(r => r.json());
-      if (!dt.ok || !dt.token) {
-        showNotice('Apple Music работает в приложении +aura для iOS');
-        appleBtn.disabled = false; renderApple(false); return;
-      }
-      if (!window.MusicKit) {
-        await new Promise((res, rej) => {
-          const s = document.createElement('script');
-          s.src = 'https://js-cdn.music.apple.com/musickit/v3/musickit.js';
-          s.onload = res; s.onerror = rej; document.head.appendChild(s);
-        });
-        await MusicKit.configure({ developerToken: dt.token, app: { name: '+aura', build: '1.0' } });
-      }
-      await MusicKit.getInstance().authorize();
-      await fetch('/api/apple/connect', { method:'POST' });
-      user.appleConnected = true; renderApple(true);
-    } catch (e) {
-      showNotice('Не удалось подключить Apple Music');
-      appleBtn.disabled = false; renderApple(false);
-    }
-  });
+  // appleBtn click — в profile.html (делегирование)
 
   // ── Music: Spotify ────────────────────────────────────────
   const spotifyBtn = document.getElementById('spotifyBtn');
@@ -722,10 +687,7 @@ function showNotice(msg, type = 'error') {
     if (spotifyStatus) { spotifyStatus.textContent = user.spotifyName || 'Подключено'; spotifyStatus.classList.add('connected'); }
     if (spotifyBtn) { spotifyBtn.textContent = 'Отключить'; spotifyBtn.className = 'music-action disconnect'; }
   }
-  spotifyBtn?.addEventListener('click', () => {
-    if (user.spotifyConnected) return;
-    window.location.href = '/spotify/login';
-  });
+  // spotifyBtn click — в profile.html (делегирование)
 
   // ── Save profile ──────────────────────────────────────────
   document.getElementById('saveBtn')?.addEventListener('click', async () => {

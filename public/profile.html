@@ -659,5 +659,57 @@
       <div id="achToastName" style="font-size:14px;font-weight:800;color:#fff;"></div>
     </div>
   </div>
+  <script>
+  // Гарантированная привязка кнопок музыки (делегирование, не зависит от profile.js)
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('button, a');
+    if (!btn) return;
+    if (btn.id === 'vkBtn') {
+      e.preventDefault();
+      if (btn.classList.contains('disconnect')) {
+        fetch('/api/vk/disconnect', { method:'POST' }).then(() => location.reload());
+      } else {
+        location.href = '/vk/login';
+      }
+    }
+    if (btn.id === 'spotifyBtn' && !btn.classList.contains('disconnect')) {
+      e.preventDefault();
+      location.href = '/spotify/login';
+    }
+    if (btn.id === 'appleBtn') {
+      e.preventDefault();
+      handleApple(btn);
+    }
+  });
+
+  async function handleApple(btn) {
+    if (btn.classList.contains('disconnect')) {
+      await fetch('/api/apple/disconnect', { method:'POST' });
+      location.reload(); return;
+    }
+    btn.disabled = true; btn.textContent = '...';
+    try {
+      const dt = await fetch('/api/apple/developer-token').then(r => r.json());
+      if (!dt.ok || !dt.token) {
+        alert('Apple Music работает в приложении +aura для iOS');
+        btn.disabled = false; btn.textContent = 'Подключить'; return;
+      }
+      if (!window.MusicKit) {
+        await new Promise((res, rej) => {
+          const s = document.createElement('script');
+          s.src = 'https://js-cdn.music.apple.com/musickit/v3/musickit.js';
+          s.onload = res; s.onerror = rej; document.head.appendChild(s);
+        });
+        await MusicKit.configure({ developerToken: dt.token, app: { name: '+aura', build: '1.0' } });
+      }
+      await MusicKit.getInstance().authorize();
+      await fetch('/api/apple/connect', { method:'POST' });
+      location.reload();
+    } catch (err) {
+      alert('Не удалось подключить Apple Music');
+      btn.disabled = false; btn.textContent = 'Подключить';
+    }
+  }
+  </script>
 </body>
 </html>
