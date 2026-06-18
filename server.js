@@ -1806,6 +1806,37 @@ app.get("/api/weekly-recap", requireAuth, async (req, res) => {
 
 
 
+// ── Музыкальная статистика (свой Last.fm) ──────────────────
+app.get("/api/music-stats", requireAuth, async (req, res) => {
+  try {
+    const period = req.query.period || 'all'; // week | month | all
+    const user = await db.findById(req.user.id);
+    let history = Array.isArray(user?.trackHistory) ? user.trackHistory : [];
+
+    if (period === 'week')  history = history.filter(t => (t.ts||0) > Date.now() - 7*24*60*60*1000);
+    if (period === 'month') history = history.filter(t => (t.ts||0) > Date.now() - 30*24*60*60*1000);
+
+    const artistCount = {}, trackCount = {}, genreCount = {};
+    for (const t of history) {
+      if (t.artist) artistCount[t.artist] = (artistCount[t.artist]||0) + 1;
+      const tk = (t.track||'') + '::' + (t.artist||'');
+      if (!trackCount[tk]) trackCount[tk] = { track: t.track, artist: t.artist, image: t.image||'', count: 0 };
+      trackCount[tk].count++;
+      (t.genres||[]).forEach(g => { genreCount[g] = (genreCount[g]||0) + 1; });
+    }
+
+    res.json({ ok: true, period, stats: {
+      totalScrobbles: history.length,
+      uniqueArtists:  Object.keys(artistCount).length,
+      uniqueTracks:   Object.keys(trackCount).length,
+      topArtists: Object.entries(artistCount).sort((a,b)=>b[1]-a[1]).slice(0,20).map(([name,count])=>({name,count})),
+      topTracks:  Object.values(trackCount).sort((a,b)=>b.count-a.count).slice(0,20),
+      topGenres:  Object.entries(genreCount).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([name,count])=>({name,count})),
+      recent: history.slice(0, 30),
+    }});
+  } catch(e) { console.error("[music-stats]", e.message); res.status(500).json({ ok: false }); }
+});
+
 // ── 404 ───────────────────────────────────────────────────
 app.use((_,res) => res.status(404).sendFile(path.join(publicDir,"index.html")));
 
