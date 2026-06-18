@@ -80,6 +80,15 @@
 
       <div id="errorBox" class="notice error hidden"></div>
 
+      <div id="androidBanner" style="display:none;margin-bottom:16px;padding:16px;border-radius:16px;background:linear-gradient(135deg,rgba(52,199,89,0.12),rgba(52,199,89,0.04));border:1px solid rgba(52,199,89,0.25);">
+        <div style="font-size:15px;font-weight:800;color:#fff;margin-bottom:6px;">🎵 Автоматический режим</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:12px;line-height:1.4;">
+          Разреши +aura читать медиа-уведомления — и любой трек из Яндекс Музыки, Spotify, VK, Звука будет появляться автоматически. Подключать сервисы не нужно.
+        </div>
+        <button id="androidEnableBtn" style="width:100%;padding:13px;border-radius:12px;background:#34c759;color:#fff;border:none;font:800 14px Inter,sans-serif;cursor:pointer;">Включить автоскробблинг</button>
+        <div id="androidStatus" style="font-size:12px;color:#4ade80;margin-top:8px;text-align:center;display:none;">✓ Автоскробблинг включён</div>
+      </div>
+
       <div class="music-source-tabs">
         
         <button class="tab-btn active" data-tab="apple">Apple Music</button>
@@ -133,6 +142,28 @@
   <script src="/js/utils.js"></script>
   <script src="/js/music.js"></script>
   <script>
+    // Android: показываем баннер автоскробблинга и сохраняем cookie сессии
+    if (window.AuraNative && AuraNative.isAndroidApp && AuraNative.isAndroidApp()) {
+      const banner = document.getElementById('androidBanner');
+      if (banner) banner.style.display = '';
+      try { AuraNative.saveSessionCookie(document.cookie); } catch(_) {}
+
+      function refreshAndroidStatus() {
+        const enabled = AuraNative.isListenerEnabled && AuraNative.isListenerEnabled();
+        const st = document.getElementById('androidStatus');
+        const btn = document.getElementById('androidEnableBtn');
+        if (enabled) {
+          if (st) st.style.display = 'block';
+          if (btn) { btn.textContent = 'Автоскробблинг работает'; btn.style.opacity = '0.6'; }
+        }
+      }
+      refreshAndroidStatus();
+      document.getElementById('androidEnableBtn')?.addEventListener('click', () => {
+        if (AuraNative.openListenerSettings) AuraNative.openListenerSettings();
+        setTimeout(refreshAndroidStatus, 1500);
+      });
+    }
+
     // Tab switching
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {

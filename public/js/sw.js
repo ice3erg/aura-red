@@ -1,4 +1,4 @@
-const CACHE = 'aura-v10';
+const CACHE = 'aura-v11';
 const STATIC = [
   '/', '/home', '/login', '/signup', '/profile', '/chat', '/onboarding',
   '/manifest.json',
