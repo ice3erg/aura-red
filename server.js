@@ -8,6 +8,7 @@ const axios   = require("axios");
 const cloudinary = require("cloudinary").v2;
 const { Resend } = require("resend");
 const webpush = require("web-push");
+const crypto = require("crypto");
 webpush.setVapidDetails(
   "mailto:hello@plus-aura.online",
   process.env.VAPID_PUBLIC_KEY  || "BNIePIIGQyNPScf8XocW3TE3q6K6jtPUinu2Me3TbUeXZtXWJ6m7pmCBtKl3nIQTCY3MwqNsTaCgjebvouP2nBY",
@@ -1099,52 +1100,81 @@ app.get("/api/radar/nearby", requireAuth, async (req, res) => {
 
 app.get("/vk/login", (req, res) => {
   if (!VK_CLIENT_ID) return res.status(500).send("VK_CLIENT_ID не задан");
-  const state = req.session?.userId || "";
-  // scope: status (чтение трансляции музыки в статус). offline убран — вызывал invalid_scope.
-  res.redirect("https://oauth.vk.com/authorize?" + new URLSearchParams({
-    client_id: VK_CLIENT_ID,
-    redirect_uri: VK_REDIRECT_URI,
-    display: "page",
-    scope: "status",
-    response_type: "code",
-    v: "5.131",
-    state,
-  }));
+  // VK ID OAuth 2.1 + PKCE (id.vk.ru) — новый протокол для приложений с dev.vk.com
+  const codeVerifier = crypto.randomBytes(48).toString("base64url");
+  const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
+  const state = crypto.randomBytes(16).toString("hex");
+
+  // Сохраняем verifier + userId в сессию для callback
+  req.session.vkVerifier = codeVerifier;
+  req.session.vkState = state;
+  req.session.vkUserId = req.session?.userId || "";
+
+  req.session.save(() => {
+    res.redirect("https://id.vk.ru/authorize?" + new URLSearchParams({
+      response_type: "code",
+      client_id: VK_CLIENT_ID,
+      redirect_uri: VK_REDIRECT_URI,
+      state,
+      code_challenge: codeChallenge,
+      code_challenge_method: "s256",
+      scope: "vkid.personal_info",
+    }));
+  });
 });
 
 app.get("/vk/callback", async (req, res) => {
-  const { code, error: err, state } = req.query;
+  const { code, error: err, state, device_id } = req.query;
   if (err)   return res.redirect(`/connect-music?error=${encodeURIComponent(err)}`);
   if (!code) return res.redirect("/connect-music?error=vk_no_code");
-  try {
-    // Обмен code на access_token
-    const tok = await axios.get("https://oauth.vk.com/access_token", {
-      params: {
-        client_id: VK_CLIENT_ID, client_secret: VK_CLIENT_SECRET,
-        redirect_uri: VK_REDIRECT_URI, code,
-      }, timeout: 15000
-    });
-    const { access_token, user_id } = tok.data;
-    if (!access_token) return res.redirect("/connect-music?error=vk_no_token");
 
-    // Получаем имя пользователя
+  const verifier = req.session?.vkVerifier;
+  const savedState = req.session?.vkState;
+  if (!verifier) return res.redirect("/connect-music?error=vk_no_verifier");
+  if (state && savedState && state !== savedState)
+    return res.redirect("/connect-music?error=vk_state_mismatch");
+
+  try {
+    // VK ID: обмен code на токен через id.vk.ru/oauth2/auth с PKCE
+    const tok = await axios.post("https://id.vk.ru/oauth2/auth",
+      new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        code_verifier: verifier,
+        client_id: VK_CLIENT_ID,
+        device_id: device_id || "",
+        redirect_uri: VK_REDIRECT_URI,
+        state: savedState || "",
+      }).toString(),
+      { headers: { "Content-Type": "application/x-www-form-urlencoded" }, timeout: 15000 }
+    );
+
+    const { access_token, user_id } = tok.data;
+    if (!access_token) {
+      console.error("[vk/callback] no token:", tok.data);
+      return res.redirect("/connect-music?error=vk_no_token");
+    }
+
+    // Получаем имя через VK ID user_info
     let vkName = "";
     try {
-      const u = await axios.get("https://api.vk.com/method/users.get", {
-        params: { user_ids: user_id, access_token, v: "5.199" }, timeout: 10000
-      });
-      const usr = u.data?.response?.[0];
-      if (usr) vkName = `${usr.first_name} ${usr.last_name}`.trim();
+      const u = await axios.post("https://id.vk.ru/oauth2/user_info",
+        new URLSearchParams({ access_token, client_id: VK_CLIENT_ID }).toString(),
+        { headers: { "Content-Type": "application/x-www-form-urlencoded" }, timeout: 10000 }
+      );
+      const usr = u.data?.user;
+      if (usr) vkName = `${usr.first_name || ""} ${usr.last_name || ""}`.trim();
     } catch(_) {}
 
-    const userId = req.session?.userId || state;
+    const userId = req.session?.vkUserId || req.session?.userId;
     if (userId) {
       await db.updateUser(userId, {
-        vkConnected: true, vkId: String(user_id),
+        vkConnected: true, vkId: String(user_id || ""),
         vkToken: access_token, vkUsername: vkName,
       });
-      console.log(`[vk/callback] VK linked: ${vkName} (${user_id}) → ${userId}`);
+      console.log(`[vk/callback] VK ID linked: ${vkName} (${user_id}) → ${userId}`);
       if (!req.session.userId) req.session.userId = userId;
+      delete req.session.vkVerifier; delete req.session.vkState;
       return req.session.save(() => res.redirect("/connect-success?" +
         new URLSearchParams({ vkConnected: "true", vkName })));
     }
