@@ -458,15 +458,6 @@ function getAuraRing(pts, isPlaying) {
   async function loadTrack(user) {
     let track = null;
 
-    // 1. VK Музыка (приоритет — рабочий российский источник)
-    if (user.vkConnected) {
-      try {
-        const r = await fetch('/api/vk/current-track');
-        const d = await r.json();
-        if (d.ok && d.track && d.isPlaying) track = d.track;
-      } catch (_) {}
-    }
-
     // 2. Apple Music через MusicKit (клиент)
     if (!track && user.appleConnected && window.MusicKit) {
       try {

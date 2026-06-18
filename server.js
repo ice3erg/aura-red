@@ -132,9 +132,6 @@ app.use(session({
 const CLIENT_ID     = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 const REDIRECT_URI  = process.env.SPOTIFY_REDIRECT_URI;
-const VK_CLIENT_ID    = process.env.VK_CLIENT_ID;
-const VK_CLIENT_SECRET= process.env.VK_CLIENT_SECRET;
-const VK_REDIRECT_URI = process.env.VK_REDIRECT_URI || "https://plus-aura.online/vk/callback";
 
 // ── Pages ──────────────────────────────────────────────────
 const pages = {
@@ -1092,126 +1089,6 @@ app.get("/api/radar/nearby", requireAuth, async (req, res) => {
               sameGenre:users.filter(u=>u.matchType==="same-genre").length,
               sameVibe:users.filter(u=>u.matchType==="same-vibe").length }});
   } catch(e) { console.error("[radar]", e.message); res.status(500).json({ ok:false }); }
-});
-
-// ── VK Музыка (OAuth + статус) ──────────────────────────────
-// VK OAuth: пользователь авторизуется, разрешает доступ к статусу/аудио.
-// Запросы к VK API идут с сервера — VK не блокирует серверные IP.
-
-app.get("/vk/login", (req, res) => {
-  if (!VK_CLIENT_ID) return res.status(500).send("VK_CLIENT_ID не задан");
-  // VK ID OAuth 2.1 + PKCE (id.vk.ru) — новый протокол для приложений с dev.vk.com
-  const codeVerifier = crypto.randomBytes(48).toString("base64url");
-  const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
-  const state = crypto.randomBytes(16).toString("hex");
-
-  // Сохраняем verifier + userId в сессию для callback
-  req.session.vkVerifier = codeVerifier;
-  req.session.vkState = state;
-  req.session.vkUserId = req.session?.userId || "";
-
-  req.session.save(() => {
-    res.redirect("https://id.vk.ru/authorize?" + new URLSearchParams({
-      response_type: "code",
-      client_id: VK_CLIENT_ID,
-      redirect_uri: VK_REDIRECT_URI,
-      state,
-      code_challenge: codeChallenge,
-      code_challenge_method: "s256",
-      scope: "vkid.personal_info",
-    }));
-  });
-});
-
-app.get("/vk/callback", async (req, res) => {
-  const { code, error: err, state, device_id } = req.query;
-  if (err)   return res.redirect(`/connect-music?error=${encodeURIComponent(err)}`);
-  if (!code) return res.redirect("/connect-music?error=vk_no_code");
-
-  const verifier = req.session?.vkVerifier;
-  const savedState = req.session?.vkState;
-  if (!verifier) return res.redirect("/connect-music?error=vk_no_verifier");
-  if (state && savedState && state !== savedState)
-    return res.redirect("/connect-music?error=vk_state_mismatch");
-
-  try {
-    // VK ID: обмен code на токен через id.vk.ru/oauth2/auth с PKCE
-    const tok = await axios.post("https://id.vk.ru/oauth2/auth",
-      new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        code_verifier: verifier,
-        client_id: VK_CLIENT_ID,
-        device_id: device_id || "",
-        redirect_uri: VK_REDIRECT_URI,
-        state: savedState || "",
-      }).toString(),
-      { headers: { "Content-Type": "application/x-www-form-urlencoded" }, timeout: 15000 }
-    );
-
-    const { access_token, user_id } = tok.data;
-    if (!access_token) {
-      console.error("[vk/callback] no token:", tok.data);
-      return res.redirect("/connect-music?error=vk_no_token");
-    }
-
-    // Получаем имя через VK ID user_info
-    let vkName = "";
-    try {
-      const u = await axios.post("https://id.vk.ru/oauth2/user_info",
-        new URLSearchParams({ access_token, client_id: VK_CLIENT_ID }).toString(),
-        { headers: { "Content-Type": "application/x-www-form-urlencoded" }, timeout: 10000 }
-      );
-      const usr = u.data?.user;
-      if (usr) vkName = `${usr.first_name || ""} ${usr.last_name || ""}`.trim();
-    } catch(_) {}
-
-    const userId = req.session?.vkUserId || req.session?.userId;
-    if (userId) {
-      await db.updateUser(userId, {
-        vkConnected: true, vkId: String(user_id || ""),
-        vkToken: access_token, vkUsername: vkName,
-      });
-      console.log(`[vk/callback] VK ID linked: ${vkName} (${user_id}) → ${userId}`);
-      if (!req.session.userId) req.session.userId = userId;
-      delete req.session.vkVerifier; delete req.session.vkState;
-      return req.session.save(() => res.redirect("/connect-success?" +
-        new URLSearchParams({ vkConnected: "true", vkName })));
-    }
-    res.redirect("/connect-music?error=vk_no_session");
-  } catch (e) {
-    console.error("[vk/callback]", e.response?.data || e.message);
-    res.redirect("/connect-music?error=vk_callback_failed");
-  }
-});
-
-// Текущий трек из VK-статуса (broadcast). Пользователь должен включить
-// "транслировать музыку в статус" в настройках VK.
-app.get("/api/vk/current-track", requireAuth, async (req, res) => {
-  const token = req.user.vkToken;
-  if (!token) return res.status(400).json({ ok: false, error: "VK не подключён" });
-  try {
-    const r = await axios.get("https://api.vk.com/method/status.get", {
-      params: { user_id: req.user.vkId, access_token: token, v: "5.199" }, timeout: 10000
-    });
-    const audio = r.data?.response?.audio;
-    if (!audio) return res.json({ ok: true, isPlaying: false, track: null });
-    res.json({ ok: true, isPlaying: true, track: {
-      name: audio.title || "", artists: audio.artist || "",
-      album: "", image: "", source: "vk",
-      durationMs: (audio.duration || 0) * 1000,
-    }});
-  } catch (e) {
-    const vkErr = e.response?.data?.error;
-    if (vkErr?.error_code === 5) return res.status(401).json({ ok: false, error: "Токен VK истёк" });
-    console.error("[vk current-track]", vkErr || e.message);
-    res.status(500).json({ ok: false, error: "Ошибка VK API" });
-  }
-});
-
-app.post("/api/vk/disconnect", requireAuth, async (req, res) => {
-  await db.updateUser(req.user.id, { vkConnected: false, vkToken: "", vkId: "", vkUsername: "" });
-  res.json({ ok: true });
 });
 
 // ── Apple Music (MusicKit) ──────────────────────────────────

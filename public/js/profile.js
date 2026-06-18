@@ -246,7 +246,7 @@ function showNotice(msg, type = 'error') {
 
   // Прячем карточку "Подключить музыку" если уже подключено
   const musicCard = document.getElementById('connectMusicCard');
-  if (musicCard && (user.vkConnected || user.appleConnected || user.spotifyConnected || user.lastfmConnected)) {
+  if (musicCard && (user.appleConnected || user.spotifyConnected || user.lastfmConnected)) {
     musicCard.style.display = 'none';
   }
 
@@ -644,23 +644,6 @@ function showNotice(msg, type = 'error') {
     } catch { showNotice('Ошибка сети'); }
     btn.disabled = false; btn.textContent = 'Сохранить';
   });
-
-  // ── Music: VK ─────────────────────────────────────────────
-  const vkStatus = document.getElementById('vkStatus');
-  const vkBtn = document.getElementById('vkBtn');
-  function renderVk(connected, name) {
-    if (connected) {
-      document.getElementById('vkCard')?.classList.add('connected');
-      if (vkStatus) { vkStatus.textContent = name || 'Подключено'; vkStatus.classList.add('connected'); }
-      if (vkBtn) { vkBtn.textContent = 'Отключить'; vkBtn.className = 'music-action disconnect'; }
-    } else {
-      document.getElementById('vkCard')?.classList.remove('connected');
-      if (vkStatus) { vkStatus.textContent = 'Не подключено'; vkStatus.classList.remove('connected'); }
-      if (vkBtn) { vkBtn.textContent = 'Подключить'; vkBtn.className = 'music-action connect'; }
-    }
-  }
-  renderVk(user.vkConnected, user.vkUsername);
-  // vkBtn click — в profile.html (делегирование)
 
   // ── Music: Apple ──────────────────────────────────────────
   const appleStatus = document.getElementById('appleStatus');

@@ -29,10 +29,7 @@
       const p = new URLSearchParams(location.search);
       const title = document.getElementById('successTitle');
       const sub = document.getElementById('spotifyNameText');
-      if (p.get('vkConnected') === 'true') {
-        title.textContent = 'VK Музыка подключена';
-        const n = p.get('vkName'); if (n && sub) sub.textContent = n;
-      } else if (p.get('appleConnected') === 'true') {
+      if (p.get('appleConnected') === 'true') {
         title.textContent = 'Apple Music подключён';
       } else if (p.get('spotifyConnected') === 'true') {
         title.textContent = 'Spotify подключён';

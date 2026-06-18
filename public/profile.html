@@ -388,18 +388,6 @@
     <div class="section">
       <div class="section-title">Музыка</div>
 
-      <!-- VK Музыка -->
-      <div class="music-card" id="vkCard">
-        <div class="music-icon" style="background:rgba(0,119,255,0.15);">
-          <div style="font-weight:800;color:#07F;font-size:13px;">VK</div>
-        </div>
-        <div class="music-info">
-          <div class="music-name">VK Музыка</div>
-          <div class="music-status" id="vkStatus">Не подключено</div>
-        </div>
-        <button class="music-action connect" id="vkBtn">Подключить</button>
-      </div>
-
       <!-- Apple Music -->
       <div class="music-card" id="appleCard">
         <div class="music-icon" style="background:linear-gradient(135deg,#FA233B,#FB5C74);">
@@ -664,14 +652,6 @@
   document.addEventListener('click', function(e) {
     const btn = e.target.closest('button, a');
     if (!btn) return;
-    if (btn.id === 'vkBtn') {
-      e.preventDefault();
-      if (btn.classList.contains('disconnect')) {
-        fetch('/api/vk/disconnect', { method:'POST' }).then(() => location.reload());
-      } else {
-        location.href = '/vk/login';
-      }
-    }
     if (btn.id === 'spotifyBtn' && !btn.classList.contains('disconnect')) {
       e.preventDefault();
       location.href = '/spotify/login';
