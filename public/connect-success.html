@@ -15,7 +15,7 @@
   <main class="auth-shell">
     <section class="auth-card">
       <div class="logo">+aura</div>
-      <h1>Spotify подключён</h1>
+      <h1 id="successTitle">Сервис подключён</h1>
       <p id="spotifyNameText" class="auth-subtitle"></p>
 
       <button id="continueBtn" class="primary-btn">Перейти в приложение</button>
@@ -25,7 +25,22 @@
   <script src="/js/utils.js"></script>
   <script src="/js/music.js"></script>
   <script>
-    window.AuraMusic.finishConnectPage();
+    (function(){
+      const p = new URLSearchParams(location.search);
+      const title = document.getElementById('successTitle');
+      const sub = document.getElementById('spotifyNameText');
+      if (p.get('vkConnected') === 'true') {
+        title.textContent = 'VK Музыка подключена';
+        const n = p.get('vkName'); if (n && sub) sub.textContent = n;
+      } else if (p.get('appleConnected') === 'true') {
+        title.textContent = 'Apple Music подключён';
+      } else if (p.get('spotifyConnected') === 'true') {
+        title.textContent = 'Spotify подключён';
+        const n = p.get('spotifyName'); if (n && sub) sub.textContent = n;
+      }
+      document.getElementById('continueBtn')?.addEventListener('click', () => location.href='/home');
+    })();
+    try { window.AuraMusic?.finishConnectPage?.(); } catch(_) {}
   </script>
 </body>
 </html>

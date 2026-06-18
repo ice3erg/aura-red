@@ -458,7 +458,34 @@ function getAuraRing(pts, isPlaying) {
   async function loadTrack(user) {
     let track = null;
 
-    if (user.lastfmConnected && user.lastfmUsername) {
+    // 1. VK Музыка (приоритет — рабочий российский источник)
+    if (user.vkConnected) {
+      try {
+        const r = await fetch('/api/vk/current-track');
+        const d = await r.json();
+        if (d.ok && d.track && d.isPlaying) track = d.track;
+      } catch (_) {}
+    }
+
+    // 2. Apple Music через MusicKit (клиент)
+    if (!track && user.appleConnected && window.MusicKit) {
+      try {
+        const music = MusicKit.getInstance();
+        const item = music?.nowPlayingItem;
+        if (item) {
+          track = {
+            name: item.title || item.attributes?.name || '',
+            artists: item.artistName || item.attributes?.artistName || '',
+            album: item.albumName || '',
+            image: (item.artworkURL || '').replace('{w}','300').replace('{h}','300'),
+            source: 'apple',
+          };
+        }
+      } catch (_) {}
+    }
+
+    // 3. Last.fm (legacy, может не работать в РФ)
+    if (!track && user.lastfmConnected && user.lastfmUsername) {
       try {
         const r = await fetch(`/api/lastfm/current-track?username=${encodeURIComponent(user.lastfmUsername)}`);
         const d = await r.json();
@@ -466,6 +493,7 @@ function getAuraRing(pts, isPlaying) {
       } catch (_) {}
     }
 
+    // 4. Spotify (ограничен квотой)
     if (!track && user.spotifyConnected) {
       try {
         const r = await fetch('/api/spotify/current-track');

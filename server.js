@@ -131,6 +131,9 @@ app.use(session({
 const CLIENT_ID     = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 const REDIRECT_URI  = process.env.SPOTIFY_REDIRECT_URI;
+const VK_CLIENT_ID    = process.env.VK_CLIENT_ID;
+const VK_CLIENT_SECRET= process.env.VK_CLIENT_SECRET;
+const VK_REDIRECT_URI = process.env.VK_REDIRECT_URI || "https://plus-aura.online/vk/callback";
 
 // ── Pages ──────────────────────────────────────────────────
 const pages = {
@@ -1088,6 +1091,122 @@ app.get("/api/radar/nearby", requireAuth, async (req, res) => {
               sameGenre:users.filter(u=>u.matchType==="same-genre").length,
               sameVibe:users.filter(u=>u.matchType==="same-vibe").length }});
   } catch(e) { console.error("[radar]", e.message); res.status(500).json({ ok:false }); }
+});
+
+// ── VK Музыка (OAuth + статус) ──────────────────────────────
+// VK OAuth: пользователь авторизуется, разрешает доступ к статусу/аудио.
+// Запросы к VK API идут с сервера — VK не блокирует серверные IP.
+
+app.get("/vk/login", (req, res) => {
+  if (!VK_CLIENT_ID) return res.status(500).send("VK_CLIENT_ID не задан");
+  const state = req.session?.userId || "";
+  // scope: status (чтение статуса), audio устарел но status broadcast работает
+  const scope = "status,offline";
+  res.redirect("https://oauth.vk.com/authorize?" + new URLSearchParams({
+    client_id: VK_CLIENT_ID,
+    redirect_uri: VK_REDIRECT_URI,
+    display: "mobile",
+    scope,
+    response_type: "code",
+    v: "5.199",
+    state,
+  }));
+});
+
+app.get("/vk/callback", async (req, res) => {
+  const { code, error: err, state } = req.query;
+  if (err)   return res.redirect(`/connect-music?error=${encodeURIComponent(err)}`);
+  if (!code) return res.redirect("/connect-music?error=vk_no_code");
+  try {
+    // Обмен code на access_token
+    const tok = await axios.get("https://oauth.vk.com/access_token", {
+      params: {
+        client_id: VK_CLIENT_ID, client_secret: VK_CLIENT_SECRET,
+        redirect_uri: VK_REDIRECT_URI, code,
+      }, timeout: 15000
+    });
+    const { access_token, user_id } = tok.data;
+    if (!access_token) return res.redirect("/connect-music?error=vk_no_token");
+
+    // Получаем имя пользователя
+    let vkName = "";
+    try {
+      const u = await axios.get("https://api.vk.com/method/users.get", {
+        params: { user_ids: user_id, access_token, v: "5.199" }, timeout: 10000
+      });
+      const usr = u.data?.response?.[0];
+      if (usr) vkName = `${usr.first_name} ${usr.last_name}`.trim();
+    } catch(_) {}
+
+    const userId = req.session?.userId || state;
+    if (userId) {
+      await db.updateUser(userId, {
+        vkConnected: true, vkId: String(user_id),
+        vkToken: access_token, vkUsername: vkName,
+      });
+      console.log(`[vk/callback] VK linked: ${vkName} (${user_id}) → ${userId}`);
+      if (!req.session.userId) req.session.userId = userId;
+      return req.session.save(() => res.redirect("/connect-success?" +
+        new URLSearchParams({ vkConnected: "true", vkName })));
+    }
+    res.redirect("/connect-music?error=vk_no_session");
+  } catch (e) {
+    console.error("[vk/callback]", e.response?.data || e.message);
+    res.redirect("/connect-music?error=vk_callback_failed");
+  }
+});
+
+// Текущий трек из VK-статуса (broadcast). Пользователь должен включить
+// "транслировать музыку в статус" в настройках VK.
+app.get("/api/vk/current-track", requireAuth, async (req, res) => {
+  const token = req.user.vkToken;
+  if (!token) return res.status(400).json({ ok: false, error: "VK не подключён" });
+  try {
+    const r = await axios.get("https://api.vk.com/method/status.get", {
+      params: { user_id: req.user.vkId, access_token: token, v: "5.199" }, timeout: 10000
+    });
+    const audio = r.data?.response?.audio;
+    if (!audio) return res.json({ ok: true, isPlaying: false, track: null });
+    res.json({ ok: true, isPlaying: true, track: {
+      name: audio.title || "", artists: audio.artist || "",
+      album: "", image: "", source: "vk",
+      durationMs: (audio.duration || 0) * 1000,
+    }});
+  } catch (e) {
+    const vkErr = e.response?.data?.error;
+    if (vkErr?.error_code === 5) return res.status(401).json({ ok: false, error: "Токен VK истёк" });
+    console.error("[vk current-track]", vkErr || e.message);
+    res.status(500).json({ ok: false, error: "Ошибка VK API" });
+  }
+});
+
+app.post("/api/vk/disconnect", requireAuth, async (req, res) => {
+  await db.updateUser(req.user.id, { vkConnected: false, vkToken: "", vkId: "", vkUsername: "" });
+  res.json({ ok: true });
+});
+
+// ── Apple Music (MusicKit) ──────────────────────────────────
+// MusicKit работает на клиенте (iOS/Web). Клиент сам читает текущий трек
+// через SystemMusicPlayer и шлёт сюда. Серверу нужен только developer token
+// для инициализации MusicKit на клиенте + приёмник трека.
+
+app.get("/api/apple/developer-token", requireAuth, (req, res) => {
+  // Developer token генерится из Apple private key (MusicKit).
+  // Если не настроен — клиент использует только нативный MusicKit на iOS.
+  const token = process.env.APPLE_MUSIC_DEVELOPER_TOKEN;
+  if (!token) return res.json({ ok: false, error: "Apple Music developer token не настроен" });
+  res.json({ ok: true, token });
+});
+
+app.post("/api/apple/connect", requireAuth, async (req, res) => {
+  // Клиент сообщает что подключил Apple Music (получил MusicKit user token)
+  await db.updateUser(req.user.id, { appleConnected: true, musicSource: "apple" });
+  res.json({ ok: true });
+});
+
+app.post("/api/apple/disconnect", requireAuth, async (req, res) => {
+  await db.updateUser(req.user.id, { appleConnected: false });
+  res.json({ ok: true });
 });
 
 // ── Signals ────────────────────────────────────────────────

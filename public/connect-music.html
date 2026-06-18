@@ -81,31 +81,48 @@
       <div id="errorBox" class="notice error hidden"></div>
 
       <div class="music-source-tabs">
-        <button class="tab-btn active" data-tab="lastfm">Last.fm</button>
+        <button class="tab-btn active" data-tab="vk">VK Музыка</button>
+        <button class="tab-btn" data-tab="apple">Apple Music</button>
         <button class="tab-btn" data-tab="spotify">Spotify</button>
       </div>
 
-      <!-- Last.fm tab -->
-      <div class="tab-panel active" id="tab-lastfm">
+      <!-- VK Музыка tab -->
+      <div class="tab-panel active" id="tab-vk">
         <div class="service-logo">
-          <div class="lastfm-dot">lfm</div>
-          Last.fm — работает для всех
+          <div class="vk-dot" style="width:34px;height:34px;border-radius:9px;background:#07F;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:13px;">VK</div>
+          VK Музыка — рекомендуем
         </div>
 
-        <div class="field" style="margin-bottom: 14px;">
-          <span>Твой Last.fm username</span>
-          <input type="text" id="lastfmUsername" placeholder="например: johndoe" autocomplete="off" autocapitalize="none" spellcheck="false" />
-        </div>
-
-        <p class="lastfm-hint">
-          Нет аккаунта? <a href="https://www.last.fm/join" target="_blank" rel="noopener">Зарегистрируйся на Last.fm</a> — бесплатно.<br>
-          Затем подключи Spotify к Last.fm в <a href="https://www.last.fm/settings/applications" target="_blank" rel="noopener">настройках</a> — треки будут скробблироваться автоматически.
+        <p class="lastfm-hint" style="margin-bottom:16px;">
+          Войди через VK и включи <b>«Транслировать музыку в статус»</b> в настройках VK — твои треки появятся в +aura автоматически.
         </p>
 
         <div class="stack" style="margin-top: 18px;">
-          <button id="lastfmConnectBtn" class="primary-btn">Подключить Last.fm</button>
+          <a id="vkConnectBtn" class="primary-btn text-center" href="/vk/login">Войти через VK</a>
           <a class="secondary-btn text-center" href="/home">Пропустить пока</a>
         </div>
+      </div>
+
+      <!-- Apple Music tab -->
+      <div class="tab-panel" id="tab-apple">
+        <div class="service-logo">
+          <div class="apple-dot" style="width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#FA233B,#FB5C74);display:flex;align-items:center;justify-content:center;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M23.997 6.124a9.23 9.23 0 0 0-.24-2.19c-.317-1.31-1.062-2.31-2.18-3.043C21.003.517 20.373.285 19.7.164c-.517-.093-1.038-.135-1.564-.15-.04-.003-.083-.01-.124-.013H5.988c-.152.01-.303.017-.455.026C4.786.07 4.043.15 3.34.428 2.004.958 1.04 1.88.475 3.208c-.192.448-.292.925-.363 1.408-.056.392-.088.785-.1 1.18 0 .032-.007.062-.01.093v12.223c.01.14.017.283.027.424.05.815.154 1.624.49 2.373.62 1.38 1.654 2.292 3.1 2.747.515.163 1.05.246 1.59.288.68.053 1.36.06 2.04.06h9.6c.55 0 1.1-.037 1.64-.115.785-.115 1.52-.36 2.18-.79 1.116-.726 1.86-1.726 2.18-3.037.124-.51.165-1.03.18-1.553.003-.04.01-.083.013-.124V6.124zM12 18.6c-3.7 0-6.7-3-6.7-6.7s3-6.7 6.7-6.7 6.7 3 6.7 6.7-3 6.7-6.7 6.7z"/></svg>
+          </div>
+          Apple Music
+        </div>
+
+        <p class="lastfm-hint" style="margin-bottom:16px;">
+          В приложении на iPhone разреши доступ к медиатеке — +aura будет показывать что играет в Apple Music автоматически.
+        </p>
+
+        <div class="stack" style="margin-top: 18px;">
+          <button id="appleConnectBtn" class="primary-btn">Подключить Apple Music</button>
+          <a class="secondary-btn text-center" href="/home">Пропустить пока</a>
+        </div>
+        <p class="lastfm-hint" style="margin-top:12px;opacity:0.6;font-size:12px;">
+          Полноценно работает в приложении +aura для iOS. В браузере — ограниченно.
+        </p>
       </div>
 
       <!-- Spotify tab -->
@@ -141,6 +158,43 @@
         btn.classList.add('active');
         document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
       });
+    });
+
+    // Apple Music — MusicKit JS (для веба; в iOS-приложении нативный MusicKit)
+    const appleBtn = document.getElementById('appleConnectBtn');
+    appleBtn?.addEventListener('click', async () => {
+      appleBtn.disabled = true;
+      appleBtn.textContent = 'Подключаем...';
+      try {
+        // Получаем developer token с сервера
+        const dt = await fetch('/api/apple/developer-token').then(r => r.json());
+        if (!dt.ok || !dt.token) {
+          alert('Apple Music пока доступен только в приложении +aura для iOS');
+          appleBtn.disabled = false; appleBtn.textContent = 'Подключить Apple Music';
+          return;
+        }
+        // Грузим MusicKit JS если ещё не загружен
+        if (!window.MusicKit) {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://js-cdn.music.apple.com/musickit/v3/musickit.js';
+            s.onload = resolve; s.onerror = reject;
+            document.head.appendChild(s);
+          });
+          await MusicKit.configure({
+            developerToken: dt.token,
+            app: { name: '+aura', build: '1.0' }
+          });
+        }
+        const music = MusicKit.getInstance();
+        await music.authorize(); // запрашивает доступ к Apple Music
+        await fetch('/api/apple/connect', { method: 'POST' });
+        window.location.href = '/connect-success?appleConnected=true';
+      } catch (e) {
+        console.error('[apple]', e);
+        alert('Не удалось подключить Apple Music. В приложении +aura для iOS это работает надёжнее.');
+        appleBtn.disabled = false; appleBtn.textContent = 'Подключить Apple Music';
+      }
     });
   </script>
 </body>

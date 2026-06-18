@@ -107,6 +107,10 @@ if (USE_PG) {
         )
       `))
       .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS vk_username TEXT DEFAULT ''`))
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS vk_id TEXT DEFAULT ''`))
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS vk_token TEXT DEFAULT ''`))
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_connected BOOLEAN DEFAULT false`))
+      .then(() => pgPool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS music_source TEXT DEFAULT ''`))
       .then(() => pgPool.query(`
         CREATE TABLE IF NOT EXISTS friends (
           id TEXT PRIMARY KEY,
@@ -151,6 +155,10 @@ function rowToUser(row) {
     streakLast:          row.streak_last  || null,
     username:            row.username     || null,
     vkConnected:         row.vk_connected || false,
+    vkId:                row.vk_id        || '',
+    vkToken:             row.vk_token     || '',
+    appleConnected:      row.apple_connected || false,
+    musicSource:         row.music_source || '',
     genres:              row.genres       || [],
     vkUsername:          row.vk_username  || '',
     achievements:        row.achievements || [],
@@ -204,7 +212,8 @@ async function pgUpdateUser(id, patch) {
     currentTrack: "current_track",
     username: "username",
     streakDays: "streak_days", streakLast: "streak_last",
-    vkConnected: "vk_connected", vkUsername: "vk_username", genres: "genres",
+    vkConnected: "vk_connected", vkUsername: "vk_username", vkId: "vk_id", vkToken: "vk_token",
+    appleConnected: "apple_connected", musicSource: "music_source", genres: "genres",
     achievements: "achievements", title: "title",
   };
 
@@ -274,7 +283,9 @@ async function findByIdLight(id) {
   if (USE_PG) {
     const r = await pgPool.query(
       `SELECT id, email, name, username, aura_points, email_verified,
-       spotify_access_token, spotify_refresh_token, lastfm_connected, lastfm_username
+       spotify_access_token, spotify_refresh_token, spotify_connected,
+       lastfm_connected, lastfm_username,
+       vk_connected, vk_id, vk_token, vk_username, apple_connected, music_source
        FROM users WHERE id=$1`, [id]
     );
     return r.rows[0] ? rowToUser(r.rows[0]) : null;
