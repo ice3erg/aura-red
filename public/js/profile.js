@@ -244,6 +244,12 @@ function showNotice(msg, type = 'error') {
   // Collage
   renderCover(user.cover || ''); renderCollage(user.photos || []);
 
+  // Прячем карточку "Подключить музыку" если уже подключено
+  const musicCard = document.getElementById('connectMusicCard');
+  if (musicCard && (user.vkConnected || user.appleConnected || user.spotifyConnected || user.lastfmConnected)) {
+    musicCard.style.display = 'none';
+  }
+
   // Avatar
   const img = document.getElementById('avatarImg');
   const ph  = document.getElementById('avatarPh');
