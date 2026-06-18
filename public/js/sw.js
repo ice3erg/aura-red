@@ -1,4 +1,4 @@
-const CACHE = 'aura-v8';
+const CACHE = 'aura-v9';
 const STATIC = [
   '/', '/home', '/login', '/signup', '/profile', '/chat', '/onboarding',
   '/manifest.json',
@@ -48,7 +48,19 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // HTML страницы и JS — stale-while-revalidate
+  // HTML и JS — network-first (свежий код сразу, кэш только при оффлайне)
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.html') ||
+      url.pathname === '/' || !url.pathname.includes('.')) {
+    e.respondWith(
+      fetch(e.request).then(res => {
+        if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+        return res;
+      }).catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // Картинки/CSS — stale-while-revalidate
   e.respondWith(
     caches.open(CACHE).then(cache =>
       cache.match(e.request).then(cached => {
@@ -56,7 +68,6 @@ self.addEventListener('fetch', e => {
           if (res.ok) cache.put(e.request, res.clone());
           return res;
         }).catch(() => cached);
-        // Возвращаем кэш мгновенно, обновляем в фоне
         return cached || networkFetch;
       })
     )
