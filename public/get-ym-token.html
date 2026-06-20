@@ -22,6 +22,21 @@
     .token-input:focus{border-color:rgba(255,204,0,0.5)}
     .hint{font-size:11px;color:rgba(255,255,255,0.25);line-height:1.5;text-align:center;margin-top:10px}
   </style>
+<style id="native-feel">
+  * {
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none;
+  }
+  html, body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Текст не выделяется (как в нативных приложениях), кроме полей ввода */
+  body { -webkit-user-select: none; user-select: none; }
+  input, textarea, [contenteditable] { -webkit-user-select: text; user-select: text; }
+  /* Кнопки и интерактив — мгновенный отклик без 300ms задержки */
+  a, button, .nav-link, [role="button"], [onclick] { touch-action: manipulation; }
+</style>
 </head>
 <body class="red-mode auth-page">
 <main class="auth-shell">

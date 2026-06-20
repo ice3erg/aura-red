@@ -34,6 +34,21 @@
     .card-footer{text-align:center;margin-top:16px;font-size:13px;color:rgba(255,255,255,0.4)}
     .card-footer a{color:#fff;font-weight:700;text-decoration:none}
   </style>
+<style id="native-feel">
+  * {
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none;
+  }
+  html, body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Текст не выделяется (как в нативных приложениях), кроме полей ввода */
+  body { -webkit-user-select: none; user-select: none; }
+  input, textarea, [contenteditable] { -webkit-user-select: text; user-select: text; }
+  /* Кнопки и интерактив — мгновенный отклик без 300ms задержки */
+  a, button, .nav-link, [role="button"], [onclick] { touch-action: manipulation; }
+</style>
 </head>
 <body>
   <div class="bg"></div>

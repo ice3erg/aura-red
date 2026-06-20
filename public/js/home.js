@@ -154,10 +154,20 @@ function getAuraRing(pts, isPlaying) {
     zoomControl: false, attributionControl: false,
     dragging: true, scrollWheelZoom: true,
     doubleClickZoom: true, touchZoom: true,
+    preferCanvas: true,          // маркеры на canvas — быстрее DOM
+    zoomAnimation: true,
+    markerZoomAnimation: true,
+    fadeAnimation: true,
+    inertia: true,               // инерционный скролл как в нативных картах
+    inertiaDeceleration: 3000,
+    tap: true,
   }).setView(_startPos, 14);
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    maxZoom: 20, subdomains: 'abcd', attribution: ''
+  const isRetina = (window.devicePixelRatio || 1) > 1.5;
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}' + (isRetina ? '@2x' : '') + '.png', {
+    maxZoom: 20, subdomains: 'abcd', attribution: '',
+    updateWhenIdle: false,       // плавнее при панорамировании
+    keepBuffer: 4,               // меньше подгрузок на краях
   }).addTo(map);
 
   // Принудительно обновляем размер карты — фикс для PWA

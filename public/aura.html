@@ -83,6 +83,21 @@
     .skeleton{background:rgba(255,255,255,0.04);border-radius:12px;animation:skeletonPulse 1.5s ease-in-out infinite}
     @keyframes skeletonPulse{0%,100%{opacity:1}50%{opacity:0.4}}
   </style>
+<style id="native-feel">
+  * {
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none;
+  }
+  html, body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Текст не выделяется (как в нативных приложениях), кроме полей ввода */
+  body { -webkit-user-select: none; user-select: none; }
+  input, textarea, [contenteditable] { -webkit-user-select: text; user-select: text; }
+  /* Кнопки и интерактив — мгновенный отклик без 300ms задержки */
+  a, button, .nav-link, [role="button"], [onclick] { touch-action: manipulation; }
+</style>
 </head>
 <body>
   <div class="bg-glow"></div>

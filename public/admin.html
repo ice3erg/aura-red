@@ -30,6 +30,21 @@
     .refresh{float:right;background:none;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.4);font:600 12px Inter;padding:6px 12px;border-radius:8px;cursor:pointer;margin-bottom:20px}
     .refresh:hover{color:#fff}
   </style>
+<style id="native-feel">
+  * {
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none;
+  }
+  html, body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Текст не выделяется (как в нативных приложениях), кроме полей ввода */
+  body { -webkit-user-select: none; user-select: none; }
+  input, textarea, [contenteditable] { -webkit-user-select: text; user-select: text; }
+  /* Кнопки и интерактив — мгновенный отклик без 300ms задержки */
+  a, button, .nav-link, [role="button"], [onclick] { touch-action: manipulation; }
+</style>
 </head>
 <body>
   <div class="logo">+aura admin</div>

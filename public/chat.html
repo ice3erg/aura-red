@@ -290,6 +290,21 @@
   <meta name="apple-mobile-web-app-title" content="+aura">
   <link rel="apple-touch-icon" href="/icon-192.png">
   <link rel="stylesheet" href="/nav.css">
+<style id="native-feel">
+  * {
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-touch-callout: none;
+  }
+  html, body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Текст не выделяется (как в нативных приложениях), кроме полей ввода */
+  body { -webkit-user-select: none; user-select: none; }
+  input, textarea, [contenteditable] { -webkit-user-select: text; user-select: text; }
+  /* Кнопки и интерактив — мгновенный отклик без 300ms задержки */
+  a, button, .nav-link, [role="button"], [onclick] { touch-action: manipulation; }
+</style>
 </head>
 <body class="red-mode">
 
